@@ -1,0 +1,12 @@
+{
+  "name": "MathPress - محرر الرياضيات",
+  "short_name": "MathPress",
+  "description": "محرر نصوص ومعادلات رياضية",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f4ef",
+  "theme_color": "#6e5137",
+  "icons": []
+}
