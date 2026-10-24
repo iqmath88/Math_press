@@ -1,27 +1,20 @@
-export type TextBlock = {
-  id: string;
-  type: "paragraph";
-  text: string;
+import type { JSONContent } from "@tiptap/core";
+
+export type PageSettings = {
+  size: "A4";
+  orientation: "portrait";
+  marginsMm: { top: number; right: number; bottom: number; left: number };
 };
-export type MathBlock = {
-  id: string;
-  type: "math";
-  latex: string;
-  display: boolean;
-};
-export type ContentBlock = TextBlock | MathBlock;
+
 export type MathPressDocument = {
   format: "mathpress";
-  schemaVersion: 1;
+  schemaVersion: 2;
   id: string;
   title: string;
   language: "ar";
   direction: "rtl";
-  page: {
-    size: "A4";
-    orientation: "portrait" | "landscape";
-    marginsMm: { top: number; right: number; bottom: number; left: number };
-  };
-  content: ContentBlock[];
+  page: PageSettings;
+  footerText: string;
+  content: JSONContent;
   updatedAt: string;
 };
