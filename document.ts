@@ -29,13 +29,15 @@ export function starterContent(): JSONContent {
 export function createDocument(title = "ملزمة رياضيات"): MathPressDocument {
   return {
     format: "mathpress",
-    schemaVersion: 2,
+    schemaVersion: 3,
     id: crypto.randomUUID(),
     title,
     language: "ar",
     direction: "rtl",
     page: structuredClone(DEFAULT_PAGE),
+    headerText: "",
     footerText: "",
+    showPageNumbers: true,
     content: starterContent(),
     updatedAt: new Date().toISOString()
   };
@@ -51,7 +53,7 @@ function textParagraph(line: string): JSONContent {
   return line ? { type: "paragraph", content: [{ type: "text", text: line }] } : { type: "paragraph" };
 }
 
-/** تحويل مستند النسخة 1 (كتل بسيطة) إلى نموذج TipTap. */
+/** تحويل مستند النسخة 1 (كتل بسيطة) إلى نموذج TipTap (الإصدار الحالي). */
 function migrateV1(d: Record<string, unknown>): MathPressDocument | null {
   if (!Array.isArray(d.content)) return null;
   const nodes: JSONContent[] = [];
@@ -70,38 +72,46 @@ function migrateV1(d: Record<string, unknown>): MathPressDocument | null {
   if (nodes.length === 0) nodes.push({ type: "paragraph" });
   return {
     format: "mathpress",
-    schemaVersion: 2,
+    schemaVersion: 3,
     id: d.id as string,
     title,
     language: "ar",
     direction: "rtl",
     page: structuredClone(DEFAULT_PAGE),
+    headerText: "",
     footerText: "",
+    showPageNumbers: true,
     content: { type: "doc", content: nodes },
     updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : new Date().toISOString()
   };
 }
 
-/** يقرأ أي مستند MathPress (النسخة 1 أو 2) ويعيده بصيغة النسخة 2، أو null إن كان غير صالح. */
+/** يقرأ أي مستند MathPress (النسخة 1 أو 2 أو 3) ويعيده بصيغة النسخة 3، أو null إن كان غير صالح. */
 export function parseDocument(raw: unknown): MathPressDocument | null {
   if (!raw || typeof raw !== "object") return null;
   const d = raw as Record<string, unknown>;
   if (d.format !== "mathpress" || typeof d.id !== "string" || typeof d.title !== "string") return null;
   if (d.schemaVersion === 1) return migrateV1(d);
-  if (d.schemaVersion !== 2 || !isDocJson(d.content)) return null;
+  if ((d.schemaVersion !== 2 && d.schemaVersion !== 3) || !isDocJson(d.content)) return null;
   const page = d.page as Partial<PageSettings> | undefined;
   const m = page?.marginsMm;
   const margins = m && [m.top, m.right, m.bottom, m.left].every(n => typeof n === "number" && n >= 0 && n < 60)
     ? m : DEFAULT_PAGE.marginsMm;
   return {
     format: "mathpress",
-    schemaVersion: 2,
+    schemaVersion: 3,
     id: d.id,
     title: d.title,
     language: "ar",
     direction: "rtl",
-    page: { size: "A4", orientation: "portrait", marginsMm: { ...margins } },
+    page: {
+      size: "A4",
+      orientation: page?.orientation === "landscape" ? "landscape" : "portrait",
+      marginsMm: { ...margins }
+    },
+    headerText: typeof d.headerText === "string" ? d.headerText : "",
     footerText: typeof d.footerText === "string" ? d.footerText : "",
+    showPageNumbers: d.showPageNumbers !== false,
     content: d.content,
     updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : new Date().toISOString()
   };

@@ -36,10 +36,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .document-title-input:hover,.footer-input:hover{border-color:#e2d7c9}.document-title-input:focus,.footer-input:focus{background:#fff;border-color:#d9c7b2}
 .page-chip{font-size:11px;color:#7d6e5e;background:#e7dfd5;border-radius:20px;padding:5px 10px;white-space:nowrap}
 .page-stage{padding:6px 22px 40px;overflow-x:auto;background:var(--stage);flex:1}
-.paper{--pt:20mm;--pb:20mm;--px:18mm;background:#fff;width:210mm;margin:12px auto 0;box-shadow:0 4px 24px #55432a22;color:#1d1a17;position:relative}
+.paper{--pt:20mm;--pb:20mm;--px:18mm;--pw:210mm;--ph:297mm;background:#fff;width:var(--pw);margin:12px auto 0;box-shadow:0 4px 24px #55432a22;color:#1d1a17;position:relative}
 
 /* المحرر: كل الكتل بلا هوامش (التباعد بـ padding) ليكون قياس الارتفاع دقيقًا لتقسيم الصفحات */
-.mp-editor{outline:none;min-height:297mm;padding:var(--pt) var(--px) 0;font-family:var(--paper-font);font-size:14pt;line-height:1.9;direction:rtl;word-break:break-word}
+.mp-editor{outline:none;min-height:var(--ph);padding:var(--pt) var(--px) 0;font-family:var(--paper-font);font-size:14pt;line-height:1.9;direction:rtl;word-break:break-word}
 .mp-editor>*:first-child{margin-top:0}
 .mp-editor p{margin:0;padding-bottom:.45em}
 .mp-editor h1,.mp-editor h2,.mp-editor h3{margin:0;font-family:"Amiri","Noto Naskh Arabic",serif;line-height:1.5;padding-bottom:.35em;color:#2d2219}
@@ -72,12 +72,62 @@ math-field:focus-within{outline:1px dashed #a27a4d;outline-offset:2px;border-rad
 math-field::part(menu-toggle){display:none}
 math-field::part(virtual-keyboard-toggle){color:#8b7b6c}
 
+
+/* الرسوم البيانية (JSXGraph) */
+.jxgbox{position:relative;overflow:hidden;background:#fff;border:0;margin:0;touch-action:none}
+.jxgbox svg text{cursor:default;-webkit-user-select:none;user-select:none;font-family:"Cairo",Arial,sans-serif}
+.JXGtext{font-family:"Cairo",Arial,sans-serif;background:transparent;padding:0;margin:0}
+.jxgbox :focus{outline:none}
+.graph-node{position:relative;padding-bottom:.6em;text-align:center;direction:ltr}
+.graph-box{margin:0 auto;border:1px solid #ddd6cb;border-radius:3px;background:#fff;max-width:100%}
+.graph-node.ProseMirror-selectednode .graph-box{outline:2px solid #a27a4d}
+.graph-caption{font-family:var(--paper-font);font-size:12pt;direction:rtl;padding-top:.3em;color:#3a2f26}
+.graph-edit{position:absolute;top:6px;inset-inline-start:6px;font-size:12px;padding:5px 9px;opacity:.0;transition:opacity .15s;z-index:2}
+.graph-node:hover .graph-edit,.graph-node.ProseMirror-selectednode .graph-edit,.graph-edit:focus-visible{opacity:1}
+@media(hover:none){.graph-edit{opacity:1}}
+
+/* كتلة العمودين */
+.columns-block{display:grid;grid-template-columns:1fr 1fr;column-gap:8mm;padding-bottom:.45em}
+.columns-block>.col{min-width:0;outline:1px dashed #e4d9c8;outline-offset:2px;padding:1px}
+.columns-block.ProseMirror-selectednode>.col{outline-color:#a27a4d}
+
+/* نوافذ الرسم والإعدادات */
+.graph-modal{width:min(980px,100%);max-height:92vh;display:flex;flex-direction:column}
+.graph-modal-head{padding-bottom:8px}
+.graph-modal-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px;overflow-y:auto;min-height:0;padding:4px 2px 8px}
+@media(max-width:820px){.graph-modal-body{grid-template-columns:1fr}.graph-side{position:static}}
+.graph-side{display:flex;flex-direction:column;gap:10px;align-self:start;position:sticky;top:0}
+.graph-preview{background:#fff;border:1px solid #ddd6cb;border-radius:8px;padding:6px;max-width:420px;width:100%;margin:0 auto}
+.graph-items{display:flex;flex-direction:column;gap:10px}
+.gitem{border:1px solid #e1d7c9;border-radius:10px;background:#fbf8f3;padding:10px}
+.gitem.bad{border-color:#d9776b;background:#fdf1ee}
+.gitem-head{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:8px}
+.gitem-body{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.gfield{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#6c5c4d;min-width:90px}
+.gfield.grow{flex:1 1 220px}
+.gfield input,.gfield select,.gfield textarea{height:38px;border:1px solid #d9d0c5;border-radius:8px;padding:0 9px;background:#fffdf9;color:#2b2119;font-size:14px;min-width:0}
+.gfield input.num{width:84px}
+.check{display:inline-flex;align-items:center;gap:6px;font-size:13px;min-height:38px;white-space:nowrap}
+.check input{width:18px;height:18px}
+.grow-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.swatches{display:flex;gap:5px}
+.swatch{width:26px;height:26px;padding:0;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #c9bdae}
+.swatch.on{box-shadow:0 0 0 2px #4b3826}
+.add-grid{display:flex;flex-wrap:wrap;gap:6px}
+.add-grid button{font-size:12px;padding:6px 10px}
+.gerror{color:#9b3128;font-size:12px;line-height:1.6;margin-top:6px}
+.setting-block{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+.setting-title{font-size:12px;color:#6c5c4d;font-weight:700}
+.seg{display:inline-flex;border:1px solid #d9d0c5;border-radius:9px;overflow:hidden;align-self:flex-start}
+.seg button{border:0;border-radius:0;background:#fffdf9}.seg button.on{background:#6e5137;color:#fff}
+
 /* فواصل الصفحات (تُحقن من Pagination.ts) */
 .pg-break{margin-inline:calc(-1 * var(--px));user-select:none;-webkit-user-select:none;direction:rtl;font-family:Cairo,sans-serif}
 .pg-filler{height:var(--f,0)}
 .pg-footer{display:flex;justify-content:space-between;align-items:center;padding:0 var(--px);font-size:9pt;color:#8a7b6b;border-top:1px solid #eee6dd;line-height:1}
 .pg-gap{height:26px;background:var(--stage);box-shadow:inset 0 6px 8px -6px #0003,inset 0 -6px 8px -6px #0003}
-.pg-header{background:#fff}
+.pg-header{background:#fff;display:flex;align-items:center;padding:0 var(--px);font-size:9pt;color:#8a7b6b;line-height:1}
+.paper-header{position:absolute;inset:0 0 auto 0;height:var(--pt);display:flex;align-items:center;padding:0 var(--px);font-family:Cairo,sans-serif;font-size:9pt;color:#8a7b6b;line-height:1;pointer-events:none;z-index:1}
 
 .latex-input{width:100%;height:110px;resize:vertical;direction:ltr;text-align:left;border:1px solid #d9d0c5;border-radius:9px;background:#fffdf9;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:14px}
 .latex-preview{margin-top:12px;padding:10px;border-radius:9px;background:#eee7de;min-height:56px;display:flex;justify-content:center;align-items:center;direction:ltr;overflow-x:auto}
@@ -92,30 +142,21 @@ math-field::part(virtual-keyboard-toggle){color:#8b7b6c}
 @media(max-width:700px){.topbar{padding:0 12px;height:58px}.brand span{font-size:10px}.save-status{font-size:0;padding:8px}.toolbar{padding:6px 8px;gap:5px}.toolbar-separator{display:none}.page-stage{padding:4px}.paper{margin-top:4px}.status-right{display:none}}
 
 /* الطباعة: A4 بلا هوامش للمتصفح، والهوامش والترقيم من فواصل الصفحات */
-@page{size:A4 portrait;margin:0}
 @media print{
   :root,html,body,.app-shell{background:#fff!important;color:#000!important;height:auto!important}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .no-print,.toolbar,.topbar,.ribbon,.document-meta,.statusbar,.library-panel,.modal-backdrop{display:none!important}
   .app-shell,.editor-area,.page-stage{display:block!important;padding:0!important;margin:0!important;overflow:visible!important;background:#fff!important}
-  .paper{width:210mm!important;margin:0!important;box-shadow:none!important;border:0!important}
+  .paper{width:var(--pw)!important;margin:0!important;box-shadow:none!important;border:0!important}
   .mp-editor{min-height:0!important}
   .pg-gap{display:none!important}
   .pg-filler{height:max(0px,calc(var(--f,0px) - 5mm))!important}
   .pg-break:not(.pg-last) .pg-footer{break-after:page;page-break-after:always}
   .page-break-marker{display:none!important}
-  .mp-editor p,.mp-editor h1,.mp-editor h2,.mp-editor h3,.math-block,.mp-editor tr,.mp-editor img{break-inside:avoid}
+  .graph-box{border-color:transparent!important}
+  .columns-block>.col{outline:none!important}
+  .mp-editor p,.mp-editor h1,.mp-editor h2,.mp-editor h3,.math-block,.mp-editor tr,.mp-editor img,.graph-node,.columns-block{break-inside:avoid}
   math-field{outline:none!important}
   math-field::part(virtual-keyboard-toggle),math-field::part(menu-toggle){display:none!important}
   .math-block{overflow:visible!important}
-}
-
-/* Startup recovery state (MathPress 0.3) */
-.loading-state {
-  min-height: 220px;
-  display: grid;
-  place-items: center;
-  color: var(--muted, #64748b);
-  font-size: 1rem;
-  text-align: center;
 }

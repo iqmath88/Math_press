@@ -15,6 +15,7 @@ import "@fontsource/cairo/latin-400.css";
 import "@fontsource/cairo/latin-700.css";
 import "./styles.css";
 import App from "./App";
+import { loadJXG } from "./graph";
 
 // الخطوط تُضمَّن عبر Vite (mathlive/fonts.css) بدل التحميل من مسار نسبي غير موجود.
 MathfieldElement.fontsDirectory = null;
@@ -27,5 +28,7 @@ createRoot(document.getElementById("root")!).render(
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(console.error);
+    // تحميل مكتبة الرسم في الخلفية ليُخزَّن للعمل دون اتصال حتى قبل إدراج أول رسم.
+    setTimeout(() => { void loadJXG().catch(() => undefined); }, 4000);
   });
 }

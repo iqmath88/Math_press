@@ -8,7 +8,7 @@ import { computeBreaks, type PageItem, type PaginationResult } from "./paginate"
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     pagination: {
-      /** يعيد قياس الصفحات (مثلًا بعد تغيير نص التذييل). */
+      /** يعيد قياس الصفحات (بعد تغيير الهوامش أو الاتجاه أو نصوص الرأس والتذييل). */
       repaginate: () => ReturnType;
     };
   }
@@ -16,8 +16,18 @@ declare module "@tiptap/core" {
 
 const PX_PER_MM = 96 / 25.4;
 
+export type PageLayout = {
+  pageHeightMm: number;
+  marginTopMm: number;
+  marginBottomMm: number;
+  headerText: string;
+  showPageNumbers: boolean;
+};
+
 type PaginationState = { deco: DecorationSet; sig: string };
-type Meta = { result: PaginationResult; positions: number[]; sig: string; footer: string } | { refresh: true };
+type Meta =
+  | { result: PaginationResult; positions: number[]; sig: string; footer: string; layout: PageLayout }
+  | { refresh: true };
 
 export const paginationKey = new PluginKey<PaginationState>("mathpress-pagination");
 
@@ -28,8 +38,12 @@ function el(tag: string, className: string, height?: number): HTMLElement {
   return node;
 }
 
-/** فاصل الصفحة: فراغ الصفحة المنتهية + تذييلها + (على الشاشة فقط) فجوة + هامش أعلى الصفحة التالية. */
-function buildBreak(page: number, total: number, filler: number, footer: string, mb: number, mt: number, last: boolean) {
+/** فاصل الصفحة: فراغ نهاية الصفحة + تذييلها + (على الشاشة فقط) فجوة + رأس الصفحة التالية. */
+function buildBreak(
+  page: number, total: number, filler: number, footer: string, layout: PageLayout, last: boolean
+) {
+  const mb = layout.marginBottomMm * PX_PER_MM;
+  const mt = layout.marginTopMm * PX_PER_MM;
   const root = el("div", last ? "pg-break pg-last" : "pg-break");
   root.contentEditable = "false";
   const f = el("div", "pg-filler");
@@ -40,30 +54,38 @@ function buildBreak(page: number, total: number, filler: number, footer: string,
   const left = el("span", "pg-footer-text");
   left.textContent = footer;
   const right = el("span", "pg-footer-num");
-  right.textContent = `صفحة ${page} من ${total}`;
+  right.textContent = layout.showPageNumbers ? `صفحة ${page} من ${total}` : "";
   foot.append(left, right);
   root.appendChild(foot);
 
   if (!last) {
     root.appendChild(el("div", "pg-gap"));
-    root.appendChild(el("div", "pg-header", mt));
+    const head = el("div", "pg-header", mt);
+    const text = el("span", "pg-header-text");
+    text.textContent = layout.headerText;
+    head.appendChild(text);
+    root.appendChild(head);
   }
   return root;
 }
 
-function buildDecorations(doc: PMNode, meta: Extract<Meta, { result: PaginationResult }>, mt: number, mb: number) {
-  const { result, positions, footer } = meta;
+function layoutKey(l: PageLayout) {
+  return `${l.pageHeightMm}:${l.marginTopMm}:${l.marginBottomMm}:${l.headerText}:${l.showPageNumbers ? 1 : 0}`;
+}
+
+function buildDecorations(doc: PMNode, meta: Extract<Meta, { result: PaginationResult }>) {
+  const { result, positions, footer, layout } = meta;
   const total = result.pages;
+  const lk = layoutKey(layout);
   const decos: Decoration[] = [];
   let page = 1;
-  // الصفحات التي تمتدها كتلة ضخمة تُحتسب في العدد الكلي فقط.
   result.breaks.forEach((b, i) => {
     const pos = positions[b.index];
     const pageNo = page;
     decos.push(
-      Decoration.widget(pos, () => buildBreak(pageNo, total, b.filler, footer, mb, mt, false), {
+      Decoration.widget(pos, () => buildBreak(pageNo, total, b.filler, footer, layout, false), {
         side: -1,
-        key: `pb:${i}:${pageNo}:${Math.round(b.filler)}:${total}:${footer}`,
+        key: `pb:${i}:${pageNo}:${Math.round(b.filler)}:${total}:${footer}:${lk}`,
         ignoreSelection: true,
         stopEvent: () => true
       })
@@ -72,9 +94,9 @@ function buildDecorations(doc: PMNode, meta: Extract<Meta, { result: PaginationR
   });
   const endPage = Math.max(page, total);
   decos.push(
-    Decoration.widget(doc.content.size, () => buildBreak(endPage, total, result.lastFiller, footer, mb, mt, true), {
+    Decoration.widget(doc.content.size, () => buildBreak(endPage, total, result.lastFiller, footer, layout, true), {
       side: 1,
-      key: `pb:last:${endPage}:${Math.round(result.lastFiller)}:${total}:${footer}`,
+      key: `pb:last:${endPage}:${Math.round(result.lastFiller)}:${total}:${footer}:${lk}`,
       ignoreSelection: true,
       stopEvent: () => true
     })
@@ -85,13 +107,16 @@ function buildDecorations(doc: PMNode, meta: Extract<Meta, { result: PaginationR
 export const Pagination = Extension.create({
   name: "pagination",
 
-  addOptions() {
-    return { pageHeightMm: 297, marginTopMm: 20, marginBottomMm: 20 };
-  },
-
   addStorage() {
     return {
       footerText: "",
+      layout: {
+        pageHeightMm: 297,
+        marginTopMm: 20,
+        marginBottomMm: 20,
+        headerText: "",
+        showPageNumbers: true
+      } as PageLayout,
       pages: 1,
       onPages: null as ((pages: number) => void) | null
     };
@@ -108,12 +133,11 @@ export const Pagination = Extension.create({
 
   addProseMirrorPlugins() {
     const ext = this;
-    const mt = () => ext.options.marginTopMm * PX_PER_MM;
-    const mb = () => ext.options.marginBottomMm * PX_PER_MM;
-    const usable = () => (ext.options.pageHeightMm - ext.options.marginTopMm - ext.options.marginBottomMm) * PX_PER_MM;
 
     const measure = (view: EditorView) => {
       if (!view.dom.isConnected) return;
+      const layout: PageLayout = { ...ext.storage.layout };
+      const usable = (layout.pageHeightMm - layout.marginTopMm - layout.marginBottomMm) * PX_PER_MM;
       const { doc } = view.state;
       const items: PageItem[] = [];
       const positions: number[] = [];
@@ -124,18 +148,19 @@ export const Pagination = Extension.create({
         items.push({ height, breakAfter: isBreak });
         positions.push(offset);
       });
-      const result = computeBreaks(items, usable());
+      const result = computeBreaks(items, usable);
       const footer = String(ext.storage.footerText ?? "");
       const sig = JSON.stringify([
         result.breaks.map(b => [positions[b.index], Math.round(b.filler)]),
         result.pages,
         Math.round(result.lastFiller),
-        footer
+        footer,
+        layoutKey(layout)
       ]);
       const current = paginationKey.getState(view.state);
       ext.storage.pages = result.pages;
       if (current && current.sig === sig) return;
-      view.dispatch(view.state.tr.setMeta(paginationKey, { result, positions, sig, footer }).setMeta("addToHistory", false));
+      view.dispatch(view.state.tr.setMeta(paginationKey, { result, positions, sig, footer, layout }).setMeta("addToHistory", false));
       ext.storage.onPages?.(result.pages);
     };
 
@@ -146,9 +171,7 @@ export const Pagination = Extension.create({
           init: () => ({ deco: DecorationSet.empty, sig: "" }),
           apply(tr, value) {
             const meta = tr.getMeta(paginationKey) as Meta | undefined;
-            if (meta && "result" in meta) {
-              return { deco: buildDecorations(tr.doc, meta, mt(), mb()), sig: meta.sig };
-            }
+            if (meta && "result" in meta) return { deco: buildDecorations(tr.doc, meta), sig: meta.sig };
             if (meta && "refresh" in meta) return { ...value, sig: "" };
             if (tr.docChanged) return { deco: value.deco.map(tr.mapping, tr.doc), sig: "" };
             return value;

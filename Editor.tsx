@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import type { MathfieldElement } from "mathlive";
 import type { MathPressDocument } from "./types";
 import { buildExtensions } from "./extensions";
+import { EDIT_GRAPH_EVENT, type EditGraphDetail } from "./GraphNode";
+import { sanitizeSpec, type GraphSpec } from "./graphSpec";
 import Toolbar from "./Toolbar";
+import GraphDialog from "./GraphDialog";
 
 type Props = {
   doc: MathPressDocument;
@@ -16,12 +19,11 @@ type Props = {
 
 export default function DocumentEditor({ doc, onChange, onPageCount, onNotice }: Props) {
   const m = doc.page.marginsMm;
-  const extensions = useMemo(
-    () => buildExtensions({ marginTopMm: m.top, marginBottomMm: m.bottom }),
-    [m.top, m.bottom]
-  );
+  const landscape = doc.page.orientation === "landscape";
+  const extensions = useMemo(() => buildExtensions(), []);
   const [latexOpen, setLatexOpen] = useState(false);
   const [latexDraft, setLatexDraft] = useState("");
+  const [graph, setGraph] = useState<{ pos: number | null; spec: GraphSpec | null } | null>(null);
   const previewRef = useRef<MathfieldElement | null>(null);
 
   const editor = useEditor({
@@ -40,11 +42,51 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice }:
     return () => { editor.storage.pagination.onPages = null; };
   }, [editor, onPageCount]);
 
+  // إعدادات الصفحة تصل إلى مقسّم الصفحات عبر تخزين الإضافة ثم يُعاد القياس.
   useEffect(() => {
     if (!editor) return;
-    editor.storage.pagination.footerText = doc.footerText;
+    const st = editor.storage.pagination;
+    st.footerText = doc.footerText;
+    st.layout = {
+      pageHeightMm: landscape ? 210 : 297,
+      marginTopMm: m.top,
+      marginBottomMm: m.bottom,
+      headerText: doc.headerText,
+      showPageNumbers: doc.showPageNumbers
+    };
     editor.commands.repaginate();
-  }, [editor, doc.footerText]);
+  }, [editor, landscape, m.top, m.bottom, doc.headerText, doc.footerText, doc.showPageNumbers]);
+
+  // اتجاه الصفحة عند الطباعة (@page لا يقبل متغيرات CSS فنكتبه ديناميكيًا).
+  useEffect(() => {
+    let style = document.getElementById("mp-page-style") as HTMLStyleElement | null;
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "mp-page-style";
+      document.head.appendChild(style);
+    }
+    style.textContent = `@page{size:A4 ${landscape ? "landscape" : "portrait"};margin:0}`;
+  }, [landscape]);
+
+  const openGraph = useCallback((pos?: number) => {
+    if (!editor) return;
+    if (typeof pos === "number") {
+      const node = editor.state.doc.nodeAt(pos);
+      if (node?.type.name === "graph") {
+        setGraph({ pos, spec: sanitizeSpec(node.attrs.spec) });
+        return;
+      }
+    }
+    setGraph({ pos: null, spec: null });
+  }, [editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    const handler = (e: Event) => openGraph((e as CustomEvent<EditGraphDetail>).detail.pos);
+    dom.addEventListener(EDIT_GRAPH_EVENT, handler);
+    return () => dom.removeEventListener(EDIT_GRAPH_EVENT, handler);
+  }, [editor, openGraph]);
 
   useEffect(() => {
     if (latexOpen && previewRef.current) previewRef.current.value = latexDraft;
@@ -61,10 +103,21 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice }:
     setLatexDraft("");
   };
 
+  const saveGraph = (spec: GraphSpec) => {
+    if (graph?.pos != null && editor.state.doc.nodeAt(graph.pos)?.type.name === "graph") {
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(graph.pos, undefined, { spec }));
+    } else {
+      editor.chain().focus().insertGraph(spec).run();
+    }
+    setGraph(null);
+  };
+
   const paperStyle = {
     "--pt": `${m.top}mm`,
     "--pb": `${m.bottom}mm`,
-    "--px": `${m.left}mm`
+    "--px": `${m.left}mm`,
+    "--pw": landscape ? "297mm" : "210mm",
+    "--ph": landscape ? "210mm" : "297mm"
   } as CSSProperties;
 
   return (
@@ -72,13 +125,17 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice }:
       <Toolbar
         editor={editor}
         onOpenLatex={() => { setLatexDraft(""); setLatexOpen(true); }}
+        onGraph={openGraph}
         onError={onNotice}
       />
       <div className="page-stage">
         <article className="paper" id="print-document" style={paperStyle}>
+          <div className="paper-header" aria-hidden="true"><span>{doc.headerText}</span></div>
           <EditorContent editor={editor} />
         </article>
       </div>
+
+      {graph && <GraphDialog initial={graph.spec} onSave={saveGraph} onClose={() => setGraph(null)} />}
 
       {latexOpen && (
         <div className="modal-backdrop no-print" onClick={() => setLatexOpen(false)}>

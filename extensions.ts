@@ -1,6 +1,7 @@
 import { Extension, Node, mergeAttributes } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
+import Document from "@tiptap/extension-document";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import TextStyle from "@tiptap/extension-text-style";
@@ -17,12 +18,14 @@ import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import { MathBlock, MathInline } from "./MathNodes";
 import { Pagination } from "./Pagination";
+import { GraphNode } from "./GraphNode";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     direction: { setDirection: (dir: "rtl" | "ltr") => ReturnType };
     fontSize: { setFontSize: (size: string) => ReturnType; unsetFontSize: () => ReturnType };
     pageBreak: { insertPageBreak: () => ReturnType };
+    columns: { insertColumns: () => ReturnType; deleteColumns: () => ReturnType };
   }
 }
 
@@ -95,7 +98,7 @@ const ResizableImage = Image.extend({
 /** فاصل صفحة يدوي. */
 const PageBreak = Node.create({
   name: "pageBreak",
-  group: "block",
+  group: "layoutBlock",
   atom: true,
   selectable: true,
   draggable: true,
@@ -110,8 +113,57 @@ const PageBreak = Node.create({
   }
 });
 
+/** المستند يقبل كتل المحتوى وكتل التخطيط (عمودان، فاصل صفحة) في المستوى الأعلى فقط. */
+const LayoutDocument = Document.extend({ content: "(block|layoutBlock)+" });
+
+/** عمود واحد داخل كتلة الأعمدة. */
+const Column = Node.create({
+  name: "column",
+  content: "block+",
+  isolating: true,
+  defining: true,
+  parseHTML() {
+    return [{ tag: "div[data-column]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["div", mergeAttributes(HTMLAttributes, { "data-column": "", class: "col" }), 0];
+  }
+});
+
+/** كتلة بعمودين متجاورين (مناسبة لأوراق العمل: مسائل قصيرة متشابهة). لا تُقسَّم بين صفحتين. */
+const Columns = Node.create({
+  name: "columns",
+  group: "layoutBlock",
+  content: "column column",
+  isolating: true,
+  defining: true,
+  parseHTML() {
+    return [{ tag: "div[data-columns]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["div", mergeAttributes(HTMLAttributes, { "data-columns": "", class: "columns-block" }), 0];
+  },
+  addCommands() {
+    const emptyColumn = { type: "column", content: [{ type: "paragraph" }] };
+    return {
+      insertColumns: () => ({ commands }) =>
+        commands.insertContent({ type: "columns", content: [emptyColumn, emptyColumn] }),
+      deleteColumns: () => ({ state, tr, dispatch }) => {
+        const { $from } = state.selection;
+        for (let d = $from.depth; d > 0; d--) {
+          if ($from.node(d).type.name === "columns") {
+            if (dispatch) dispatch(tr.delete($from.before(d), $from.after(d)));
+            return true;
+          }
+        }
+        return false;
+      }
+    };
+  }
+});
+
 /** يضمن وجود فقرة بعد آخر كتلة غير نصية (معادلة، صورة، جدول...) ليتمكن المستخدم من متابعة الكتابة. */
-const TRAP_TYPES = ["mathBlock", "image", "pageBreak", "horizontalRule", "table"];
+const TRAP_TYPES = ["mathBlock", "image", "pageBreak", "horizontalRule", "table", "graph", "columns"];
 const TrailingParagraph = Extension.create({
   name: "trailingParagraph",
   addProseMirrorPlugins() {
@@ -126,9 +178,10 @@ const TrailingParagraph = Extension.create({
   }
 });
 
-export function buildExtensions(opts: { marginTopMm: number; marginBottomMm: number }) {
+export function buildExtensions() {
   return [
-    StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false }),
+    StarterKit.configure({ document: false, heading: { levels: [1, 2, 3] }, codeBlock: false }),
+    LayoutDocument,
     Underline,
     Subscript,
     Superscript,
@@ -147,8 +200,12 @@ export function buildExtensions(opts: { marginTopMm: number; marginBottomMm: num
     Placeholder.configure({ placeholder: "ابدأ الكتابة هنا…" }),
     MathInline,
     MathBlock,
+    GraphNode,
+    Columns,
+    Column,
     PageBreak,
     TrailingParagraph,
-    Pagination.configure({ marginTopMm: opts.marginTopMm, marginBottomMm: opts.marginBottomMm })
+    // extend() ينشئ نسخة جديدة؛ فيملك كل محرر تخزينه الخاص (إعدادات الصفحة وعدد الصفحات) ولا تتسرب بين المستندات.
+    Pagination.extend({})
   ];
 }

@@ -3,7 +3,7 @@ import type { Editor } from "@tiptap/react";
 import {
   Undo2, Redo2, Bold, Italic, Underline, Subscript, Superscript, List, ListOrdered,
   AlignRight, AlignCenter, AlignLeft, AlignJustify, Table as TableIcon, ImagePlus, Sigma,
-  Highlighter, Palette, SeparatorHorizontal, Quote, Minus, Code2
+  Highlighter, Palette, SeparatorHorizontal, Quote, Minus, Code2, Eraser, RemoveFormatting, LineChart, Columns2
 } from "lucide-react";
 import { fileToDataUrl } from "./imageUtil";
 
@@ -19,6 +19,8 @@ const SIZES = ["10", "11", "12", "13", "14", "16", "18", "20", "24", "28", "32",
 type Props = {
   editor: Editor;
   onOpenLatex: () => void;
+  /** بلا وسيط: رسم جديد. مع موضع: تعديل الرسم الموجود. */
+  onGraph: (pos?: number) => void;
   onError: (message: string) => void;
 };
 
@@ -37,7 +39,7 @@ function Btn(props: { label: string; active?: boolean; disabled?: boolean; onCli
   );
 }
 
-export default function Toolbar({ editor, onOpenLatex, onError }: Props) {
+export default function Toolbar({ editor, onOpenLatex, onGraph, onError }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const chain = () => editor.chain().focus();
   const attrs = editor.getAttributes("textStyle") as { fontFamily?: string; fontSize?: string };
@@ -63,6 +65,8 @@ export default function Toolbar({ editor, onOpenLatex, onError }: Props) {
 
   const inTable = editor.isActive("table");
   const inImage = editor.isActive("image");
+  const inGraph = editor.isActive("graph");
+  const inColumns = editor.isActive("columns");
 
   return (
     <div className="ribbon no-print" role="toolbar" aria-label="أدوات التنسيق">
@@ -112,7 +116,9 @@ export default function Toolbar({ editor, onOpenLatex, onError }: Props) {
             <Highlighter size={18} />
             <input className="visually-hidden" type="color" defaultValue="#fff2a8" aria-label="لون التمييز" onChange={e => chain().setHighlight({ color: e.target.value }).run()} />
           </label>
-          <Btn label="إزالة التمييز" onClick={() => chain().unsetHighlight().run()}><Minus size={18} /></Btn>
+          <Btn label="إلغاء التمييز عن النص المحدد" wide active={editor.isActive("highlight")} onClick={() => chain().unsetHighlight().run()}><Eraser size={18} /><span>بلا تمييز</span></Btn>
+          <Btn label="إعادة لون الخط الافتراضي" wide onClick={() => chain().unsetColor().run()}><Palette size={18} /><span>بلا لون</span></Btn>
+          <Btn label="مسح كل التنسيق عن النص المحدد" onClick={() => chain().unsetAllMarks().run()}><RemoveFormatting size={18} /></Btn>
         </div>
 
         <div className="tb-group">
@@ -134,6 +140,11 @@ export default function Toolbar({ editor, onOpenLatex, onError }: Props) {
           <Btn label="معادلة داخل السطر" wide onClick={() => chain().insertMathInline().run()}><Sigma size={18} /><span>سطرية</span></Btn>
           <Btn label="معادلة في سطر مستقل" wide onClick={() => chain().insertMathBlock().run()}><Sigma size={18} /><span>كتلة</span></Btn>
           <Btn label="إدراج معادلة من LaTeX" onClick={onOpenLatex}><Code2 size={18} /></Btn>
+        </div>
+
+        <div className="tb-group">
+          <Btn label="رسم بياني أو هندسي" wide onClick={() => onGraph()}><LineChart size={18} /><span>رسم</span></Btn>
+          <Btn label="كتلة بعمودين" wide onClick={() => chain().insertColumns().run()}><Columns2 size={18} /><span>عمودان</span></Btn>
         </div>
 
         <div className="tb-group">
@@ -162,6 +173,21 @@ export default function Toolbar({ editor, onOpenLatex, onError }: Props) {
           <Btn wide label="دمج أو فصل الخلايا" onClick={() => chain().mergeOrSplit().run()}>دمج/فصل</Btn>
           <Btn wide label="صف العناوين" onClick={() => chain().toggleHeaderRow().run()}>صف العناوين</Btn>
           <Btn wide label="حذف الجدول" onClick={() => chain().deleteTable().run()}>حذف الجدول</Btn>
+        </div>
+      )}
+
+      {inGraph && (
+        <div className="ribbon-row context">
+          <span className="ctx-label">الرسم:</span>
+          <Btn wide label="تعديل الرسم" onClick={() => onGraph(editor.state.selection.from)}>تعديل</Btn>
+          <Btn wide label="حذف الرسم" onClick={() => chain().deleteSelection().run()}>حذف</Btn>
+        </div>
+      )}
+
+      {inColumns && (
+        <div className="ribbon-row context">
+          <span className="ctx-label">العمودان:</span>
+          <Btn wide label="حذف كتلة العمودين مع محتواها" onClick={() => chain().deleteColumns().run()}>حذف الكتلة</Btn>
         </div>
       )}
 

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { createDocument, parseDocument } from "./document";
 
 describe("MathPress document model", () => {
-  it("creates a valid v2 A4 document with a block equation", () => {
+  it("creates a valid v3 A4 document with a block equation", () => {
     const doc = createDocument("اختبار");
-    expect(doc.schemaVersion).toBe(2);
+    expect(doc.schemaVersion).toBe(3);
+    expect(doc.page.orientation).toBe("portrait");
+    expect(doc.showPageNumbers).toBe(true);
     expect(doc.page.size).toBe("A4");
     expect(parseDocument(JSON.parse(JSON.stringify(doc)))).not.toBeNull();
     expect(doc.content.content?.some(n => n.type === "mathBlock")).toBe(true);
@@ -17,7 +19,7 @@ describe("MathPress document model", () => {
     expect(parseDocument({ format: "mathpress", schemaVersion: 9, id: "a", title: "t", content: {} })).toBeNull();
   });
 
-  it("migrates v1 documents to v2 without losing text or LaTeX", () => {
+  it("migrates v1 documents to the current format without losing text or LaTeX", () => {
     const v1 = {
       format: "mathpress", schemaVersion: 1, id: "old-1", title: "درس قديم", language: "ar", direction: "rtl",
       page: { size: "A4", orientation: "portrait", marginsMm: { top: 20, right: 18, bottom: 20, left: 18 } },
@@ -28,12 +30,32 @@ describe("MathPress document model", () => {
       updatedAt: "2026-01-01T00:00:00.000Z"
     };
     const out = parseDocument(v1)!;
-    expect(out.schemaVersion).toBe(2);
+    expect(out.schemaVersion).toBe(3);
     expect(out.id).toBe("old-1");
     const types = out.content.content!.map(n => n.type);
     expect(types).toEqual(["heading", "paragraph", "paragraph", "mathBlock"]);
     expect(out.content.content![3].attrs?.latex).toBe("\\frac{a}{b}");
     expect(out.content.content![2].content![0].text).toBe("سطر ثان");
+  });
+
+  it("upgrades v2 documents by adding the new page settings", () => {
+    const v2 = {
+      format: "mathpress", schemaVersion: 2, id: "x", title: "قديم", language: "ar", direction: "rtl",
+      page: { size: "A4", orientation: "portrait", marginsMm: { top: 25, right: 15, bottom: 25, left: 15 } },
+      footerText: "تذييل", content: { type: "doc", content: [{ type: "paragraph" }] }, updatedAt: "2026-01-01T00:00:00.000Z"
+    };
+    const out = parseDocument(v2)!;
+    expect(out.schemaVersion).toBe(3);
+    expect(out.footerText).toBe("تذييل");
+    expect(out.headerText).toBe("");
+    expect(out.showPageNumbers).toBe(true);
+    expect(out.page.marginsMm.top).toBe(25);
+  });
+
+  it("keeps landscape orientation and ignores unknown values", () => {
+    const doc = createDocument();
+    expect(parseDocument({ ...doc, page: { ...doc.page, orientation: "landscape" } })!.page.orientation).toBe("landscape");
+    expect(parseDocument({ ...doc, page: { ...doc.page, orientation: "diagonal" } })!.page.orientation).toBe("portrait");
   });
 
   it("falls back to default margins when they are invalid", () => {

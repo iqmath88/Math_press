@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { JSONContent } from "@tiptap/core";
-import { FilePlus2, FolderOpen, Download, Printer, Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw } from "lucide-react";
+import { FilePlus2, FolderOpen, Download, Printer, Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { MathPressDocument } from "./types";
 import { createDocument, parseDocument } from "./document";
 import { deleteDocument, loadDocuments, saveDocument } from "./storage";
 import DocumentEditor from "./Editor";
+import PageSettingsDialog from "./PageSettingsDialog";
 
 type SaveState = "saved" | "saving" | "error";
 
@@ -25,76 +26,21 @@ export default function App() {
   const [doc, setDoc] = useState<MathPressDocument>(() => createDocument());
   const [savedDocs, setSavedDocs] = useState<MathPressDocument[]>([]);
   const [saveState, setSaveState] = useState<SaveState>("saving");
-  const [notice, setNotice] = useState("مرحبًا بك في MathPress 0.2");
+  const [notice, setNotice] = useState("مرحبًا بك في MathPress 0.3");
   const [showLibrary, setShowLibrary] = useState(false);
   const [pages, setPages] = useState(1);
-  const [booting, setBooting] = useState(true);
-  const docRef = useRef(doc);
-  const saveTimerRef = useRef<number | null>(null);
-  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
-  docRef.current = doc;
+  const [showPageSettings, setShowPageSettings] = useState(false);
 
   const refreshLibrary = useCallback(async () => {
     try { setSavedDocs(await loadDocuments()); } catch { /* قد يكون التخزين غير متاح في التصفح الخاص */ }
   }, []);
-
-  // لا ننشئ مستندًا فارغًا فوق آخر مستند محفوظ عند بدء التشغيل.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const docs = await loadDocuments();
-        if (cancelled) return;
-        setSavedDocs(docs);
-        if (docs.length > 0) {
-          setDoc(docs[0]);
-          setNotice(`تمت استعادة آخر مستند: ${docs[0].title}`);
-          setSaveState("saved");
-        } else {
-          setNotice("مستند جديد جاهز. سيُحفظ عملك تلقائيًا على هذا الجهاز.");
-        }
-      } catch {
-        if (!cancelled) setNotice("تعذر قراءة التخزين المحلي. صدّر نسخة احتياطية من عملك بانتظام.");
-      } finally {
-        if (!cancelled) setBooting(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  // تسلسل عمليات الحفظ يمنع كتابة نسخة أقدم بعد نسخة أحدث.
-  const queueSave = useCallback((snapshot: MathPressDocument) => {
-    const task = saveQueueRef.current.catch(() => undefined).then(() => saveDocument(snapshot));
-    saveQueueRef.current = task;
-    return task;
-  }, []);
-
-  const flushPendingSave = useCallback(async () => {
-    if (saveTimerRef.current !== null) {
-      window.clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
-    const snapshot = docRef.current;
-    setSaveState("saving");
-    try {
-      await queueSave(snapshot);
-      setSaveState("saved");
-      await refreshLibrary();
-    } catch {
-      setSaveState("error");
-      setNotice("تعذر حفظ المستند. صدّر نسخة احتياطية قبل متابعة العمل.");
-      throw new Error("تعذر حفظ المستند الحالي");
-    }
-  }, [queueSave, refreshLibrary]);
+  useEffect(() => { void refreshLibrary(); }, [refreshLibrary]);
 
   useEffect(() => {
-    if (booting) return;
     setSaveState("saving");
-    if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = window.setTimeout(async () => {
-      saveTimerRef.current = null;
+    const timer = window.setTimeout(async () => {
       try {
-        await queueSave(doc);
+        await saveDocument(doc);
         setSaveState("saved");
         void refreshLibrary();
       } catch {
@@ -102,13 +48,8 @@ export default function App() {
         setNotice("تعذر الحفظ المحلي. صدّر نسخة احتياطية قبل متابعة العمل.");
       }
     }, 650);
-    return () => {
-      if (saveTimerRef.current !== null) {
-        window.clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = null;
-      }
-    };
-  }, [doc, booting, queueSave, refreshLibrary]);
+    return () => window.clearTimeout(timer);
+  }, [doc, refreshLibrary]);
 
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
@@ -130,7 +71,6 @@ export default function App() {
   const openMathDoc = async (file?: File) => {
     if (!file) return;
     try {
-      await flushPendingSave();
       const parsed = parseDocument(JSON.parse(await file.text()));
       if (!parsed) throw new Error("صيغة المستند غير معروفة أو غير مكتملة.");
       setDoc(parsed);
@@ -163,19 +103,13 @@ export default function App() {
       </header>
 
       <nav className="toolbar no-print" aria-label="أدوات الملف">
-        <button onClick={async () => {
-          try {
-            await flushPendingSave();
-            const fresh = createDocument();
-            setDoc(fresh);
-            setNotice("تم إنشاء مستند جديد. المستند السابق محفوظ.");
-          } catch { /* تبقى في المستند الحالي إذا تعذر حفظه */ }
-        }}><FilePlus2 size={17} /> جديد</button>
+        <button onClick={() => { setDoc(createDocument()); setNotice("تم إنشاء مستند جديد."); }}><FilePlus2 size={17} /> جديد</button>
         <button onClick={() => setShowLibrary(v => !v)}><FolderOpen size={17} /> مستنداتي</button>
         <button onClick={exportMathDoc}><Download size={17} /> تصدير المستند</button>
         <label className="toolbar-button"><FolderOpen size={17} /> فتح ملف
           <input type="file" accept=".mathdoc,.json,application/json" className="visually-hidden" onChange={e => { void openMathDoc(e.target.files?.[0]); e.target.value = ""; }} />
         </label>
+        <button onClick={() => setShowPageSettings(true)}><SlidersHorizontal size={17} /> إعدادات الصفحة</button>
         <span className="toolbar-separator" />
         <button className="primary-action" onClick={print}><Printer size={17} /> طباعة / PDF</button>
       </nav>
@@ -184,45 +118,30 @@ export default function App() {
         <div className="panel-heading"><strong>المستندات المحفوظة على هذا الجهاز</strong><button className="icon-button" onClick={() => setShowLibrary(false)}>إغلاق</button></div>
         {savedDocs.length === 0 ? <p className="muted">لا توجد مستندات محفوظة بعد، أو أن التخزين المحلي غير متاح.</p> :
           savedDocs.map(item => <div className="library-item" key={item.id}>
-            <button className="library-open" onClick={async () => {
-              try {
-                await flushPendingSave();
-                const latestDocs = await loadDocuments();
-                const latest = latestDocs.find(saved => saved.id === item.id) ?? item;
-                setDoc(latest);
-                setShowLibrary(false);
-                setNotice(`تم فتح: ${latest.title}`);
-              } catch { /* لا نغادر المستند إذا فشل حفظه */ }
-            }}>
+            <button className="library-open" onClick={() => { setDoc(item); setShowLibrary(false); setNotice(`تم فتح: ${item.title}`); }}>
               <FileText size={18} /><span><b>{item.title}</b><small>{new Date(item.updatedAt).toLocaleString("ar-IQ")}</small></span>
             </button>
             <button className="icon-button danger" aria-label={`حذف ${item.title}`} onClick={async () => {
-              if (confirm(`حذف «${item.title}» من هذا الجهاز؟`)) {
-                try {
-                  if (item.id === docRef.current.id) await flushPendingSave();
-                  await deleteDocument(item.id);
-                  if (item.id === docRef.current.id) {
-                    setDoc(createDocument());
-                    setNotice("تم حذف المستند النشط. أُنشئ مستند فارغ جديد.");
-                  }
-                  await refreshLibrary();
-                } catch {
-                  setNotice("تعذر حذف المستند بأمان. لم يتم إكمال العملية.");
-                }
-              }
+              if (confirm(`حذف «${item.title}» من هذا الجهاز؟`)) { await deleteDocument(item.id); await refreshLibrary(); }
             }}><Trash2 size={16} /></button>
           </div>)}
       </section>}
 
       <main className="editor-area">
         <div className="document-meta no-print">
-          <input className="document-title-input" value={doc.title} disabled={booting} onChange={e => setDoc(old => ({ ...old, title: e.target.value }))} aria-label="عنوان المستند" placeholder="عنوان المستند" />
-          <input className="footer-input" value={doc.footerText} disabled={booting} onChange={e => setDoc(old => ({ ...old, footerText: e.target.value }))} aria-label="نص التذييل" placeholder="نص التذييل (اختياري)" />
-          <div className="page-chip">A4 · {pages} {pages === 1 ? "صفحة" : "صفحات"}</div>
+          <input className="document-title-input" value={doc.title} onChange={e => setDoc(old => ({ ...old, title: e.target.value }))} aria-label="عنوان المستند" placeholder="عنوان المستند" />
+          <div className="page-chip">A4 {doc.page.orientation === "landscape" ? "أفقي" : "عمودي"} · {pages} {pages === 1 ? "صفحة" : "صفحات"}</div>
         </div>
-        {booting ? <div className="loading-state" role="status">جارٍ استعادة مستنداتك…</div> :
-          <DocumentEditor key={doc.id} doc={doc} onChange={onContent} onPageCount={onPageCount} onNotice={setNotice} />}
+        <DocumentEditor key={doc.id} doc={doc} onChange={onContent} onPageCount={onPageCount} onNotice={setNotice} />
       </main>
+
+      {showPageSettings && (
+        <PageSettingsDialog
+          doc={doc}
+          onClose={() => setShowPageSettings(false)}
+          onApply={patch => { setDoc(old => ({ ...old, ...patch })); setShowPageSettings(false); setNotice("تم تطبيق إعدادات الصفحة."); }}
+        />
+      )}
 
       <footer className="statusbar no-print"><span>{notice}</span><span className="status-right">حفظ محلي · لا يوجد حساب سحابي</span></footer>
     </div>
