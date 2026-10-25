@@ -6,6 +6,7 @@ import { createDocument, parseDocument } from "./document";
 import { deleteDocument, loadDocuments, saveDocument } from "./storage";
 import DocumentEditor from "./Editor";
 import PageSettingsDialog from "./PageSettingsDialog";
+import type { ImportResult } from "./docxImport";
 
 type SaveState = "saved" | "saving" | "error";
 
@@ -30,6 +31,8 @@ export default function App() {
   const [showLibrary, setShowLibrary] = useState(false);
   const [pages, setPages] = useState(1);
   const [showPageSettings, setShowPageSettings] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [report, setReport] = useState<{ title: string; result: ImportResult } | null>(null);
 
   const refreshLibrary = useCallback(async () => {
     try { setSavedDocs(await loadDocuments()); } catch { /* قد يكون التخزين غير متاح في التصفح الخاص */ }
@@ -81,6 +84,29 @@ export default function App() {
     }
   };
 
+  const openWord = async (file: File) => {
+    if (importing) return;
+    setImporting(true);
+    setNotice(`جارٍ استيراد «${file.name}»…`);
+    try {
+      const { importDocx } = await import("./docxImport");
+      const result = await importDocx(await file.arrayBuffer());
+      const title = file.name.replace(/\.docx$/i, "") || "مستند مستورد";
+      const fresh = createDocument(title);
+      setDoc({
+        ...fresh,
+        content: result.content,
+        page: result.page ? { ...fresh.page, orientation: result.page.orientation, marginsMm: result.page.marginsMm } : fresh.page
+      });
+      setReport({ title, result });
+      setNotice(`تم استيراد «${file.name}». راجع التقرير.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "تعذر استيراد ملف Word.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const print = () => {
     setNotice("اختر «حفظ بتنسيق PDF» من نافذة الطباعة، وراجع عدد الصفحات قبل الحفظ.");
     window.print();
@@ -128,6 +154,7 @@ export default function App() {
             onLibrary: () => setShowLibrary(v => !v),
             onExport: exportMathDoc,
             onOpenFile: f => { void openMathDoc(f); },
+            onOpenWord: f => { void openWord(f); },
             onPrint: print,
             onPageSettings: () => setShowPageSettings(true),
             onQuickPage: q => setDoc(old => ({
@@ -150,6 +177,25 @@ export default function App() {
           onClose={() => setShowPageSettings(false)}
           onApply={patch => { setDoc(old => ({ ...old, ...patch })); setShowPageSettings(false); setNotice("تم تطبيق إعدادات الصفحة."); }}
         />
+      )}
+
+      {report && (
+        <div className="modal-backdrop no-print" onClick={() => setReport(null)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="تقرير الاستيراد" onClick={e => e.stopPropagation()}>
+            <strong>تم استيراد «{report.title}»</strong>
+            <ul className="import-stats">
+              <li><b>{report.result.stats.equations}</b> معادلة محوّلة إلى LaTeX قابل للتحرير</li>
+              <li><b>{report.result.stats.headings}</b> عنوان · <b>{report.result.stats.paragraphs}</b> فقرة · <b>{report.result.stats.lists}</b> قائمة</li>
+              <li><b>{report.result.stats.tables}</b> جدول · <b>{report.result.stats.images}</b> صورة</li>
+            </ul>
+            {report.result.warnings.length > 0 && (<>
+              <span className="setting-title">ما لم يُنقل أو يحتاج مراجعة</span>
+              <ul className="import-warnings">{report.result.warnings.map(w => <li key={w}>{w}</li>)}</ul>
+            </>)}
+            <p className="muted">راجع المعادلات والجداول بعين المدقق قبل الطباعة، وقارن بالأصل في Word للتأكد.</p>
+            <div className="modal-actions"><button type="button" className="primary-action" onClick={() => setReport(null)}>متابعة</button></div>
+          </div>
+        </div>
       )}
 
       <footer className="statusbar no-print"><span>{notice}</span><span className="status-right">حفظ محلي · لا يوجد حساب سحابي</span></footer>

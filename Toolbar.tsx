@@ -6,7 +6,7 @@ import {
   AlignRight, AlignCenter, AlignLeft, AlignJustify, Table as TableIcon, ImagePlus, Sigma,
   Highlighter, Palette, SeparatorHorizontal, Quote, Minus, Code2, Eraser, RemoveFormatting,
   LineChart, Columns2, FilePlus2, FolderOpen, Download, Printer, SlidersHorizontal,
-  RectangleHorizontal, RectangleVertical, ChevronUp, ChevronDown, FileUp
+  RectangleHorizontal, RectangleVertical, ChevronUp, ChevronDown, FileUp, FileText
 } from "lucide-react";
 import type { PageSettings } from "./types";
 import { fileToDataUrl } from "./imageUtil";
@@ -30,6 +30,7 @@ export type RibbonActions = {
   onLibrary: () => void;
   onExport: () => void;
   onOpenFile: (file: File) => void;
+  onOpenWord: (file: File) => void;
   onPrint: () => void;
   onPageSettings: () => void;
   onQuickPage: (patch: { orientation?: "portrait" | "landscape"; marginMm?: number }) => void;
@@ -99,6 +100,7 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, o
   const [collapsed, setCollapsed] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const openRef = useRef<HTMLInputElement>(null);
+  const wordRef = useRef<HTMLInputElement>(null);
   const prevCtx = useRef<CtxId | null>(null);
 
   // الشريط يحدّث نفسه عند كل تغيير في المحرر، فلا يحتاج المحرر إلى إعادة رسم كاملة مع كل ضغطة مفتاح.
@@ -186,6 +188,12 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, o
               <Big label="مستند جديد" text="جديد" onClick={actions.onNew}><FilePlus2 size={24} /></Big>
               <Big label="المستندات المحفوظة على هذا الجهاز" text="مستنداتي" onClick={actions.onLibrary}><FolderOpen size={24} /></Big>
               <Big label="فتح ملف .mathdoc" text="فتح ملف" onClick={() => openRef.current?.click()}><FileUp size={24} /></Big>
+              <Big label="استيراد ملف Word (.docx) بمعادلاته" text="استيراد Word" onClick={() => wordRef.current?.click()}><FileText size={24} /></Big>
+              <input
+                ref={wordRef} className="visually-hidden" type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={e => { const f = e.target.files?.[0]; if (f) actions.onOpenWord(f); e.target.value = ""; }}
+              />
               <input
                 ref={openRef} className="visually-hidden" type="file" accept=".mathdoc,.json,application/json"
                 onChange={e => { const f = e.target.files?.[0]; if (f) actions.onOpenFile(f); e.target.value = ""; }}

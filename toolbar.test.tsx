@@ -17,7 +17,7 @@ function mount() {
   const host = document.createElement("div"); document.body.appendChild(host);
   const holder = document.createElement("div"); document.body.appendChild(holder);
   ed = new Editor({ element: holder, extensions: buildExtensions(), content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "نص" }] }] } });
-  const actions = { onNew: vi.fn(), onLibrary: vi.fn(), onExport: vi.fn(), onOpenFile: vi.fn(), onPrint: vi.fn(), onPageSettings: vi.fn(), onQuickPage: vi.fn() };
+  const actions = { onNew: vi.fn(), onLibrary: vi.fn(), onExport: vi.fn(), onOpenFile: vi.fn(), onOpenWord: vi.fn(), onPrint: vi.fn(), onPageSettings: vi.fn(), onQuickPage: vi.fn() };
   root = createRoot(host);
   act(() => root!.render(<Toolbar editor={ed as any} page={DEFAULT_PAGE} actions={actions} onOpenLatex={() => {}} onGraph={() => {}} onError={() => {}} />));
   return { host, actions };
@@ -58,6 +58,13 @@ describe("ribbon", () => {
     expect(byLabel(host, "إضافة صف بعد")).not.toBeNull();
     act(() => { ed!.commands.setTextSelection(1); });
     expect(tabs(host)).not.toContain("الجدول");
+  });
+
+  it("offers Word import in the file tab", () => {
+    const { host } = mount();
+    click([...host.querySelectorAll('[role="tab"]')][0]);
+    expect(host.querySelector('input[type="file"][accept*=".docx"]')).not.toBeNull();
+    expect(byLabel(host, "استيراد ملف Word (.docx) بمعادلاته")).not.toBeNull();
   });
 
   it("collapses and expands the panel", () => {

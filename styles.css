@@ -181,3 +181,6 @@ math-field::part(virtual-keyboard-toggle){color:#8b7b6c}
 .tb-btn.primary:hover:not(:disabled){background:#573d29;color:#fff}
 .ribbon select{height:36px}
 @media(max-width:700px){.rb-tab{padding:9px 12px}.rb-quick .tb-btn.wide span{display:none}}
+
+.import-stats,.import-warnings{margin:10px 0;padding-inline-start:20px;line-height:1.9;font-size:13px}
+.import-warnings{color:#7a4a12;background:#fbf3e3;border-radius:8px;padding:8px 24px 8px 12px}

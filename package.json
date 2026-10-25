@@ -1,7 +1,7 @@
 {
   "name": "mathpress-mvp",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -34,6 +34,7 @@
     "@tiptap/react": "^2.11.0",
     "@tiptap/starter-kit": "^2.11.0",
     "jsxgraph": "^1.14.1",
+    "jszip": "^3.10.2",
     "lucide-react": "^0.468.0",
     "mathlive": "^0.105.3",
     "react": "^18.3.1",
