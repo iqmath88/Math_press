@@ -109,3 +109,13 @@ math-field::part(virtual-keyboard-toggle){color:#8b7b6c}
   math-field::part(virtual-keyboard-toggle),math-field::part(menu-toggle){display:none!important}
   .math-block{overflow:visible!important}
 }
+
+/* Startup recovery state (MathPress 0.3) */
+.loading-state {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  color: var(--muted, #64748b);
+  font-size: 1rem;
+  text-align: center;
+}
