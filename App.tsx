@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { JSONContent } from "@tiptap/core";
-import { FilePlus2, FolderOpen, Download, Printer, Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw } from "lucide-react";
 import type { MathPressDocument } from "./types";
 import { createDocument, parseDocument } from "./document";
 import { deleteDocument, loadDocuments, saveDocument } from "./storage";
@@ -102,17 +102,6 @@ export default function App() {
         <div className={`save-status ${saveState}`} aria-live="polite">{status.icon}<span>{status.label}</span></div>
       </header>
 
-      <nav className="toolbar no-print" aria-label="أدوات الملف">
-        <button onClick={() => { setDoc(createDocument()); setNotice("تم إنشاء مستند جديد."); }}><FilePlus2 size={17} /> جديد</button>
-        <button onClick={() => setShowLibrary(v => !v)}><FolderOpen size={17} /> مستنداتي</button>
-        <button onClick={exportMathDoc}><Download size={17} /> تصدير المستند</button>
-        <label className="toolbar-button"><FolderOpen size={17} /> فتح ملف
-          <input type="file" accept=".mathdoc,.json,application/json" className="visually-hidden" onChange={e => { void openMathDoc(e.target.files?.[0]); e.target.value = ""; }} />
-        </label>
-        <button onClick={() => setShowPageSettings(true)}><SlidersHorizontal size={17} /> إعدادات الصفحة</button>
-        <span className="toolbar-separator" />
-        <button className="primary-action" onClick={print}><Printer size={17} /> طباعة / PDF</button>
-      </nav>
 
       {showLibrary && <section className="library-panel no-print">
         <div className="panel-heading"><strong>المستندات المحفوظة على هذا الجهاز</strong><button className="icon-button" onClick={() => setShowLibrary(false)}>إغلاق</button></div>
@@ -132,7 +121,27 @@ export default function App() {
           <input className="document-title-input" value={doc.title} onChange={e => setDoc(old => ({ ...old, title: e.target.value }))} aria-label="عنوان المستند" placeholder="عنوان المستند" />
           <div className="page-chip">A4 {doc.page.orientation === "landscape" ? "أفقي" : "عمودي"} · {pages} {pages === 1 ? "صفحة" : "صفحات"}</div>
         </div>
-        <DocumentEditor key={doc.id} doc={doc} onChange={onContent} onPageCount={onPageCount} onNotice={setNotice} />
+        <DocumentEditor
+          key={doc.id} doc={doc} onChange={onContent} onPageCount={onPageCount} onNotice={setNotice}
+          actions={{
+            onNew: () => { setDoc(createDocument()); setNotice("تم إنشاء مستند جديد."); },
+            onLibrary: () => setShowLibrary(v => !v),
+            onExport: exportMathDoc,
+            onOpenFile: f => { void openMathDoc(f); },
+            onPrint: print,
+            onPageSettings: () => setShowPageSettings(true),
+            onQuickPage: q => setDoc(old => ({
+              ...old,
+              page: {
+                ...old.page,
+                orientation: q.orientation ?? old.page.orientation,
+                marginsMm: q.marginMm !== undefined
+                  ? { top: q.marginMm, bottom: q.marginMm, left: q.marginMm, right: q.marginMm }
+                  : old.page.marginsMm
+              }
+            }))
+          }}
+        />
       </main>
 
       {showPageSettings && (

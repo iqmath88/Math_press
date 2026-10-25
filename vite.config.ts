@@ -30,5 +30,5 @@ export default defineConfig({
   plugins: [react(), copyPwaFiles()],
   server: { host: "0.0.0.0" },
   build: { target: "es2022", chunkSizeWarningLimit: 1500 },
-  test: { include: ["*.test.ts"] }
+  test: { include: ["*.test.{ts,tsx}"] }
 });

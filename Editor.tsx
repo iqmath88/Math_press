@@ -7,7 +7,7 @@ import type { MathPressDocument } from "./types";
 import { buildExtensions } from "./extensions";
 import { EDIT_GRAPH_EVENT, type EditGraphDetail } from "./GraphNode";
 import { sanitizeSpec, type GraphSpec } from "./graphSpec";
-import Toolbar from "./Toolbar";
+import Toolbar, { type RibbonActions } from "./Toolbar";
 import GraphDialog from "./GraphDialog";
 
 type Props = {
@@ -15,9 +15,10 @@ type Props = {
   onChange: (content: JSONContent) => void;
   onPageCount: (pages: number) => void;
   onNotice: (message: string) => void;
+  actions: RibbonActions;
 };
 
-export default function DocumentEditor({ doc, onChange, onPageCount, onNotice }: Props) {
+export default function DocumentEditor({ doc, onChange, onPageCount, onNotice, actions }: Props) {
   const m = doc.page.marginsMm;
   const landscape = doc.page.orientation === "landscape";
   const extensions = useMemo(() => buildExtensions(), []);
@@ -124,6 +125,8 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice }:
     <>
       <Toolbar
         editor={editor}
+        page={doc.page}
+        actions={actions}
         onOpenLatex={() => { setLatexDraft(""); setLatexOpen(true); }}
         onGraph={openGraph}
         onError={onNotice}

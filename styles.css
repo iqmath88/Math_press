@@ -160,3 +160,24 @@ math-field::part(virtual-keyboard-toggle){color:#8b7b6c}
   math-field::part(virtual-keyboard-toggle),math-field::part(menu-toggle){display:none!important}
   .math-block{overflow:visible!important}
 }
+
+/* الشريط ذو التبويبات */
+.ribbon{background:#fffdf9;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.rb-strip{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 10px;border-bottom:1px solid #eadfce;background:#f9f6f1}
+.rb-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.rb-tab{border:0;border-radius:10px 10px 0 0;background:transparent;padding:10px 16px;font-size:14px;color:#6c5c4d;white-space:nowrap;border-bottom:3px solid transparent}
+.rb-tab.on{background:#fffdf9;color:#4b3826;font-weight:700;border-bottom-color:#6e5137}
+.rb-tab.ctx{color:#8a4b1c}.rb-tab.ctx.on{border-bottom-color:#c2410c}
+.rb-quick{display:flex;align-items:center;gap:4px;flex:none}
+.rb-panel{display:flex;align-items:stretch;gap:0;padding:8px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;min-height:96px}
+.rb-group{display:flex;flex-direction:column;justify-content:space-between;gap:6px;padding:0 12px;border-inline-end:1px solid #eadfce;flex:none}
+.rb-group:last-child{border-inline-end:0}
+.rb-line{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
+.rb-rows{display:flex;flex-direction:column;gap:6px}
+.rb-title{font-size:11px;color:#8b7b6c;text-align:center}
+.tb-big{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:68px;height:66px;padding:4px 8px;border:1px solid transparent;border-radius:9px;background:transparent;color:#44372c;font-size:12px}
+.tb-big.on{background:#eadcc8;border-color:#d4bd9f}
+.tb-btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+.tb-btn.primary:hover:not(:disabled){background:#573d29;color:#fff}
+.ribbon select{height:36px}
+@media(max-width:700px){.rb-tab{padding:9px 12px}.rb-quick .tb-btn.wide span{display:none}}
