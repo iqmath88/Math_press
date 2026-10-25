@@ -15,6 +15,8 @@ export type ImportResult = {
   content: JSONContent;
   stats: ImportStats;
   warnings: string[];
+  /** أكبر صورة في رأس الصفحة (ورق رسمي/إطار) كـ data URL، أو null. */
+  background: string | null;
   page: { orientation: "portrait" | "landscape"; marginsMm: { top: number; right: number; bottom: number; left: number } } | null;
 };
 
@@ -483,6 +485,40 @@ function readPage(body: Element): ImportResult["page"] {
   };
 }
 
+/** أكبر صورة مرسومة في رؤوس الصفحات (الإطار/الورق الرسمي)؛ تُهمل الصور الصغيرة (الشعارات). */
+async function readBackground(zip: JSZip): Promise<string | null> {
+  let best: { area: number; dataUrl: string } | null = null;
+  for (const hf of zip.file(/^word\/header\d*\.xml$/)) {
+    const xml = new DOMParser().parseFromString(await hf.async("string"), "application/xml");
+    const relFile = zip.file(hf.name.replace("word/", "word/_rels/") + ".rels");
+    if (!relFile) continue;
+    const rels = new Map<string, string>();
+    for (const r of Array.from(new DOMParser().parseFromString(await relFile.async("string"), "application/xml").getElementsByTagName("Relationship"))) {
+      const id = r.getAttribute("Id"), t = r.getAttribute("Target");
+      if (id && t) rels.set(id, t);
+    }
+    for (const d of Array.from(xml.getElementsByTagNameNS(W, "drawing"))) {
+      const ext = d.getElementsByTagNameNS(WP, "extent")[0];
+      const blip = d.getElementsByTagNameNS(A, "blip")[0];
+      const id = blip?.getAttributeNS(R, "embed");
+      if (!ext || !id) continue;
+      // 914400 EMU = بوصة؛ نتجاهل ما هو أصغر من ربع صفحة تقريبًا
+      const wIn = Number(ext.getAttribute("cx")) / 914400, hIn = Number(ext.getAttribute("cy")) / 914400;
+      const area = wIn * hIn;
+      if (!(area > 0.25 * 8.27 * 11.69) || (best && best.area >= area)) continue;
+      const target = rels.get(id);
+      if (!target) continue;
+      const path = target.startsWith("/") ? target.slice(1) : `word/${target}`.replace(/\/\.\//g, "/");
+      const ext2 = path.split(".").pop()?.toLowerCase() ?? "";
+      const mime = ext2 === "png" ? "image/png" : ext2 === "jpg" || ext2 === "jpeg" ? "image/jpeg" : ext2 === "webp" ? "image/webp" : null;
+      const f = zip.file(path);
+      if (!mime || !f) continue;
+      best = { area, dataUrl: `data:${mime};base64,${await f.async("base64")}` };
+    }
+  }
+  return best?.dataUrl ?? null;
+}
+
 /** يقرأ ملف .docx ويحوّله إلى محتوى المحرر (مع المعادلات) وتقرير بما تعذّر تحويله. */
 export async function importDocx(buffer: ArrayBuffer): Promise<ImportResult> {
   let zip: JSZip;
@@ -523,7 +559,9 @@ export async function importDocx(buffer: ArrayBuffer): Promise<ImportResult> {
   if (Array.from(zip.file(/word\/(header|footer)\d*\.xml$/)).length) {
     ctx.warnings.add("رؤوس وتذييلات Word لم تُستورد؛ أضفها من «إعدادات الصفحة».");
   }
+  const background = await readBackground(zip);
+  if (background) ctx.warnings.add("صورة الرأس (الإطار/الورق الرسمي) استُوردت كخلفية لكل صفحة.");
   ctx.warnings.add("الخطوط الأصلية وتباعد الأسطر والأنماط المخصصة لا تُنقل؛ يُستخدم تنسيق المحرر.");
 
-  return { content: { type: "doc", content }, stats: ctx.stats, warnings: Array.from(ctx.warnings), page: readPage(body) };
+  return { content: { type: "doc", content }, stats: ctx.stats, warnings: Array.from(ctx.warnings), background, page: readPage(body) };
 }

@@ -12,6 +12,22 @@ const omml = (inner: string) => new DOMParser().parseFromString(`<m:oMath ${NS}>
 const tex = (inner: string) => ommlToLatex(omml(inner));
 const valid = (latex: string) => !convertLatexToMarkup(latex).includes("ML__error");
 
+describe("OMML colors", () => {
+  const cr = (t: string, c: string) => `<m:r><w:rPr><w:color w:val="${c}"/></w:rPr><m:t>${t}</m:t></m:r>`;
+  it("wraps whole equation when one color", () => {
+    const t = tex(`${cr("x=", "b41700")}${cr("2", "b41700")}`);
+    expect(t).toBe("\\textcolor{#B41700}{x=2}");
+    expect(valid(t)).toBe(true);
+  });
+  it("colors runs separately when mixed", () => {
+    const t = tex(`${cr("x", "b41700")}${mr("+1")}`);
+    expect(t).toContain("\\textcolor{#B41700}{x}");
+    expect(t).toContain("+1");
+    expect(valid(t)).toBe(true);
+  });
+  it("ignores black", () => { expect(tex(cr("x", "000000"))).toBe("x"); });
+});
+
 describe("OMML → LaTeX", () => {
   const cases: [string, string, RegExp][] = [
     ["fraction", `<m:f><m:num>${mr("a")}</m:num><m:den>${mr("b")}</m:den></m:f>`, /^\\frac\{a\}\{b\}$/],

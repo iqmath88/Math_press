@@ -22,6 +22,7 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice, a
   const m = doc.page.marginsMm;
   const landscape = doc.page.orientation === "landscape";
   const extensions = useMemo(() => buildExtensions(), []);
+  const [pageCount, setPageCount] = useState(1);
   const [latexOpen, setLatexOpen] = useState(false);
   const [latexDraft, setLatexDraft] = useState("");
   const [graph, setGraph] = useState<{ pos: number | null; spec: GraphSpec | null } | null>(null);
@@ -38,7 +39,8 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice, a
 
   useEffect(() => {
     if (!editor) return;
-    editor.storage.pagination.onPages = onPageCount;
+    editor.storage.pagination.onPages = (n: number) => { setPageCount(n); onPageCount(n); };
+    setPageCount(editor.storage.pagination.pages);
     onPageCount(editor.storage.pagination.pages);
     return () => { editor.storage.pagination.onPages = null; };
   }, [editor, onPageCount]);
@@ -120,6 +122,18 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice, a
     "--pw": landscape ? "297mm" : "210mm",
     "--ph": landscape ? "210mm" : "297mm"
   } as CSSProperties;
+  if (doc.background) {
+    // طبقة لكل صفحة؛ المسافة بين الصفحات على الشاشة 26px وتُصفَّر عند الطباعة (--gap)
+    const n = Math.max(1, Math.min(pageCount, 60));
+    const url = `url("${doc.background}")`;
+    const pos = Array.from({ length: n }, (_, k) => `0 calc(${k} * (var(--ph) + var(--gap)))`).join(",");
+    Object.assign(paperStyle, {
+      backgroundImage: Array(n).fill(url).join(","),
+      backgroundSize: "var(--pw) var(--ph)",
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: pos
+    });
+  }
 
   return (
     <>

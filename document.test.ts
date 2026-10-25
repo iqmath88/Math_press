@@ -64,3 +64,13 @@ describe("MathPress document model", () => {
     expect(parseDocument(broken)!.page.marginsMm.top).toBe(20);
   });
 });
+
+describe("page background", () => {
+  it("round-trips a valid image and drops anything else", () => {
+    const d = createDocument("x");
+    const png = "data:image/png;base64,iVBORw0KGgo=";
+    expect(parseDocument(JSON.parse(JSON.stringify({ ...d, background: png })))?.background).toBe(png);
+    expect(parseDocument(JSON.parse(JSON.stringify({ ...d, background: "javascript:alert(1)" })))?.background).toBeNull();
+    expect(parseDocument(JSON.parse(JSON.stringify(d)))?.background).toBeNull();
+  });
+});

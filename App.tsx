@@ -93,8 +93,12 @@ export default function App() {
       const result = await importDocx(await file.arrayBuffer());
       const title = file.name.replace(/\.docx$/i, "") || "مستند مستورد";
       const fresh = createDocument(title);
+      const { scaleDataUrl } = await import("./imageUtil");
+      const background = result.background ? await scaleDataUrl(result.background, 2000) : null;
       setDoc({
         ...fresh,
+        background,
+        showPageNumbers: background ? false : fresh.showPageNumbers,
         content: result.content,
         page: result.page ? { ...fresh.page, orientation: result.page.orientation, marginsMm: result.page.marginsMm } : fresh.page
       });

@@ -6,7 +6,24 @@
  */
 const M_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math";
 
-type Ctx = { amp: boolean };
+const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+type Ctx = { amp: boolean; perRun?: boolean };
+
+/** لون النص (hex بحروف كبيرة) من w:rPr/w:color داخل m:r، أو null للون التلقائي. */
+function runColor(r: Element): string | null {
+  for (const c of Array.from(r.children)) {
+    if (c.namespaceURI === W_NS && c.localName === "rPr") {
+      for (const d of Array.from(c.children)) {
+        if (d.namespaceURI === W_NS && d.localName === "color") {
+          const v = d.getAttributeNS(W_NS, "val") ?? "";
+          if (/^[0-9a-fA-F]{6}$/.test(v) && v.toLowerCase() !== "000000") return v.toUpperCase();
+        }
+      }
+    }
+  }
+  return null;
+}
 
 const kids = (el: Element): Element[] => Array.from(el.children);
 const isM = (el: Element, name: string) => el.namespaceURI === M_NS && el.localName === name;
@@ -105,6 +122,13 @@ const arg = (s: string): string => {
 };
 
 function run(r: Element, ctx: Ctx): string {
+  const out = runPlain(r, ctx);
+  if (!ctx.perRun || !out.trim()) return out;
+  const col = runColor(r);
+  return col ? `\\textcolor{#${col}}{${out}}` : out;
+}
+
+function runPlain(r: Element, ctx: Ctx): string {
   const pr = child(r, "rPr");
   const raw = kids(r).filter(c => isM(c, "t")).map(c => c.textContent ?? "").join("");
   if (!raw) return "";
@@ -253,7 +277,15 @@ function node(el: Element, ctx: Ctx): string {
 
 /** يحوّل عنصر m:oMath إلى نص LaTeX. */
 export function ommlToLatex(oMath: Element): string {
-  return seq(oMath, { amp: false })
+  // ألوان الأسطر: لون واحد موحّد → يُلفّ كل التعبير، وإلا يُلوَّن كل مقطع على حدة
+  const runs = Array.from(oMath.getElementsByTagNameNS(M_NS, "r")).filter(r => Array.from(r.children).some(c => isM(c, "t")));
+  const colors = runs.map(runColor);
+  const distinct = new Set(colors);
+  const uniform = runs.length > 0 && distinct.size === 1 && colors[0] !== null;
+  const anyColor = colors.some(c => c !== null);
+  let body = seq(oMath, { amp: false, perRun: anyColor && !uniform });
+  if (uniform) body = `\\textcolor{#${colors[0]}}{${body}}`;
+  return body
     .replace(/\s+/g, " ")
     .replace(/\s*([{}^_&])\s*/g, "$1")
     .replace(/\\\\\s*/g, "\\\\ ")

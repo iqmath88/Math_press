@@ -1,6 +1,6 @@
 // الصفحة الرئيسية: الشبكة أولًا (لتصل التحديثات فور النشر)، ثم النسخة المخزنة دون اتصال.
 // الملفات المُجزَّأة (assets) والخطوط: المخزن أولًا لأن أسماءها تتغير مع كل إصدار.
-const CACHE = "mathpress-shell-v2";
+const CACHE = "mathpress-shell-v3";
 
 self.addEventListener("install", () => self.skipWaiting());
 

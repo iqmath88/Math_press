@@ -38,6 +38,7 @@ export function createDocument(title = "ملزمة رياضيات"): MathPressDo
     headerText: "",
     footerText: "",
     showPageNumbers: true,
+    background: null,
     content: starterContent(),
     updatedAt: new Date().toISOString()
   };
@@ -81,6 +82,7 @@ function migrateV1(d: Record<string, unknown>): MathPressDocument | null {
     headerText: "",
     footerText: "",
     showPageNumbers: true,
+    background: null,
     content: { type: "doc", content: nodes },
     updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : new Date().toISOString()
   };
@@ -112,6 +114,7 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
     headerText: typeof d.headerText === "string" ? d.headerText : "",
     footerText: typeof d.footerText === "string" ? d.footerText : "",
     showPageNumbers: d.showPageNumbers !== false,
+    background: typeof d.background === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(d.background) ? d.background : null,
     content: d.content,
     updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : new Date().toISOString()
   };
