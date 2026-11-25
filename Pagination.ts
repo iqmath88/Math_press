@@ -118,6 +118,7 @@ export const Pagination = Extension.create({
         showPageNumbers: true
       } as PageLayout,
       pages: 1,
+      pageStarts: [] as number[],
       onPages: null as ((pages: number) => void) | null
     };
   },
@@ -165,6 +166,7 @@ export const Pagination = Extension.create({
       ]);
       const current = paginationKey.getState(view.state);
       ext.storage.pages = result.pages;
+      ext.storage.pageStarts = result.breaks.map(b => positions[b.index]);
       if (current && current.sig === sig) return;
       view.dispatch(view.state.tr.setMeta(paginationKey, { result, positions, sig, footer, layout }).setMeta("addToHistory", false));
       ext.storage.onPages?.(result.pages);
@@ -211,9 +213,10 @@ export const Pagination = Extension.create({
           observe();
           schedule();
           return {
-            update() {
+            update(view, previous) {
               observe();
-              schedule();
+              const state = view.state;
+              if (state.doc !== previous.doc || !paginationKey.getState(state)?.sig) schedule();
             },
             destroy() {
               destroyed = true;

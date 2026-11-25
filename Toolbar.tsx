@@ -43,12 +43,15 @@ type Props = {
   onOpenLatex: () => void;
   onSearch?: () => void;
   educationalTools?: ReactNode;
+  viewTools?: ReactNode;
+  paragraphTools?: ReactNode;
+  mathTools?: ReactNode;
   /** بلا وسيط: رسم جديد. مع موضع: تعديل الرسم الموجود. */
   onGraph: (pos?: number) => void;
   onError: (message: string) => void;
 };
 
-type TabId = "file" | "home" | "insert" | "layout" | "styles" | "ctx";
+type TabId = "file" | "home" | "insert" | "layout" | "styles" | "view" | "math" | "ctx";
 type CtxId = "graph" | "table" | "image" | "columns";
 const CTX_LABEL: Record<CtxId, string> = { graph: "الرسم", table: "الجدول", image: "الصورة", columns: "الأعمدة" };
 
@@ -96,7 +99,7 @@ function Group(props: { title: string; children: ReactNode; rows?: boolean }) {
 
 const Row = ({ children }: { children: ReactNode }) => <div className="rb-line">{children}</div>;
 
-export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, educationalTools, onGraph, onError }: Props) {
+export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, educationalTools, viewTools, paragraphTools, mathTools, onGraph, onError }: Props) {
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [tab, setTab] = useState<TabId>("home");
   const [collapsed, setCollapsed] = useState(false);
@@ -151,8 +154,10 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
     { id: "file", label: "ملف" },
     { id: "home", label: "الرئيسية" },
     { id: "insert", label: "إدراج" },
+    ...(mathTools ? [{ id: "math" as const, label: "رياضيات" }] : []),
     ...(educationalTools ? [{ id: "styles" as const, label: "أنماط" }] : []),
     { id: "layout", label: "الصفحة" },
+    ...(viewTools ? [{ id: "view" as const, label: "عرض" }] : []),
     ...(ctx ? [{ id: "ctx" as TabId, label: CTX_LABEL[ctx], ctx: true }] : [])
   ];
 
@@ -209,7 +214,10 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
           </>)}
 
           {tab === "styles" && educationalTools}
+          {tab === "view" && viewTools}
+          {tab === "math" && mathTools}
           {tab === "home" && (<>
+            {paragraphTools}
             {onSearch && <Group title="تحرير">
               <Btn label="بحث واستبدال" wide onClick={onSearch}>بحث واستبدال</Btn>
             </Group>}
@@ -286,11 +294,11 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
           </>)}
 
           {tab === "insert" && (<>
-            <Group title="معادلات">
+            {!mathTools && <Group title="معادلات">
               <Big label="معادلة داخل السطر" text="سطرية" onClick={() => chain().insertMathInline().run()}><Sigma size={24} /></Big>
               <Big label="معادلة في سطر مستقل" text="كتلة" onClick={() => chain().insertMathBlock().run()}><Sigma size={24} /></Big>
               <Big label="إدراج معادلة من مصدر LaTeX" text="من LaTeX" onClick={onOpenLatex}><Code2 size={24} /></Big>
-            </Group>
+            </Group>}
             <Group title="رسوم">
               <Big label="رسم بياني أو هندسي" text="رسم" onClick={() => onGraph()}><LineChart size={24} /></Big>
             </Group>

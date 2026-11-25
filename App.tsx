@@ -69,6 +69,7 @@ export default function App() {
   const onStyles = useCallback((educationalStyles: EducationalStyle[]) => {
     setDoc(old => ({ ...old, educationalStyles }));
   }, []);
+  const onNumberStart = useCallback((numberingStart: number) => setDoc(old => ({ ...old, numberingStart })), []);
   const onPageCount = useCallback((n: number) => setPages(n), []);
 
   const exportMathDoc = () => {
@@ -158,7 +159,7 @@ export default function App() {
           <div className="page-chip">A4 {doc.page.orientation === "landscape" ? "أفقي" : "عمودي"} · {pages} {pages === 1 ? "صفحة" : "صفحات"}</div>
         </div>
         <DocumentEditor
-          key={doc.id} doc={doc} onChange={onContent} onStyles={onStyles} onPageCount={onPageCount} onNotice={setNotice}
+          key={doc.id} doc={doc} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onPageCount={onPageCount} onNotice={setNotice}
           actions={{
             onNew: () => { setDoc(createDocument()); setNotice("تم إنشاء مستند جديد."); },
             onLibrary: () => setShowLibrary(v => !v),

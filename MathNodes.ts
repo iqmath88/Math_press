@@ -10,6 +10,16 @@ declare module "@tiptap/core" {
   }
 }
 
+export const EDIT_MATH_EVENT = "mathpress:edit-math";
+
+export function mathFormat(attrs: Record<string, unknown>) {
+  return {
+    color: typeof attrs.color === "string" && /^#[\da-f]{6}$/i.test(attrs.color) ? attrs.color : null,
+    size: typeof attrs.size === "number" && attrs.size >= 8 && attrs.size <= 72 ? attrs.size : null,
+    align: attrs.align === "left" || attrs.align === "right" || attrs.align === "center" ? attrs.align : null
+  };
+}
+
 // يُضبط قبل الإدراج مباشرة ليأخذ حقل المعادلة الجديد التركيز.
 let focusNext = false;
 
@@ -27,6 +37,12 @@ function createMathNode(name: "mathInline" | "mathBlock") {
 
     addAttributes() {
       return {
+        color: { default: null, parseHTML: el => el.getAttribute("data-math-color"),
+          renderHTML: attrs => { const { color } = mathFormat(attrs); return color ? { "data-math-color": color } : {}; } },
+        size: { default: null, parseHTML: el => Number(el.getAttribute("data-math-size")) || null,
+          renderHTML: attrs => { const { size } = mathFormat(attrs); return size ? { "data-math-size": size } : {}; } },
+        align: { default: null, parseHTML: el => el.getAttribute("data-math-align"),
+          renderHTML: attrs => { const { align } = mathFormat(attrs); return align ? { "data-math-align": align } : {}; } },
         latex: {
           default: "",
           parseHTML: el => el.getAttribute("data-latex") ?? el.textContent ?? "",
@@ -73,12 +89,37 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         const mf = document.createElement("math-field") as MathfieldElement;
         mf.mathVirtualKeyboardPolicy = "auto";
         mf.textContent = node.attrs.latex as string;
-        dom.appendChild(mf);
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.className = "math-edit no-print";
+        editButton.setAttribute("aria-label", "تعديل المعادلة");
+        editButton.textContent = "ƒ";
+        dom.append(mf, editButton);
+        const updateFormat = () => {
+          const { color, size, align } = mathFormat(current.attrs);
+          dom.style.setProperty("--math-color", color ?? "");
+          dom.style.setProperty("--math-size", size ? `${size}pt` : "");
+          if (!inline) dom.style.textAlign = align ?? "";
+        };
+        updateFormat();
 
         const nodePos = () => {
           const p = getPos();
           return typeof p === "number" ? p : null;
         };
+
+        const openSource = () => {
+          if (!editor.isEditable || dom.closest("[inert]")) return;
+          const pos = nodePos();
+          if (pos !== null) editor.view.dom.dispatchEvent(new CustomEvent(EDIT_MATH_EVENT, { detail: { pos } }));
+        };
+        editButton.addEventListener("click", openSource);
+        mf.addEventListener("keydown", ev => {
+          if (ev.altKey && ev.key === "Enter") {
+            ev.preventDefault();
+            openSource();
+          }
+        });
 
         mf.addEventListener("input", () => {
           const pos = nodePos();
@@ -121,6 +162,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           update: updated => {
             if (updated.type !== current.type) return false;
             current = updated;
+            updateFormat();
             const latex = updated.attrs.latex as string;
             if (mf.value !== latex) mf.value = latex;
             return true;

@@ -21,6 +21,7 @@ export type MathPressDocument = {
   showPageNumbers: boolean;
   /** صورة تُرسم خلف كل صفحة (ورق رسمي، إطار، علامة مائية) كـ data URL، أو null. */
   background: string | null;
+  numberingStart?: number;
   educationalStyles?: EducationalStyle[];
   content: JSONContent;
   updatedAt: string;

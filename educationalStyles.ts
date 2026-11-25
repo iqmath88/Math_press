@@ -104,12 +104,16 @@ export function educationalStyleDeclarations(style: EducationalStyle) {
 
 export function applyEducationalStyle(editor: Editor, id: string | null) {
   if (id !== null && !validStyleId(id)) return;
+  updateParagraphAttributes(editor, { educationalStyle: id });
+}
+
+export function updateParagraphAttributes(editor: Editor, attrs: Record<string, unknown>) {
   const { tr, selection } = editor.state;
   const from = selection.from;
   const to = selection.empty ? from : selection.to - 1;
   tr.doc.nodesBetween(from, Math.max(from, to), (node, pos) => {
     if (node.type.name === "paragraph" || node.type.name === "heading") {
-      tr.setNodeAttribute(pos, "educationalStyle", id);
+      for (const [name, value] of Object.entries(attrs)) tr.setNodeAttribute(pos, name, value);
       return false;
     }
   });
@@ -117,12 +121,23 @@ export function applyEducationalStyle(editor: Editor, id: string | null) {
   editor.commands.focus();
 }
 
+const educationalSequences = ["question", "example", "exercise"];
+
 export const EducationalStyleAttributes = Extension.create({
   name: "educationalStyle",
   addGlobalAttributes() {
     return [{
       types: ["paragraph", "heading"],
       attributes: {
+        educationalSequence: {
+          default: null,
+          parseHTML: element => {
+            const seq = element.getAttribute("data-educational-sequence");
+            return seq && educationalSequences.includes(seq) ? seq : null;
+          },
+          renderHTML: attrs => educationalSequences.includes(attrs.educationalSequence)
+            ? { "data-educational-sequence": attrs.educationalSequence } : {}
+        },
         educationalStyle: {
           default: null,
           parseHTML: element => {

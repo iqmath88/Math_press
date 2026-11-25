@@ -862,3 +862,80 @@ button.primary:hover:not(:disabled),
 @media print {
   .document-search-match { box-shadow: none; }
 }
+
+.paper { zoom: var(--editor-zoom, 1); }
+.print-preview-tools,
+.document-view-status,
+.focus-controls {
+  background: #fff;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.print-preview-tools > div + div { margin-top: 6px; }
+.print-issues { margin-block: 6px; color: #842d2d; }
+.preview-paper .graph-edit { display: none; }
+.economical-paper { filter: grayscale(1); }
+.economical-paper .mp-editor [data-educational-style] { background: transparent !important; }
+.document-view-status { display: flex; justify-content: flex-end; gap: 12px; color: #526579; font-size: 12px; }
+.page-stage { position: relative; }
+.page-navigation {
+  position: sticky;
+  top: 0;
+  display: flex;
+  max-height: 120px;
+  overflow: auto;
+  flex-wrap: wrap;
+  gap: 4px;
+  direction: rtl;
+  margin-block-end: 12px;
+}
+.page-navigation [aria-current="page"] { color: var(--accent); border-color: var(--accent); }
+.app-shell:has(.document-focus) :is(.topbar, .document-meta, .statusbar) { display: none; }
+
+@media print {
+  .paper { --editor-zoom: 1 !important; zoom: 1 !important; }
+}
+
+.math-node { position: relative; }
+.math-edit {
+  position: absolute;
+  z-index: 1;
+  inset-inline-end: 0;
+  inset-block-start: 0;
+  padding: 0 6px;
+  min-width: 24px;
+  color: var(--accent);
+  opacity: 0;
+}
+.math-node:hover .math-edit,
+.math-node:focus-within .math-edit { opacity: 1; }
+.math-node math-field { color: var(--math-color, inherit); font-size: var(--math-size, 1em); }
+.mp-editor [data-educational-style] .math-node math-field {
+  color: var(--math-color, var(--educational-math-color));
+  font-size: var(--math-size, var(--educational-math-scale));
+}
+.preview-paper .math-edit { display: none; }
+.math-templates { flex-wrap: wrap; padding-top: 6px; max-width: 920px; }
+.math-template { display: flex; }
+.math-template button[aria-pressed="true"] { color: #77380c; background: #f8e7bd; }
+@media (pointer: coarse) {
+  .math-edit { opacity: 1; }
+}
+
+.mp-editor {
+  counter-reset: educational-question var(--numbering-start, 0)
+    educational-example var(--numbering-start, 0)
+    educational-exercise var(--numbering-start, 0);
+}
+[data-educational-sequence="question"] { counter-increment: educational-question; }
+[data-educational-sequence="example"] { counter-increment: educational-example; }
+[data-educational-sequence="exercise"] { counter-increment: educational-exercise; }
+[data-educational-sequence="question"]::before { content: "سؤال " counter(educational-question) " · "; }
+[data-educational-sequence="example"]::before { content: "مثال " counter(educational-example) " · "; }
+[data-educational-sequence="exercise"]::before { content: "تمرين " counter(educational-exercise) " · "; }
+.numbering-start {
+  width: 5.5em;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
