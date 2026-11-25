@@ -65,6 +65,17 @@ describe("editor schema", () => {
     expect(JSON.stringify(ed.getJSON())).toContain("tableHeader");
   });
 
+  it("places the cursor on a writable page after a break at the end", () => {
+    const ed = make();
+    ed.commands.setTextSelection(ed.state.doc.content.size - 1);
+    expect(ed.commands.insertPageBreak()).toBe(true);
+    ed.commands.insertContent("صفحة جديدة");
+    expect(ed.getJSON().content?.slice(-2)).toMatchObject([
+      { type: "pageBreak" },
+      { type: "paragraph", content: [{ type: "text", text: "صفحة جديدة" }] }
+    ]);
+  });
+
   it("supports manual page breaks and images with width", () => {
     const ed = make();
     expect(ed.commands.insertPageBreak()).toBe(true);

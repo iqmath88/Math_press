@@ -21,7 +21,8 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
   const [orientation, setOrientation] = useState(doc.page.orientation);
   const [top, setTop] = useState(String(m.top));
   const [bottom, setBottom] = useState(String(m.bottom));
-  const [side, setSide] = useState(String(m.left));
+  const [left, setLeft] = useState(String(m.left));
+  const [right, setRight] = useState(String(m.right));
   const [header, setHeader] = useState(doc.headerText);
   const [footer, setFooter] = useState(doc.footerText);
   const [numbers, setNumbers] = useState(doc.showPageNumbers);
@@ -34,13 +35,13 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
     try { setBackground(await fileToDataUrl(file, 2000)); setBgError(""); } catch { setBgError("تعذر قراءة الصورة."); }
   };
 
-  const t = parseMm(top), b = parseMm(bottom), s = parseMm(side);
-  const valid = t !== null && b !== null && s !== null;
+  const t = parseMm(top), b = parseMm(bottom), l = parseMm(left), r = parseMm(right);
+  const valid = t !== null && b !== null && l !== null && r !== null;
 
   const apply = () => {
     if (!valid) return;
     onApply({
-      page: { size: "A4", orientation, marginsMm: { top: t, bottom: b, left: s, right: s } },
+      page: { size: "A4", orientation, marginsMm: { top: t, bottom: b, left: l, right: r } },
       headerText: header,
       footerText: footer,
       showPageNumbers: numbers,
@@ -48,7 +49,13 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
     });
   };
 
-  const preset = (mm: number) => { setTop(String(mm)); setBottom(String(mm)); setSide(String(mm)); };
+  const preset = (mm: number) => {
+    const value = String(mm);
+    setTop(value);
+    setBottom(value);
+    setLeft(value);
+    setRight(value);
+  };
 
   return (
     <div className="modal-backdrop no-print" onClick={onClose}>
@@ -68,7 +75,8 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
           <div className="grow-row">
             <label className="gfield"><span>أعلى</span><input dir="ltr" className="num" inputMode="decimal" value={top} onChange={e => setTop(e.target.value)} /></label>
             <label className="gfield"><span>أسفل</span><input dir="ltr" className="num" inputMode="decimal" value={bottom} onChange={e => setBottom(e.target.value)} /></label>
-            <label className="gfield"><span>الجانبان</span><input dir="ltr" className="num" inputMode="decimal" value={side} onChange={e => setSide(e.target.value)} /></label>
+            <label className="gfield"><span>يمين</span><input dir="ltr" className="num" inputMode="decimal" value={right} onChange={e => setRight(e.target.value)} /></label>
+            <label className="gfield"><span>يسار</span><input dir="ltr" className="num" inputMode="decimal" value={left} onChange={e => setLeft(e.target.value)} /></label>
           </div>
           <div className="grow-row">
             <button type="button" onClick={() => preset(12)}>ضيقة 12</button>
