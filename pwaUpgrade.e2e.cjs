@@ -95,12 +95,17 @@ async function run() {
       const registration = await navigator.serviceWorker.getRegistration();
       await registration.update();
     });
+    const workerSource = await readFile(path.join(candidate, "sw.js"), "utf8");
+    const build = workerSource.match(/^const BUILD = "([^"]+)";/m)?.[1];
+    assert.ok(build);
+    const newCache = `mathpress-build:${prefix}:${build}`;
+    const indexURL = base + "index.html";
     await page.waitForFunction(
-      async (old) =>
-        (await caches.keys()).some(
-          (name) => name.startsWith("mathpress-build:") && name !== old,
-        ),
-      oldCache,
+      async ({ name, url }) => {
+        if (!(await caches.keys()).includes(name)) return false;
+        return Boolean(await (await caches.open(name)).match(url));
+      },
+      { name: newCache, url: indexURL },
     );
     await page.goto(origin);
     await page.waitForFunction(
@@ -108,11 +113,12 @@ async function run() {
       oldCache,
     );
 
-    // A stable asset from the old HTTP cache must never leak into the new offline bundle.
-    const storedIndex = await page.evaluate(async (url) => {
-      const response = await caches.match(url);
-      return response?.text();
-    }, base + "index.html");
+    // Read the specific build being activated, the same way the worker handles navigation.
+    const storedIndex = await page.evaluate(
+      async ({ name, url }) =>
+        (await (await caches.open(name)).match(url))?.text(),
+      { name: newCache, url: indexURL },
+    );
     assert.equal(
       storedIndex,
       await readFile(path.join(candidate, "index.html"), "utf8"),
