@@ -1,7 +1,7 @@
 name: MathPress build and Pages
 on:
   push:
-    branches: [main, 'fix/pages-build']
+    branches: [main, 'fix/pages-build', 'feature/v0.5.0-editing-engine']
   pull_request:
     branches: [main]
   workflow_dispatch:
