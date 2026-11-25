@@ -6,7 +6,7 @@ describe("production service worker", () => {
   it("reloads stable URLs before precaching a new build under the Pages subpath", async () => {
     const addAll = vi.fn();
     const cache = { addAll };
-    let install: ((event: { waitUntil: (promise: Promise<unknown>) => void }) => void) | undefined;
+    let install;
     const source = readFileSync(new URL("./sw.js", import.meta.url), "utf8")
       .replace("__BUILD_ID__", "test-build")
       .replace("/*__PRECACHE__*/[]", '["index.html","manifest.webmanifest","assets/index-abc.js"]');
@@ -16,15 +16,15 @@ describe("production service worker", () => {
       caches: { open: vi.fn().mockResolvedValue(cache) },
       self: {
         location: { href: "https://example.test/Math_press/sw.js" },
-        addEventListener(type: string, listener: typeof install) {
+        addEventListener(type, listener) {
           if (type === "install") install = listener;
         }
       }
     });
-    let completion: Promise<unknown> | undefined;
+    let completion;
     install?.({ waitUntil: promise => { completion = promise; } });
     await completion;
-    const [requests] = addAll.mock.calls[0] as [Request[]];
+    const [requests] = addAll.mock.calls[0];
     expect(requests.map(request => [new URL(request.url).pathname, request.cache])).toEqual([
       ["/Math_press/index.html", "reload"],
       ["/Math_press/manifest.webmanifest", "reload"],
