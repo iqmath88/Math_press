@@ -830,3 +830,35 @@ button.primary:hover:not(:disabled),
     background: transparent;
   }
 }
+
+.search-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.search-panel input:not([type="checkbox"]) {
+  max-width: 11rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px;
+}
+.document-search-match { box-shadow: inset 0 -0.65em #f8dfa2; }
+.style-manager { width: min(820px, 100%); }
+.style-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 8px;
+  margin-block: 12px;
+}
+.style-preview span,
+.mp-editor [data-educational-style] .math-node math-field {
+  color: var(--educational-math-color);
+  font-size: var(--educational-math-scale);
+}
+@media print {
+  .document-search-match { box-shadow: none; }
+}

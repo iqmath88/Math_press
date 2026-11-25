@@ -255,7 +255,7 @@ describe("graphs, columns and page layout", () => {
       ]
     };
     const ed = make({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "مقدمة" }] }, cols, cols, cols] });
-    await new Promise(r => setTimeout(r, 120));
+    await vi.waitFor(() => expect(ed.storage.pagination.pages).toBe(3));
     // 4 كتل + الفقرة الختامية التي تُضاف بعد آخر كتلة غير نصية = 5 × 400px، ويتسع 2 في الصفحة (المتاح ≈ 971px)
     expect(ed.getJSON().content!.length).toBe(5);
     expect(ed.storage.pagination.pages).toBe(3);

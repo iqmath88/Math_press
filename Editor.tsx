@@ -9,20 +9,32 @@ import { EDIT_GRAPH_EVENT, type EditGraphDetail } from "./GraphNode";
 import { sanitizeSpec, type GraphSpec } from "./graphSpec";
 import Toolbar, { type RibbonActions } from "./Toolbar";
 import GraphDialog from "./GraphDialog";
+import SearchPanel from "./SearchPanel";
+import StyleManager from "./StyleManager";
+import {
+  applyEducationalStyle, educationalStyleDeclarations, resolveEducationalStyles, type EducationalStyle
+} from "./educationalStyles";
 
 type Props = {
   doc: MathPressDocument;
   onChange: (content: JSONContent) => void;
+  onStyles: (styles: EducationalStyle[]) => void;
   onPageCount: (pages: number) => void;
   onNotice: (message: string) => void;
   actions: RibbonActions;
 };
 
-export default function DocumentEditor({ doc, onChange, onPageCount, onNotice, actions }: Props) {
+export default function DocumentEditor({ doc, onChange, onStyles, onPageCount, onNotice, actions }: Props) {
   const m = doc.page.marginsMm;
   const landscape = doc.page.orientation === "landscape";
   const extensions = useMemo(() => buildExtensions(), []);
   const [pageCount, setPageCount] = useState(1);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showStyles, setShowStyles] = useState(false);
+  const styles = useMemo(() => resolveEducationalStyles(doc.educationalStyles), [doc.educationalStyles]);
+  const styleSheet = useMemo(() => styles.map(style =>
+    `.mp-editor [data-educational-style="${style.id}"] { ${educationalStyleDeclarations(style)} }`
+  ).join("\n"), [styles]);
   const [latexOpen, setLatexOpen] = useState(false);
   const [latexDraft, setLatexDraft] = useState("");
   const [graph, setGraph] = useState<{ pos: number | null; spec: GraphSpec | null } | null>(null);
@@ -32,6 +44,14 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice, a
     extensions,
     content: doc.content,
     editorProps: {
+      handleKeyDown: (_view, event) => {
+        if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "f") {
+          event.preventDefault();
+          setShowSearch(true);
+          return true;
+        }
+        return false;
+      },
       attributes: { dir: "rtl", lang: "ar", spellcheck: "true", class: "mp-editor", "aria-label": "محتوى المستند" }
     },
     onUpdate: ({ editor: ed }) => onChange(ed.getJSON())
@@ -95,6 +115,10 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice, a
     if (latexOpen && previewRef.current) previewRef.current.value = latexDraft;
   }, [latexOpen, latexDraft]);
 
+  useEffect(() => {
+    editor?.commands.repaginate();
+  }, [editor, styleSheet]);
+
   if (!editor) return null;
 
   const insertLatex = (kind: "inline" | "block") => {
@@ -139,14 +163,31 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice, a
 
   return (
     <>
+      <style>{styleSheet}</style>
       <Toolbar
         editor={editor}
         page={doc.page}
         actions={actions}
+        onSearch={() => setShowSearch(v => !v)}
+        educationalTools={
+          <section className="rb-group" aria-label="الأنماط التعليمية">
+            <div className="rb-line">
+              <select aria-label="تطبيق نمط تعليمي" value="" onChange={e => applyEducationalStyle(editor, e.target.value || null)}>
+                <option value="" disabled>تطبيق نمط…</option>
+                {styles.map(style => <option key={style.id} value={style.id}>{style.name}</option>)}
+              </select>
+              <button type="button" onClick={() => applyEducationalStyle(editor, null)}>إزالة النمط</button>
+              <button type="button" onClick={() => setShowStyles(true)}>إدارة الأنماط</button>
+            </div>
+          </section>
+        }
         onOpenLatex={() => { setLatexDraft(""); setLatexOpen(true); }}
         onGraph={openGraph}
         onError={onNotice}
       />
+      {showSearch && <SearchPanel editor={editor} close={() => { setShowSearch(false); editor.commands.focus(); }} />}
+      {showStyles && <StyleManager key={doc.id} overrides={doc.educationalStyles ?? []}
+        onChange={onStyles} onApply={id => applyEducationalStyle(editor, id)} onClose={() => setShowStyles(false)} />}
       <div className="page-stage">
         <article className="paper" id="print-document" style={paperStyle}>
           <div className="paper-header" aria-hidden="true"><span>{doc.headerText}</span></div>

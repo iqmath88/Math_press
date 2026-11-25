@@ -139,13 +139,19 @@ export const Pagination = Extension.create({
       const layout: PageLayout = { ...ext.storage.layout };
       const usable = (layout.pageHeightMm - layout.marginTopMm - layout.marginBottomMm) * PX_PER_MM;
       const { doc } = view.state;
+      const zoom = Number(getComputedStyle(view.dom).getPropertyValue("--editor-zoom")) || 1;
       const items: PageItem[] = [];
       const positions: number[] = [];
       doc.forEach((node, offset) => {
         const dom = view.nodeDOM(offset) as HTMLElement | null;
         const isBreak = node.type.name === "pageBreak";
-        const height = isBreak || !dom ? 0 : dom.getBoundingClientRect().height;
-        items.push({ height, breakAfter: isBreak });
+        const height = isBreak || !dom ? 0 : dom.getBoundingClientRect().height / zoom;
+        const placement = dom?.matches("[data-educational-style], [data-paragraph-format]") ? getComputedStyle(dom) : null;
+        items.push({
+          height, breakAfter: isBreak,
+          breakBefore: placement?.getPropertyValue("--break-before").trim() === "1",
+          keepWithNext: placement?.getPropertyValue("--keep-with-next").trim() === "1"
+        });
         positions.push(offset);
       });
       const result = computeBreaks(items, usable);
@@ -182,8 +188,10 @@ export const Pagination = Extension.create({
         },
         view(editorView) {
           let raf = 0;
+          let destroyed = false;
+          let observedDoc: PMNode | null = null;
           const schedule = () => {
-            if (raf) return;
+            if (raf || destroyed) return;
             raf = requestAnimationFrame(() => {
               raf = 0;
               measure(editorView);
@@ -191,9 +199,10 @@ export const Pagination = Extension.create({
           };
           const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(schedule) : null;
           const observe = () => {
-            if (!ro) return;
+            if (!ro || observedDoc === editorView.state.doc) return;
+            observedDoc = editorView.state.doc;
             ro.disconnect();
-            editorView.state.doc.forEach((_node, offset) => {
+            observedDoc.forEach((_node, offset) => {
               const dom = editorView.nodeDOM(offset);
               if (dom instanceof HTMLElement) ro.observe(dom);
             });
@@ -207,6 +216,7 @@ export const Pagination = Extension.create({
               schedule();
             },
             destroy() {
+              destroyed = true;
               if (raf) cancelAnimationFrame(raf);
               ro?.disconnect();
             }

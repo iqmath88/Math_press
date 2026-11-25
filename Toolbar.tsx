@@ -41,12 +41,14 @@ type Props = {
   page: PageSettings;
   actions: RibbonActions;
   onOpenLatex: () => void;
+  onSearch?: () => void;
+  educationalTools?: ReactNode;
   /** بلا وسيط: رسم جديد. مع موضع: تعديل الرسم الموجود. */
   onGraph: (pos?: number) => void;
   onError: (message: string) => void;
 };
 
-type TabId = "file" | "home" | "insert" | "layout" | "ctx";
+type TabId = "file" | "home" | "insert" | "layout" | "styles" | "ctx";
 type CtxId = "graph" | "table" | "image" | "columns";
 const CTX_LABEL: Record<CtxId, string> = { graph: "الرسم", table: "الجدول", image: "الصورة", columns: "الأعمدة" };
 
@@ -94,7 +96,7 @@ function Group(props: { title: string; children: ReactNode; rows?: boolean }) {
 
 const Row = ({ children }: { children: ReactNode }) => <div className="rb-line">{children}</div>;
 
-export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, onError }: Props) {
+export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, educationalTools, onGraph, onError }: Props) {
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [tab, setTab] = useState<TabId>("home");
   const [collapsed, setCollapsed] = useState(false);
@@ -149,6 +151,7 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, o
     { id: "file", label: "ملف" },
     { id: "home", label: "الرئيسية" },
     { id: "insert", label: "إدراج" },
+    ...(educationalTools ? [{ id: "styles" as const, label: "أنماط" }] : []),
     { id: "layout", label: "الصفحة" },
     ...(ctx ? [{ id: "ctx" as TabId, label: CTX_LABEL[ctx], ctx: true }] : [])
   ];
@@ -205,7 +208,11 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, o
             </Group>
           </>)}
 
+          {tab === "styles" && educationalTools}
           {tab === "home" && (<>
+            {onSearch && <Group title="تحرير">
+              <Btn label="بحث واستبدال" wide onClick={onSearch}>بحث واستبدال</Btn>
+            </Group>}
             <Group title="الخط" rows>
               <Row>
                 <select

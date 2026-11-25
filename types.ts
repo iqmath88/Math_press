@@ -1,5 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 
+import type { EducationalStyle } from "./educationalStyles";
+
 export type PageSettings = {
   size: "A4";
   orientation: "portrait" | "landscape";
@@ -19,6 +21,7 @@ export type MathPressDocument = {
   showPageNumbers: boolean;
   /** صورة تُرسم خلف كل صفحة (ورق رسمي، إطار، علامة مائية) كـ data URL، أو null. */
   background: string | null;
+  educationalStyles?: EducationalStyle[];
   content: JSONContent;
   updatedAt: string;
 };

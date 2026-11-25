@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { JSONContent } from "@tiptap/core";
 import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw } from "lucide-react";
+import type { EducationalStyle } from "./educationalStyles";
 import type { MathPressDocument } from "./types";
 import { createDocument, parseDocument } from "./document";
 import { deleteDocument, loadDocuments, saveDocument } from "./storage";
@@ -65,6 +66,9 @@ export default function App() {
   }, [saveState]);
 
   const onContent = useCallback((content: JSONContent) => setDoc(old => ({ ...old, content })), []);
+  const onStyles = useCallback((educationalStyles: EducationalStyle[]) => {
+    setDoc(old => ({ ...old, educationalStyles }));
+  }, []);
   const onPageCount = useCallback((n: number) => setPages(n), []);
 
   const exportMathDoc = () => {
@@ -154,7 +158,7 @@ export default function App() {
           <div className="page-chip">A4 {doc.page.orientation === "landscape" ? "أفقي" : "عمودي"} · {pages} {pages === 1 ? "صفحة" : "صفحات"}</div>
         </div>
         <DocumentEditor
-          key={doc.id} doc={doc} onChange={onContent} onPageCount={onPageCount} onNotice={setNotice}
+          key={doc.id} doc={doc} onChange={onContent} onStyles={onStyles} onPageCount={onPageCount} onNotice={setNotice}
           actions={{
             onNew: () => { setDoc(createDocument()); setNotice("تم إنشاء مستند جديد."); },
             onLibrary: () => setShowLibrary(v => !v),
