@@ -58,7 +58,7 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice, a
       showPageNumbers: doc.showPageNumbers
     };
     editor.commands.repaginate();
-  }, [editor, landscape, m.top, m.bottom, doc.headerText, doc.footerText, doc.showPageNumbers]);
+  }, [editor, landscape, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers]);
 
   // اتجاه الصفحة عند الطباعة (@page لا يقبل متغيرات CSS فنكتبه ديناميكيًا).
   useEffect(() => {
@@ -119,6 +119,8 @@ export default function DocumentEditor({ doc, onChange, onPageCount, onNotice, a
     "--pt": `${m.top}mm`,
     "--pb": `${m.bottom}mm`,
     "--px": `${m.left}mm`,
+    "--pl": `${m.left}mm`,
+    "--pr": `${m.right}mm`,
     "--pw": landscape ? "297mm" : "210mm",
     "--ph": landscape ? "210mm" : "297mm"
   } as CSSProperties;
