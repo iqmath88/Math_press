@@ -1,14 +1,15 @@
 {
   "name": "mathpress-mvp",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0-alpha.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "node editing.e2e.cjs && node publishing.e2e.cjs"
   },
   "dependencies": {
     "@fontsource/amiri": "^5.1.0",
@@ -36,7 +37,7 @@
     "jsxgraph": "^1.14.1",
     "jszip": "^3.10.2",
     "lucide-react": "^0.468.0",
-    "mathlive": "^0.105.3",
+    "mathlive": "^0.111.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -45,8 +46,9 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "^25.0.1",
+    "playwright-core": "^1.65.1",
     "typescript": "~5.7.2",
-    "vite": "^6.0.7",
-    "vitest": "^2.1.8"
+    "vite": "^6.4.6",
+    "vitest": "^5.1.2"
   }
 }
