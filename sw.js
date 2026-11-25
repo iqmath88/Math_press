@@ -4,9 +4,13 @@ const PREFIX = 'mathpress-build:' + ROOT.pathname + ':';
 const CACHE = PREFIX + BUILD;
 const ASSETS = /*__PRECACHE__*/[];
 const INDEX = new URL('index.html', ROOT).href;
-const urls = ASSETS.map(name=>new URL(name,ROOT).href);
+// The previous build can leave stable URLs in the browser HTTP cache. Refresh
+// those URLs at install so the offline HTML points at this build's hashed assets.
+const requests = ASSETS.map(name => new Request(new URL(name, ROOT), {
+  cache: name.startsWith("assets/") ? "default" : "reload"
+}));
 self.addEventListener('install', event=>{
-  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(urls)));
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(requests)));
 });
 self.addEventListener('activate', event=>{
   event.waitUntil((async()=>{
