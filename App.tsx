@@ -27,7 +27,7 @@ export default function App() {
   const [doc, setDoc] = useState<MathPressDocument>(() => createDocument());
   const [savedDocs, setSavedDocs] = useState<MathPressDocument[]>([]);
   const [saveState, setSaveState] = useState<SaveState>("saving");
-  const [notice, setNotice] = useState("مرحبًا بك في MathPress 0.3");
+  const [notice, setNotice] = useState("مرحبًا بك في MathPress v0.4.0");
   const [showLibrary, setShowLibrary] = useState(false);
   const [pages, setPages] = useState(1);
   const [showPageSettings, setShowPageSettings] = useState(false);
@@ -127,7 +127,7 @@ export default function App() {
       <header className="topbar no-print">
         <div className="brand">
           <div className="brand-mark"><Sigma size={24} /></div>
-          <div><strong>MathPress</strong><span>محرر الرياضيات الاحترافي</span></div>
+          <div><strong>MathPress <small>v0.4.0</small></strong><span>محرر الرياضيات الاحترافي</span></div>
         </div>
         <div className={`save-status ${saveState}`} aria-live="polite">{status.icon}<span>{status.label}</span></div>
       </header>
