@@ -109,7 +109,16 @@ const PageBreak = Node.create({
     return ["div", mergeAttributes(HTMLAttributes, { "data-page-break": "", class: "page-break-marker" }), ["span", "فاصل صفحة"]];
   },
   addCommands() {
-    return { insertPageBreak: () => ({ commands }) => commands.insertContent({ type: "pageBreak" }) };
+    return {
+      insertPageBreak: () => ({ chain, tr }) => {
+        const insertion = chain().insertContent({ type: "pageBreak" });
+        if (tr.doc.lastChild?.type.name === "pageBreak") {
+          const end = tr.doc.content.size;
+          insertion.insertContentAt(end, { type: "paragraph" }).setTextSelection(end + 1);
+        }
+        return insertion.run();
+      }
+    };
   }
 });
 

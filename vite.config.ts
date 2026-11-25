@@ -31,6 +31,7 @@ const copyPwaFiles = (): Plugin => ({
   }
 });
 export default defineConfig({
+  define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify(JSON.parse(read("package.json").toString()).version) },
   base: "./", publicDir:false, resolve:{extensions:[".mjs",".ts",".tsx",".js",".jsx",".json"]}, plugins:[react(),copyPwaFiles()],
   server:{host:"0.0.0.0"}, build:{target:"es2022",chunkSizeWarningLimit:1500},
   test:{include:["*.test.{ts,tsx}"]}

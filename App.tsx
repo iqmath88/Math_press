@@ -8,6 +8,8 @@ import DocumentEditor from "./Editor";
 import PageSettingsDialog from "./PageSettingsDialog";
 import type { ImportResult } from "./docxImport";
 
+const VERSION = import.meta.env.VITE_APP_VERSION;
+
 type SaveState = "saved" | "saving" | "error";
 
 function safeName(value: string) {
@@ -27,7 +29,7 @@ export default function App() {
   const [doc, setDoc] = useState<MathPressDocument>(() => createDocument());
   const [savedDocs, setSavedDocs] = useState<MathPressDocument[]>([]);
   const [saveState, setSaveState] = useState<SaveState>("saving");
-  const [notice, setNotice] = useState("مرحبًا بك في MathPress 0.3");
+  const [notice, setNotice] = useState(`مرحبًا بك في MathPress v${VERSION}`);
   const [showLibrary, setShowLibrary] = useState(false);
   const [pages, setPages] = useState(1);
   const [showPageSettings, setShowPageSettings] = useState(false);
@@ -127,7 +129,7 @@ export default function App() {
       <header className="topbar no-print">
         <div className="brand">
           <div className="brand-mark"><Sigma size={24} /></div>
-          <div><strong>MathPress</strong><span>محرر الرياضيات الاحترافي</span></div>
+          <div><strong>MathPress <small className="version" dir="ltr">v{VERSION}</small></strong><span>محرر الرياضيات الاحترافي</span></div>
         </div>
         <div className={`save-status ${saveState}`} aria-live="polite">{status.icon}<span>{status.label}</span></div>
       </header>
