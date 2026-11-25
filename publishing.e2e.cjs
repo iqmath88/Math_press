@@ -51,6 +51,7 @@ const { randomUUID } = require("node:crypto");
       .fill(String.raw`\sqrt{a^2+b^2}`);
     await dialog.getByLabel("لون المعادلة").fill("#275434");
     await dialog.getByLabel("الحجم (نقطة)").fill("20");
+    await page.screenshot({ path: path.join(output, "equation.png") });
     await dialog.getByRole("button", { name: "حفظ داخل السطر" }).click();
     const values = await page
       .locator(".math-inline math-field")
@@ -75,6 +76,23 @@ const { randomUUID } = require("node:crypto");
       .waitFor();
     await page.getByRole("button", { name: "وضع التركيز" }).click();
     await page.getByRole("button", { name: "إنهاء وضع التركيز" }).click();
+    await page
+      .getByRole("button", { name: "طباعة / PDF", exact: true })
+      .click();
+    const styledPreview = page.getByRole("region", { name: "معاينة الطباعة" });
+    await styledPreview.getByRole("checkbox", { name: "حبر اقتصادي" }).check();
+    await styledPreview.getByText(/صفحة A4/).waitFor();
+    const styledFile = path.join(output, "mathpress-equations.pdf");
+    await page.pdf({
+      path: styledFile,
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
+    assert.match(
+      cp.execFileSync("pdftotext", [styledFile, "-"], { encoding: "utf8" }),
+      /[a-zA-Z]/,
+    );
+    await styledPreview.getByRole("button", { name: "العودة للتحرير" }).click();
     await page.getByRole("tab", { name: "ملف" }).click();
     for (const n of [1, 2, 10, 40, 100]) {
       const content = Array.from({ length: n }, (_, i) => [
@@ -104,13 +122,11 @@ const { randomUUID } = require("node:crypto");
         updatedAt: new Date().toISOString(),
       };
       const start = performance.now();
-      await page
-        .locator('input[accept^=".mathdoc"]')
-        .setInputFiles({
-          name: "test.mathdoc",
-          mimeType: "application/json",
-          buffer: Buffer.from(JSON.stringify(payload)),
-        });
+      await page.locator('input[accept^=".mathdoc"]').setInputFiles({
+        name: "test.mathdoc",
+        mimeType: "application/json",
+        buffer: Buffer.from(JSON.stringify(payload)),
+      });
       await page.waitForFunction(
         (n) => document.querySelectorAll(".pg-footer").length === n,
         n,

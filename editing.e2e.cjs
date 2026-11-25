@@ -176,6 +176,62 @@ const assert = require("node:assert/strict");
     assert.match(await body.innerText(), /البرهان/);
     await body.locator("table").waitFor();
     await body.locator("img").waitFor();
+    const legacy = {
+      format: "mathpress",
+      schemaVersion: 1,
+      id: "legacy-fixture",
+      title: "مستند قديم للاختبار",
+      content: [{ type: "paragraph", text: "محتوى النسخة القديمة" }],
+      updatedAt: "2024-01-01T00:00:00Z",
+    };
+    await page.evaluate(
+      (doc) =>
+        new Promise((resolve, reject) => {
+          const request = indexedDB.open("mathpress-local", 1);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            const db = request.result;
+            const tx = db.transaction("documents", "readwrite");
+            tx.objectStore("documents").put(doc);
+            tx.oncomplete = () => {
+              db.close();
+              resolve();
+            };
+            tx.onerror = () => {
+              db.close();
+              reject(tx.error);
+            };
+          };
+        }),
+      legacy,
+    );
+    await page.reload();
+    await page.getByRole("tab", { name: "ملف" }).click();
+    await page
+      .getByRole("button", { name: "المستندات المحفوظة على هذا الجهاز" })
+      .click();
+    await page
+      .locator(".library-open")
+      .filter({ hasText: legacy.title })
+      .click();
+    await body.getByText(legacy.content[0].text).waitFor();
+    await page.getByText("محفوظ محليًا", { exact: true }).waitFor();
+    await page.getByRole("tab", { name: "ملف" }).click();
+    await page
+      .getByRole("button", { name: "المستندات المحفوظة على هذا الجهاز" })
+      .click();
+    const migrationDownload = page.waitForEvent("download");
+    await page
+      .locator(".library-item")
+      .filter({ hasText: legacy.title })
+      .getByRole("button", { name: "نسخة قبل الترقية" })
+      .click();
+    const migratedBackupPath = path.join(output, "before-migration.mathdoc");
+    await (await migrationDownload).saveAs(migratedBackupPath);
+    assert.deepEqual(
+      JSON.parse(fs.readFileSync(migratedBackupPath, "utf8")),
+      legacy,
+    );
     assert.deepEqual(errors, []);
     console.log(
       "Style application, live override, search, LaTeX protection, and reopen passed",

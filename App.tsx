@@ -4,7 +4,7 @@ import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw } from "lucide
 import type { EducationalStyle } from "./educationalStyles";
 import type { MathPressDocument } from "./types";
 import { createDocument, parseDocument } from "./document";
-import { deleteDocument, loadDocuments, saveDocument } from "./storage";
+import { deleteDocument, loadLibrary, saveDocument } from "./storage";
 import DocumentEditor from "./Editor";
 import PageSettingsDialog from "./PageSettingsDialog";
 import { MAX_IMPORT_BYTES, validateImportedContent } from "./importValidation";
@@ -30,6 +30,7 @@ function downloadBlob(blob: Blob, filename: string) {
 export default function App() {
   const [doc, setDoc] = useState<MathPressDocument>(() => createDocument());
   const [savedDocs, setSavedDocs] = useState<MathPressDocument[]>([]);
+  const [migrationBackups, setMigrationBackups] = useState<Map<string, unknown>>(() => new Map());
   const [editorRevision, setEditorRevision] = useState(0);
   const latest = useRef(doc);
   latest.current = doc;
@@ -43,7 +44,11 @@ export default function App() {
   const [report, setReport] = useState<{ title: string; result: ImportResult } | null>(null);
 
   const refreshLibrary = useCallback(async () => {
-    try { setSavedDocs(await loadDocuments()); } catch { /* قد يكون التخزين غير متاح في التصفح الخاص */ }
+    try {
+      const library = await loadLibrary();
+      setSavedDocs(library.documents);
+      setMigrationBackups(library.backups);
+    } catch { /* قد يكون التخزين غير متاح في التصفح الخاص */ }
   }, []);
   useEffect(() => { void refreshLibrary(); }, [refreshLibrary]);
 
@@ -178,6 +183,11 @@ export default function App() {
             <button className="library-open" onClick={() => { if (item.id !== latest.current.id) replaceDocument(item); setShowLibrary(false); setNotice(`تم فتح: ${item.title}`); }}>
               <FileText size={18} /><span><b>{item.title}</b><small>{new Date(item.updatedAt).toLocaleString("ar-IQ")}</small></span>
             </button>
+            {migrationBackups.has(item.id) && <button type="button" onClick={() => {
+              const original = migrationBackups.get(item.id);
+              downloadBlob(new Blob([JSON.stringify(original, null, 2)], { type: "application/json" }),
+                `${safeName(item.title)}-قبل-الترقية.mathdoc`);
+            }}>نسخة قبل الترقية</button>}
             <button className="icon-button danger" aria-label={`حذف ${item.title}`} onClick={async () => {
               if (confirm(`حذف «${item.title}» من هذا الجهاز؟`)) { await deleteDocument(item.id); await refreshLibrary(); }
             }}><Trash2 size={16} /></button>
