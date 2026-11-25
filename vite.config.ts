@@ -31,7 +31,7 @@ const copyPwaFiles = (): Plugin => ({
   }
 });
 export default defineConfig({
-  base: "./", publicDir:false, plugins:[react(),copyPwaFiles()],
+  base: "./", publicDir:false, resolve:{extensions:[".mjs",".ts",".tsx",".js",".jsx",".json"]}, plugins:[react(),copyPwaFiles()],
   server:{host:"0.0.0.0"}, build:{target:"es2022",chunkSizeWarningLimit:1500},
   test:{include:["*.test.{ts,tsx}"]}
 });
