@@ -4,13 +4,23 @@ const PREFIX = 'mathpress-build:' + ROOT.pathname + ':';
 const CACHE = PREFIX + BUILD;
 const ASSETS = /*__PRECACHE__*/[];
 const INDEX = new URL('index.html', ROOT).href;
-// The previous build can leave stable URLs in the browser HTTP cache. Refresh
-// those URLs at install so the offline HTML points at this build's hashed assets.
-const requests = ASSETS.map(name => new Request(new URL(name, ROOT), {
-  cache: name.startsWith("assets/") ? "default" : "reload"
-}));
-self.addEventListener('install', event=>{
-  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(requests)));
+async function precache() {
+  const cache = await caches.open(CACHE);
+  const hashed = ASSETS.filter(name => name.startsWith("assets/"));
+  const stable = ASSETS.filter(name => !name.startsWith("assets/"));
+  await cache.addAll(hashed.map(name => new URL(name, ROOT).href));
+  await Promise.all(stable.map(async name => {
+    const canonical = new URL(name, ROOT);
+    const revision = new URL(canonical);
+    // A fresh worker can still receive a stable URL from the previous HTTP cache.
+    revision.searchParams.set("mp-build", BUILD);
+    const response = await fetch(revision, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Could not precache ${name}: ${response.status}`);
+    await cache.put(canonical, response);
+  }));
+}
+self.addEventListener("install", event => {
+  event.waitUntil(precache());
 });
 self.addEventListener('activate', event=>{
   event.waitUntil((async()=>{
