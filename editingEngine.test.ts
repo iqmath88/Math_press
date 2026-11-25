@@ -5,6 +5,8 @@ import { findDocumentMatches, replaceMatches, searchKey, updateSearch } from "./
 import { applyEducationalStyle, defaultEducationalStyles, readEducationalStyles, resolveEducationalStyles } from "./educationalStyles";
 import { createDocument, parseDocument } from "./document";
 import { buildExtensions } from "./extensions";
+import { validateImportedContent } from "./importValidation";
+import { readParagraphFormat } from "./ParagraphFormat";
 import { computeBreaks } from "./paginate";
 
 describe("document editing engine", () => {
@@ -63,6 +65,30 @@ describe("document editing engine", () => {
     const parsed = parseDocument({ ...createDocument(), educationalStyles: overrides });
     expect(resolveEducationalStyles(parsed?.educationalStyles)).toHaveLength(17);
     expect(resolveEducationalStyles(parsed?.educationalStyles).find(style => style.id === "question")?.color).toBe("#112233");
+  });
+
+  it("validates imported document structure and keeps safe mathematical content", () => {
+    const original = createDocument().content;
+    expect(validateImportedContent(original)?.content?.some(node => node.type === "mathBlock")).toBe(true);
+    expect(validateImportedContent({ type: "doc", content: [{ type: "unsupported" }] })).toBeNull();
+    expect(validateImportedContent({ type: "doc", content: [
+      { type: "paragraph", content: [{ type: "table" }] }
+    ] })).toBeNull();
+    expect(validateImportedContent({ type: "doc", content: [
+      { type: "image", attrs: { src: "unsupported:asset" } }
+    ] })).toBeNull();
+    const input = { type: "doc", content: [{ type: "paragraph", content: [
+      { type: "text", text: "نص", marks: [{ type: "textStyle", attrs: { fontSize: "14;invalid", color: "#223344" } }] }
+    ] }] };
+    const mark = validateImportedContent(input)?.content?.[0].content?.[0].marks?.[0];
+    expect(mark?.attrs).toMatchObject({ fontSize: null, color: "#223344" });
+  });
+
+  it("constrains standalone paragraph formatting to supported rendering values", () => {
+    expect(readParagraphFormat({ lineHeight: 1.4, indent: 12, hanging: 7, keepWithNext: true, widows: false,
+      before: -2, background: "invalid", border: "#334455" })).toEqual({
+      lineHeight: 1.4, indent: 12, hanging: 7, keepWithNext: true, widows: false, border: "#334455"
+    });
   });
 
   it("keeps a title with the next block and does not create an empty opening page", () => {

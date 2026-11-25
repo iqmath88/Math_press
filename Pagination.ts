@@ -192,6 +192,7 @@ export const Pagination = Extension.create({
           let raf = 0;
           let destroyed = false;
           let observedDoc: PMNode | null = null;
+          let observedBlocks = new Set<HTMLElement>();
           const schedule = () => {
             if (raf || destroyed) return;
             raf = requestAnimationFrame(() => {
@@ -203,11 +204,15 @@ export const Pagination = Extension.create({
           const observe = () => {
             if (!ro || observedDoc === editorView.state.doc) return;
             observedDoc = editorView.state.doc;
-            ro.disconnect();
+            const next = new Set<HTMLElement>();
             observedDoc.forEach((_node, offset) => {
               const dom = editorView.nodeDOM(offset);
-              if (dom instanceof HTMLElement) ro.observe(dom);
+              if (!(dom instanceof HTMLElement)) return;
+              next.add(dom);
+              if (!observedBlocks.has(dom)) ro.observe(dom);
             });
+            for (const dom of observedBlocks) if (!next.has(dom)) ro.unobserve(dom);
+            observedBlocks = next;
           };
           if (typeof document !== "undefined" && document.fonts?.ready) void document.fonts.ready.then(schedule);
           observe();

@@ -193,9 +193,9 @@ describe("DOCX import", () => {
   });
 
   it("reads landscape orientation and margins", async () => {
-    const sect = `<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="1134" w:bottom="1134" w:left="850" w:right="850"/></w:sectPr>`;
+    const sect = `<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="1134" w:bottom="1134" w:left="850" w:right="1418"/></w:sectPr>`;
     const res = await importDocx(await makeDocx(p(r("x")), {}, sect));
-    expect(res.page).toEqual({ orientation: "landscape", marginsMm: { top: 20, bottom: 20, left: 15, right: 15 } });
+    expect(res.page).toEqual({ orientation: "landscape", marginsMm: { top: 20, bottom: 20, left: 15, right: 25 } });
   });
 
   it("scales font sizes relative to the document body size", async () => {

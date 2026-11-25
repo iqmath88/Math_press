@@ -874,8 +874,13 @@ button.primary:hover:not(:disabled),
 .print-preview-tools > div + div { margin-top: 6px; }
 .print-issues { margin-block: 6px; color: #842d2d; }
 .preview-paper .graph-edit { display: none; }
-.economical-paper { filter: grayscale(1); }
-.economical-paper .mp-editor [data-educational-style] { background: transparent !important; }
+/* Keep text and vector drawings as native PDF content in economy mode. */
+.economical-paper :is(.mp-editor, .mp-editor *, .paper-header, .pg-header, .pg-footer) {
+  color: #161616 !important;
+}
+.economical-paper .mp-editor :is([data-educational-style], [data-paragraph-format], mark, th) {
+  background: transparent !important;
+}
 .document-view-status { display: flex; justify-content: flex-end; gap: 12px; color: #526579; font-size: 12px; }
 .page-stage { position: relative; }
 .page-navigation {

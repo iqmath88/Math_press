@@ -84,7 +84,7 @@ export default function PrintPreview({ paper, editor, options, onChange, pages, 
       </div>
       <div className="grow-row">
         <label className="check"><input type="checkbox" checked={options.backgrounds}
-          onChange={e => onChange({ ...options, backgrounds: e.target.checked })} /> خلفيات</label>
+          onChange={e => onChange({ ...options, backgrounds: e.target.checked })} /> خلفية الورق</label>
         <label className="check"><input type="checkbox" checked={options.numbers}
           onChange={e => onChange({ ...options, numbers: e.target.checked })} /> ترقيم الصفحات</label>
         <label className="check"><input type="checkbox" checked={options.economical}
