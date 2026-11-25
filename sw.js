@@ -1,1 +1,34 @@
-const CACHE='mathpress-flat-v020';const ROOT=new URL('./',self.location.href);const SHELL=['./','./index.html','./app.js','./core.js','./storage.js','./styles.css','./manifest.webmanifest','./icon.svg'].map(x=>new URL(x,ROOT).href);self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('mathpress-flat-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.origin!==ROOT.origin||!u.pathname.startsWith(ROOT.pathname))return;e.respondWith(fetch(e.request).then(async r=>{if(r.ok){const c=await caches.open(CACHE);await c.put(e.request,r.clone());}return r;}).catch(async()=>await caches.match(e.request)||(e.request.mode==='navigate'?await caches.match(new URL('index.html',ROOT).href):Response.error())));});
+const BUILD = "__BUILD_ID__";
+const ROOT = new URL('./', self.location.href);
+const PREFIX = 'mathpress-build:' + ROOT.pathname + ':';
+const CACHE = PREFIX + BUILD;
+const ASSETS = /*__PRECACHE__*/[];
+const INDEX = new URL('index.html', ROOT).href;
+const urls = ASSETS.map(name=>new URL(name,ROOT).href);
+self.addEventListener('install', event=>{
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(urls)));
+});
+self.addEventListener('activate', event=>{
+  event.waitUntil((async()=>{
+    for(const key of await caches.keys()) if(key.startsWith(PREFIX)&&key!==CACHE) await caches.delete(key);
+    await self.clients.claim();
+  })());
+});
+self.addEventListener('fetch', event=>{
+  const request=event.request, url=new URL(request.url);
+  if(request.method!=='GET'||url.origin!==ROOT.origin||!url.pathname.startsWith(ROOT.pathname)) return;
+  if(request.mode==='navigate') {
+    event.respondWith((async()=>{
+      try { const response=await fetch(request,{cache:'no-store'}); if(response.ok) return response; if(response.status!==404) return response; }
+      catch(_) {}
+      return await (await caches.open(CACHE)).match(INDEX) || Response.error();
+    })());
+    return;
+  }
+  event.respondWith((async()=>{
+    const cache=await caches.open(CACHE);
+    const hit=await cache.match(request);
+    if(hit) return hit;
+    return fetch(request);
+  })());
+});
