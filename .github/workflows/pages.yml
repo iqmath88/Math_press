@@ -49,6 +49,8 @@ jobs:
           node printCompatibility.e2e.cjs webkit
           node stability.e2e.cjs chromium
           node stability.e2e.cjs webkit
+          node authoring.e2e.cjs chromium
+          node authoring.e2e.cjs webkit
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -69,6 +71,12 @@ jobs:
           npm --prefix "$previous" ci
           npm --prefix "$previous" run build
           MATHPRESS_BASELINE_VERSION=0.5.0 MATHPRESS_BASELINE_DIST="$previous/dist" node pwaUpgrade.e2e.cjs
+          stable=$(mktemp -d)
+          git fetch --no-tags --depth=1 origin 4cb4c4cab38bab2faf8ba3111032e0a97da0a3d6
+          git archive FETCH_HEAD | tar -x -C "$stable"
+          npm --prefix "$stable" ci
+          npm --prefix "$stable" run build
+          MATHPRESS_BASELINE_VERSION=0.5.1 MATHPRESS_BASELINE_DIST="$stable/dist" node pwaUpgrade.e2e.cjs
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:

@@ -340,8 +340,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
             <button type="button" onClick={() => { void toggleFullscreen(); }}>ملء الشاشة</button>
           </div>
         </section>}
-        mathTools={<MathTools onInsert={openNewLatex} onInline={() => editor.chain().focus().insertMathInline().run()}
-          onBlock={() => editor.chain().focus().insertMathBlock().run()} onSource={() => openNewLatex()} />}
+        mathTools={<MathTools editor={editor} onSource={openNewLatex} />}
         educationalTools={<>
           <section className="rb-group" aria-label="الأنماط التعليمية">
             <div className="rb-line">

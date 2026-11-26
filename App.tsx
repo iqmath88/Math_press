@@ -203,6 +203,10 @@ export default function App() {
           key={editorRevision} doc={doc} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onPageCount={onPageCount} onNotice={setNotice}
           actions={{
             onNew: () => { replaceDocument(createDocument()); setNotice("تم إنشاء مستند جديد."); },
+            onNewBlank: () => {
+              replaceDocument({ ...createDocument("مستند فارغ"), content: { type: "doc", content: [{ type: "paragraph" }] } });
+              setNotice("تم إنشاء مستند فارغ.");
+            },
             onLibrary: () => setShowLibrary(v => !v),
             onExport: exportMathDoc,
             onOpenFile: f => { void openMathDoc(f); },

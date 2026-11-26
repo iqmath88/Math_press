@@ -12,6 +12,11 @@ declare module "@tiptap/core" {
 }
 
 export const EDIT_MATH_EVENT = "mathpress:edit-math";
+const RETURN_TO_TEXT = "mathpress:return-to-text";
+
+export function returnFromMath(field: MathfieldElement) {
+  field.dispatchEvent(new Event(RETURN_TO_TEXT));
+}
 
 export function mathFormat(attrs: Record<string, unknown>) {
   return {
@@ -180,6 +185,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         let horizontalArrow: string | undefined;
         editButton.addEventListener("click", openSource);
         exitButton.addEventListener("click", () => returnToText());
+        mf.addEventListener(RETURN_TO_TEXT, () => returnToText());
         mf.addEventListener("keydown", ev => {
           horizontalArrow = !ev.shiftKey && (ev.key === "ArrowLeft" || ev.key === "ArrowRight") ? ev.key : undefined;
           if (horizontalArrow) setTimeout(() => { horizontalArrow = undefined; }, 0);
@@ -228,7 +234,12 @@ function createMathNode(name: "mathInline" | "mathBlock") {
 
         if (focusNext.delete(editor)) {
           requestAnimationFrame(() => {
-            if (dom.isConnected && editor.view.hasFocus() && !dom.closest("[inert]")) mf.focus();
+            if (!dom.isConnected || !editor.view.hasFocus() || dom.closest("[inert]")) return;
+            mf.focus();
+            if (current.attrs.latex.includes("\\placeholder")) {
+              mf.position = 0;
+              mf.executeCommand("moveToNextPlaceholder");
+            }
           });
         }
 

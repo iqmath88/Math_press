@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import type { PageSettings } from "./types";
 import { fileToDataUrl } from "./imageUtil";
+import { returnFromMath } from "./MathNodes";
+import type { MathfieldElement } from "mathlive";
 
 const FONTS = [
   { label: "نسخ", value: '"Noto Naskh Arabic", serif' },
@@ -27,6 +29,7 @@ const MARGIN_PRESETS = [
 
 export type RibbonActions = {
   onNew: () => void;
+  onNewBlank?: () => void;
   onLibrary: () => void;
   onExport: () => void;
   onOpenFile: (file: File) => void;
@@ -185,6 +188,17 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
           ))}
         </div>
         <div className="rb-quick">
+          {actions.onNewBlank && <Btn label="مستند فارغ" onClick={actions.onNewBlank}><FilePlus2 size={18} /></Btn>}
+          {mathTools && <>
+            <Btn label="معادلة سطرية" onClick={() => {
+              const field = document.activeElement;
+              if (field?.matches("math-field") && editor.view.dom.contains(field)) returnFromMath(field as MathfieldElement);
+              chain().insertMathInline().run();
+            }}><Sigma size={18} /></Btn>
+            <Btn label="لوحة الرياضيات" active={tab === "math" && !collapsed} onClick={() => selectTab("math")}>
+              <Code2 size={18} /><span>رياضيات</span>
+            </Btn>
+          </>}
           <Btn label="تراجع" disabled={!editor.can().undo()} onClick={() => chain().undo().run()}><Undo2 size={18} /></Btn>
           <Btn label="إعادة" disabled={!editor.can().redo()} onClick={() => chain().redo().run()}><Redo2 size={18} /></Btn>
           <Btn label="طباعة / PDF" wide primary onClick={actions.onPrint}><Printer size={17} /><span>طباعة / PDF</span></Btn>

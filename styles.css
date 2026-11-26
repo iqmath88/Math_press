@@ -987,3 +987,19 @@ button.primary:hover:not(:disabled),
   .print-sheet + .print-sheet { break-before: page; }
   .print-pages .math-node math-field { border: 1px solid transparent !important; }
 }
+
+
+.math-tools { flex: 1; min-width: 0; }
+.math-tools .rb-line { flex-wrap: wrap; }
+.math-tools input[type="search"] { width: min(220px, 100%); }
+.math-tools .math-templates { max-height: 124px; overflow: auto; }
+.math-template button:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.math-template button:first-child [dir="ltr"] { font-size: 1.15em; }
+.editor-source math-field:focus-within {
+  --caret-color: #134ca7;
+  --selection-background-color: #bcd8fa;
+  --placeholder-color: #285f9d;
+}
+@media (pointer: coarse) {
+  .math-tools button, .math-tools input, .math-tools select { min-height: 44px; }
+}
