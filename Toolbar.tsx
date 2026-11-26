@@ -169,6 +169,10 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
 
   return (
     <div className="ribbon no-print">
+      <input
+        ref={fileRef} className="visually-hidden" type="file" accept="image/*"
+        onChange={e => { void pickImage(e.target.files?.[0]); e.target.value = ""; }}
+      />
       <div className="rb-strip">
         <div className="rb-tabs" role="tablist" aria-label="الأقسام">
           {tabs.map(t => (
@@ -306,10 +310,7 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
             <Group title="جداول وصور">
               <Big label="إدراج جدول 3×3" text="جدول" onClick={() => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}><TableIcon size={24} /></Big>
               <Big label="إدراج صورة" text="صورة" onClick={() => fileRef.current?.click()}><ImagePlus size={24} /></Big>
-              <input
-                ref={fileRef} className="visually-hidden" type="file" accept="image/*"
-                onChange={e => { void pickImage(e.target.files?.[0]); e.target.value = ""; }}
-              />
+
             </Group>
             <Group title="تخطيط">
               <Big label="كتلة بعمودين" text="عمودان" onClick={() => chain().insertColumns().run()}><Columns2 size={24} /></Big>

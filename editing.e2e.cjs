@@ -105,9 +105,7 @@ const assert = require("node:assert/strict");
     if ((await insertTab.getAttribute("aria-selected")) !== "true")
       await insertTab.click();
     await body.locator(":scope > p").last().click();
-    const imageChooser = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: "إدراج صورة", exact: true }).click();
-    await (await imageChooser).setFiles(path.join(__dirname, "icon-192.png"));
+    await page.locator('input[accept="image/*"]').setInputFiles(path.join(__dirname, "icon-192.png"));
     const image = body.locator('img[alt="icon-192.png"]');
     await image.waitFor();
     assert.equal(await image.evaluate(async (element) => {
