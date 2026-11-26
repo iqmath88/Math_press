@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const { createServer } = require("node:http");
 const { readFile } = require("node:fs/promises");
 const path = require("node:path");
+const { setTimeout: delay } = require("node:timers/promises");
 const { chromium } = require("playwright-core");
 
 const baseline = process.env.MATHPRESS_BASELINE_DIST;
@@ -17,6 +18,15 @@ const mime = {
   ".woff": "font/woff",
   ".woff2": "font/woff2",
 };
+
+async function waitUntil(predicate, error) {
+  const deadline = performance.now() + 30_000;
+  while (performance.now() < deadline) {
+    if (await predicate()) return;
+    await delay(100);
+  }
+  assert.fail(error);
+}
 
 async function run() {
   if (!baseline)
@@ -100,17 +110,17 @@ async function run() {
     assert.ok(build);
     const newCache = `mathpress-build:${prefix}:${build}`;
     const indexURL = base + "index.html";
-    await page.waitForFunction(
-      async ({ name, url }) => {
-        if (!(await caches.keys()).includes(name)) return false;
-        return Boolean(await (await caches.open(name)).match(url));
-      },
-      { name: newCache, url: indexURL },
+    await waitUntil(
+      () => page.evaluate(async () => {
+        const registration = await navigator.serviceWorker.getRegistration();
+        return registration?.waiting?.state === "installed";
+      }),
+      "The replacement worker did not finish installing",
     );
     await page.goto(origin);
-    await page.waitForFunction(
-      async (old) => !(await caches.keys()).includes(old),
-      oldCache,
+    await waitUntil(
+      () => page.evaluate(async (old) => !(await caches.keys()).includes(old), oldCache),
+      "The replacement worker did not remove the previous build cache",
     );
 
     // Read the specific build being activated, the same way the worker handles navigation.
@@ -126,6 +136,20 @@ async function run() {
     await context.setOffline(true);
     await page.goto(base);
     await waitVersion(nextVersion);
+    const assets = await page.evaluate(async () => {
+      const urls = [
+        document.querySelector('script[type="module"][src]').src,
+        document.querySelector('link[rel="stylesheet"]').href,
+      ];
+      return Promise.all(urls.map(async url => {
+        const response = await fetch(url);
+        return { ok: response.ok, type: response.headers.get("content-type") };
+      }));
+    });
+    assert.deepEqual(assets, [
+      { ok: true, type: "text/javascript" },
+      { ok: true, type: "text/css" },
+    ]);
     await page.getByRole("tab", { name: "ملف" }).click();
     await page
       .getByRole("button", { name: "المستندات المحفوظة على هذا الجهاز" })
