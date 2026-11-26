@@ -151,6 +151,9 @@ export function paginateForPrint(
         show(start, end);
         return fits(fragment);
       };
+      // Most continuations fit on the next sheet. Skip repeated prefix probes
+      // for modest remainders, while bounding work for very long paragraphs.
+      if (start > 0 && last - start <= 4096 && probe(last)) break;
       let low = start;
       let high = Math.min(last, start + 128);
       while (probe(high)) {
