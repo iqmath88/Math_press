@@ -32,7 +32,7 @@ async function run() {
       page.on("pageerror", error => errors.push(error.message));
       await page.goto(url);
       await page.locator(".pg-last").waitFor();
-      assert.equal(await page.locator(".version").textContent(), "v0.5.0");
+      assert.equal(await page.locator(".version").textContent(), "v" + require("./package.json").version);
       await page.getByRole("tab", { name: "ملف", exact: true }).tap();
       const content = [
         paragraph(text("BODYLEFT بداية المعادلة "), expression("mathInline", latex[0]), text(" نهاية")),

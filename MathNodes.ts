@@ -1,4 +1,5 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import { Node, mergeAttributes, type Editor } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
 import type { MathfieldElement } from "mathlive";
 
 declare module "@tiptap/core" {
@@ -21,7 +22,7 @@ export function mathFormat(attrs: Record<string, unknown>) {
 }
 
 // يُضبط قبل الإدراج مباشرة ليأخذ حقل المعادلة الجديد التركيز.
-let focusNext = false;
+const focusNext = new WeakSet<Editor>();
 
 function createMathNode(name: "mathInline" | "mathBlock") {
   const inline = name === "mathInline";
@@ -69,14 +70,39 @@ function createMathNode(name: "mathInline" | "mathBlock") {
 
     addCommands() {
       const insert = (latex: string, focus: boolean) => ({ commands }: { commands: any }) => {
-        focusNext = focus;
+        if (focus) {
+          focusNext.add(this.editor);
+          queueMicrotask(() => focusNext.delete(this.editor));
+        }
         const ok = commands.insertContent({ type: name, attrs: { latex } });
-        if (!ok) focusNext = false;
+        if (!ok || !focus) focusNext.delete(this.editor);
         return ok;
       };
       return inline
         ? { insertMathInline: (latex = "", focus = true) => insert(latex, focus) }
         : { insertMathBlock: (latex = "", focus = true) => insert(latex, focus) };
+    },
+
+    addKeyboardShortcuts(): Record<string, () => boolean> {
+      if (!inline) return {};
+      const enter = (right: boolean) => {
+        const { view, state } = this.editor;
+        const selection = state.selection;
+        if (!(selection instanceof TextSelection) || !selection.empty) return false;
+        const { $from } = selection;
+        const element = $from.depth ? view.nodeDOM($from.before()) : view.dom;
+        const rtl = element instanceof Element && getComputedStyle(element).direction === "rtl";
+        const forward = right !== !!rtl;
+        const neighbor = forward ? $from.nodeAfter : $from.nodeBefore;
+        if (neighbor?.type.name !== name) return false;
+        const wrapper = view.nodeDOM(forward ? $from.pos : $from.pos - neighbor.nodeSize);
+        const field = wrapper instanceof Element ? wrapper.querySelector<MathfieldElement>("math-field") : null;
+        if (!field) return false;
+        field.focus();
+        field.position = right ? 0 : field.lastOffset;
+        return true;
+      };
+      return { ArrowLeft: () => enter(false), ArrowRight: () => enter(true) };
     },
 
     addNodeView() {
@@ -94,7 +120,13 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         editButton.className = "math-edit no-print";
         editButton.setAttribute("aria-label", "تعديل المعادلة");
         editButton.textContent = "ƒ";
-        dom.append(mf, editButton);
+        const controls = document.createElement("span");
+        controls.className = "math-controls no-print";
+        const exitButton = document.createElement("button");
+        exitButton.type = "button";
+        exitButton.textContent = "العودة إلى النص";
+        controls.append(editButton, exitButton);
+        dom.append(mf, controls);
         const updateFormat = () => {
           const { color, size, align } = mathFormat(current.attrs);
           dom.style.setProperty("--math-color", color ?? "");
@@ -113,13 +145,36 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           const pos = nodePos();
           if (pos !== null) editor.view.dom.dispatchEvent(new CustomEvent(EDIT_MATH_EVENT, { detail: { pos } }));
         };
+        const returnToText = (before = false) => {
+          const pos = nodePos();
+          if (pos === null || editor.isDestroyed || dom.closest("[inert]")) return false;
+          const { view } = editor;
+          const boundary = pos + (before ? 0 : current.nodeSize);
+          const selection = TextSelection.near(view.state.doc.resolve(boundary), before ? -1 : 1);
+          view.dispatch(view.state.tr.setSelection(selection).setMeta("addToHistory", false).scrollIntoView());
+          view.focus();
+          return true;
+        };
+        controls.addEventListener("mousedown", ev => ev.preventDefault());
+        mf.addEventListener("pointerdown", () => {
+          if (document.activeElement !== mf && editor.isEditable && !dom.closest("[inert]")) mf.focus();
+        }, true);
+        let horizontalArrow: string | undefined;
         editButton.addEventListener("click", openSource);
+        exitButton.addEventListener("click", () => returnToText());
         mf.addEventListener("keydown", ev => {
-          if (ev.altKey && ev.key === "Enter") {
+          horizontalArrow = !ev.shiftKey && (ev.key === "ArrowLeft" || ev.key === "ArrowRight") ? ev.key : undefined;
+          if (horizontalArrow) setTimeout(() => { horizontalArrow = undefined; }, 0);
+          if (ev.isComposing) return;
+          if (ev.key === "Escape" && returnToText()) {
             ev.preventDefault();
+            ev.stopImmediatePropagation();
+          } else if (ev.altKey && ev.key === "Enter") {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
             openSource();
           }
-        });
+        }, true);
 
         mf.addEventListener("input", () => {
           const pos = nodePos();
@@ -145,16 +200,18 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         // عند الخروج من الحقل بالأسهم يعود المؤشر إلى النص قبل المعادلة أو بعدها.
         mf.addEventListener("move-out", ev => {
           const dir = (ev as CustomEvent<{ direction?: string }>).detail?.direction;
-          const pos = nodePos();
-          if (pos === null || !dir) return;
-          const backward = dir === "backward" || dir === "upward";
-          ev.preventDefault();
-          editor.chain().focus(backward ? pos : pos + current.nodeSize).run();
+          if (!dir) return;
+          const rtl = inline && dom.parentElement && getComputedStyle(dom.parentElement).direction === "rtl";
+          const before = horizontalArrow
+            ? (horizontalArrow === "ArrowLeft") !== !!rtl
+            : dir === "backward" || dir === "upward";
+          if (returnToText(before)) ev.preventDefault();
         });
 
-        if (focusNext) {
-          focusNext = false;
-          setTimeout(() => mf.focus(), 0);
+        if (focusNext.delete(editor)) {
+          requestAnimationFrame(() => {
+            if (dom.isConnected && editor.view.hasFocus() && !dom.closest("[inert]")) mf.focus();
+          });
         }
 
         return {

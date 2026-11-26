@@ -903,29 +903,35 @@ button.primary:hover:not(:disabled),
 }
 
 .math-node { position: relative; }
-.math-edit {
+.math-controls {
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   inset-inline-end: 0;
-  inset-block-start: 0;
-  padding: 0 6px;
-  min-width: 24px;
-  color: var(--accent);
-  opacity: 0;
+  inset-block-end: 100%;
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+  visibility: hidden;
 }
-.math-node:hover .math-edit,
-.math-node:focus-within .math-edit { opacity: 1; }
+.math-controls button {
+  min-height: 28px;
+  padding: 2px 7px;
+  color: var(--accent);
+}
+.math-node:hover .math-controls,
+.math-node:focus-within .math-controls { visibility: visible; }
 .math-node math-field { color: var(--math-color, inherit); font-size: var(--math-size, 1em); }
 .mp-editor [data-educational-style] .math-node math-field {
   color: var(--math-color, var(--educational-math-color));
   font-size: var(--math-size, var(--educational-math-scale));
 }
-.preview-paper .math-edit { display: none; }
+.preview-paper .math-controls { display: none; }
 .math-templates { flex-wrap: wrap; padding-top: 6px; max-width: 920px; }
 .math-template { display: flex; }
 .math-template button[aria-pressed="true"] { color: #77380c; background: #f8e7bd; }
 @media (pointer: coarse) {
-  .math-edit { opacity: 1; }
+  .math-controls button { min-height: 44px; min-width: 44px; }
+  .editor-source .math-inline math-field { padding-block: 3px; margin-block: -3px; }
 }
 
 .mp-editor {

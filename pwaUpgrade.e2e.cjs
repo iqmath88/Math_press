@@ -6,6 +6,7 @@ const { setTimeout: delay } = require("node:timers/promises");
 const { chromium } = require("playwright-core");
 
 const baseline = process.env.MATHPRESS_BASELINE_DIST;
+const baselineVersion = process.env.MATHPRESS_BASELINE_VERSION || "0.4.0";
 const candidate = path.resolve(process.env.MATHPRESS_CANDIDATE_DIST || "dist");
 const nextVersion = "v" + require("./package.json").version;
 const prefix = "/Math_press/";
@@ -31,7 +32,7 @@ async function waitUntil(predicate, error) {
 async function run() {
   if (!baseline)
     throw new Error(
-      "Set MATHPRESS_BASELINE_DIST to the built 0.4.0 dist directory",
+      `Set MATHPRESS_BASELINE_DIST to the built ${baselineVersion} dist directory`,
     );
   let current = path.resolve(baseline);
   const server = createServer(async (request, response) => {
@@ -86,7 +87,7 @@ async function run() {
         version,
       );
     await page.goto(base);
-    await waitVersion("v0.4.0");
+    await waitVersion("v" + baselineVersion);
     await page.waitForFunction(() =>
       Boolean(navigator.serviceWorker.controller),
     );
