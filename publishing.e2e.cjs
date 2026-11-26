@@ -58,6 +58,16 @@ const { randomUUID } = require("node:crypto");
       .evaluateAll((nodes) => nodes.map((n) => n.value));
     assert.ok(values.some((value) => value.includes("sqrt")));
     await page.getByRole("tab", { name: "أنماط", exact: true }).click();
+    await page.getByRole("button", { name: "خطوات الحل", exact: true }).click();
+    const steps = page.locator(".mp-editor ol").last();
+    await steps.locator("li").first().click();
+    await page.keyboard.insertText("Solution step one");
+    await page.keyboard.press("Enter");
+    await page.keyboard.insertText("Solution step two");
+    assert.deepEqual(await steps.locator("li").allTextContents(), [
+      "Solution step one",
+      "Solution step two",
+    ]);
     await page.getByLabel("إدراج قالب تعليمي").selectOption("exercise");
     await page.getByLabel("رقم البداية").fill("7");
     await page.getByRole("button", { name: "إعادة الترقيم" }).click();
@@ -90,7 +100,7 @@ const { randomUUID } = require("node:crypto");
     });
     assert.match(
       cp.execFileSync("pdftotext", [styledFile, "-"], { encoding: "utf8" }),
-      /[a-zA-Z]/,
+      /Solution step two/,
     );
     await styledPreview.getByRole("button", { name: "العودة للتحرير" }).click();
     await page.getByRole("tab", { name: "ملف" }).click();

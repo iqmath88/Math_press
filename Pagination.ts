@@ -135,7 +135,7 @@ export const Pagination = Extension.create({
   addProseMirrorPlugins() {
     const ext = this;
 
-    const measure = (view: EditorView) => {
+    const measure = (view: EditorView, measurements: WeakMap<HTMLElement, { node: PMNode; item: PageItem }>) => {
       if (!view.dom.isConnected) return;
       const layout: PageLayout = { ...ext.storage.layout };
       const usable = (layout.pageHeightMm - layout.marginTopMm - layout.marginBottomMm) * PX_PER_MM;
@@ -144,16 +144,27 @@ export const Pagination = Extension.create({
       const items: PageItem[] = [];
       const positions: number[] = [];
       doc.forEach((node, offset) => {
-        const dom = view.nodeDOM(offset) as HTMLElement | null;
+        const dom = view.nodeDOM(offset);
         const isBreak = node.type.name === "pageBreak";
-        const height = isBreak || !dom ? 0 : dom.getBoundingClientRect().height / zoom;
-        const placement = dom?.matches("[data-educational-style], [data-paragraph-format]") ? getComputedStyle(dom) : null;
-        items.push({
+        positions.push(offset);
+        if (!(dom instanceof HTMLElement)) {
+          items.push({ height: 0, breakAfter: isBreak });
+          return;
+        }
+        const previous = measurements.get(dom);
+        if (previous?.node === node) {
+          items.push(previous.item);
+          return;
+        }
+        const height = isBreak ? 0 : dom.getBoundingClientRect().height / zoom;
+        const placement = dom.matches("[data-educational-style], [data-paragraph-format]") ? getComputedStyle(dom) : null;
+        const item = {
           height, breakAfter: isBreak,
           breakBefore: placement?.getPropertyValue("--break-before").trim() === "1",
           keepWithNext: placement?.getPropertyValue("--keep-with-next").trim() === "1"
-        });
-        positions.push(offset);
+        };
+        measurements.set(dom, { node, item });
+        items.push(item);
       });
       const result = computeBreaks(items, usable);
       const footer = String(ext.storage.footerText ?? "");
@@ -193,14 +204,22 @@ export const Pagination = Extension.create({
           let destroyed = false;
           let observedDoc: PMNode | null = null;
           let observedBlocks = new Set<HTMLElement>();
+          let measurements = new WeakMap<HTMLElement, { node: PMNode; item: PageItem }>();
           const schedule = () => {
             if (raf || destroyed) return;
             raf = requestAnimationFrame(() => {
               raf = 0;
-              measure(editorView);
+              measure(editorView, measurements);
             });
           };
-          const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(schedule) : null;
+          const refresh = () => {
+            measurements = new WeakMap();
+            schedule();
+          };
+          const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(entries => {
+            for (const entry of entries) measurements.delete(entry.target as HTMLElement);
+            schedule();
+          }) : null;
           const observe = () => {
             if (!ro || observedDoc === editorView.state.doc) return;
             observedDoc = editorView.state.doc;
@@ -214,14 +233,15 @@ export const Pagination = Extension.create({
             for (const dom of observedBlocks) if (!next.has(dom)) ro.unobserve(dom);
             observedBlocks = next;
           };
-          if (typeof document !== "undefined" && document.fonts?.ready) void document.fonts.ready.then(schedule);
+          if (typeof document !== "undefined" && document.fonts?.ready) void document.fonts.ready.then(refresh);
           observe();
           schedule();
           return {
             update(view, previous) {
               observe();
               const state = view.state;
-              if (state.doc !== previous.doc || !paginationKey.getState(state)?.sig) schedule();
+              if (state.doc === previous.doc && !paginationKey.getState(state)?.sig) refresh();
+              if (state.doc !== previous.doc) schedule();
             },
             destroy() {
               destroyed = true;

@@ -26,6 +26,16 @@ export default function EducationalInsert({ editor, numberStart, onNumberStart }
     }));
     editor.chain().focus().insertContent(blocks).run();
   };
+  const startSolution = () => {
+    editor.chain().focus().insertContent({
+      type: "orderedList",
+      attrs: { dir: "rtl" },
+      content: [{
+        type: "listItem",
+        content: [{ type: "paragraph" }]
+      }]
+    }).run();
+  };
   return (
     <section className="rb-group" aria-label="الإدراج التعليمي">
       <div className="rb-line">
@@ -34,6 +44,7 @@ export default function EducationalInsert({ editor, numberStart, onNumberStart }
           <option value="" disabled>إدراج قالب…</option>
           {Object.entries(templates).map(([id, { label }]) => <option key={id} value={id}>{label}</option>)}
         </select>
+        <button type="button" onClick={startSolution}>خطوات الحل</button>
         <label>رقم البداية <input className="numbering-start" type="number" min={1} max={9999}
           value={start} onChange={e => setStart(e.target.value)} /></label>
         <button type="button" disabled={!valid} onClick={() => onNumberStart(initial)}>إعادة الترقيم</button>
