@@ -104,15 +104,16 @@ const assert = require("node:assert/strict");
     const insertTab = page.getByRole("tab", { name: "إدراج", exact: true });
     if ((await insertTab.getAttribute("aria-selected")) !== "true")
       await insertTab.click();
-    await page.locator('input[accept="image/*"]').setInputFiles({
-      name: "pixel.gif",
-      mimeType: "image/gif",
-      buffer: Buffer.from(
-        "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-        "base64",
-      ),
-    });
-    await body.locator("img").waitFor();
+    await body.locator(":scope > p").last().click();
+    const imageChooser = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "إدراج صورة", exact: true }).click();
+    await (await imageChooser).setFiles(path.join(__dirname, "icon-192.png"));
+    const image = body.locator('img[alt="icon-192.png"]');
+    await image.waitFor();
+    assert.equal(await image.evaluate(async (element) => {
+      await element.decode();
+      return element.naturalWidth;
+    }), 192);
     await page.getByRole("tab", { name: "الصفحة" }).click();
     await page
       .getByRole("button", { name: "هوامش مخصصة، الرأس والتذييل، الترقيم" })

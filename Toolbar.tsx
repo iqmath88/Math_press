@@ -141,7 +141,8 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
   const pickImage = async (file?: File) => {
     if (!file) return;
     try {
-      chain().setImage({ src: await fileToDataUrl(file), alt: file.name }).run();
+      const src = await fileToDataUrl(file);
+      if (!editor.isDestroyed) chain().setImage({ src, alt: file.name }).run();
     } catch (e) {
       onError(e instanceof Error ? e.message : "تعذر إدراج الصورة");
     }
