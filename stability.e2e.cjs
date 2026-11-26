@@ -22,7 +22,8 @@ async function importDoc(page, content) {
     })),
   });
   await page.waitForFunction(() =>
-    document.querySelector(".document-title-input")?.value === "Stability fixture");
+    document.querySelector(".document-title-input")?.value === "Stability fixture" &&
+    !!document.querySelector(".editor-source .mp-editor")?.editor);
 }
 
 async function checkFocus(page, touch) {
@@ -30,6 +31,7 @@ async function checkFocus(page, touch) {
     text("قبل "), math(String.raw`\frac{a}{b}`), math(String.raw`\sqrt{x}`),
     math(String.raw`\begin{bmatrix}a&b\\c&d\end{bmatrix}`), text(" بعد"),
   ], {dir})));
+  await page.locator('.editor-source p[dir="ltr"] math-field').last().waitFor();
   if (mode === "history") await page.evaluate(() => {
     const editor = document.querySelector(".editor-source .mp-editor").editor;
     editor.on("transaction", ({ transaction }) => {
