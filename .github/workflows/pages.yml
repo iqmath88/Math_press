@@ -31,6 +31,8 @@ jobs:
           npx playwright-core install --with-deps chromium webkit
           sudo apt-get install -y poppler-utils
       - name: Test editing and PDF publishing
+        env:
+          MATHPRESS_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           npm run preview -- --host 127.0.0.1 --port 4174 --strictPort &
           preview=$!
@@ -41,7 +43,7 @@ jobs:
           done
           mkdir -p "$RUNNER_TEMP/print-compatibility"
           export MATHPRESS_QA_OUTPUT="$RUNNER_TEMP/print-compatibility"
-          if [ "${{ github.head_ref || github.ref_name }}" = "feature/v0.6.0-math-authoring-studio" ]; then
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-math-authoring-studio" ]; then
             node stability.e2e.cjs webkit history
           fi
           npm run test:e2e
