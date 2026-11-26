@@ -51,7 +51,7 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
       if (!element) return;
       const source = editor.view.dom;
       const images = [...source.querySelectorAll("img")].filter(image =>
-        !image.closest(".no-print, .graph-box, math-field"));
+        !image.closest(".no-print, .graph-box, .ProseMirror-separator, math-field"));
       const graph = source.querySelector(".graph-node");
       const [, ...resourceResults] = await Promise.allSettled([
         document.fonts.ready,

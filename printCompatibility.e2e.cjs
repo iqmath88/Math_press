@@ -72,7 +72,7 @@ async function run() {
       assert.deepEqual(await preview.locator(".print-issues li").allTextContents(), [],
         JSON.stringify(await page.evaluate(() => ({
           fonts: [...document.fonts].filter(font => font.status === "error").map(font => font.family),
-          images: [...document.querySelectorAll(".editor-source img")].map(img => img.getAttribute("src")?.slice(0, 80)),
+          images: [...document.querySelectorAll(".editor-source img")].map(img => img.outerHTML.slice(0, 120)),
         }))));
       const sheets = page.locator(".print-sheet");
       const pages = await sheets.count();
