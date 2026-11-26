@@ -98,8 +98,16 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         const wrapper = view.nodeDOM(forward ? $from.pos : $from.pos - neighbor.nodeSize);
         const field = wrapper instanceof Element ? wrapper.querySelector<MathfieldElement>("math-field") : null;
         if (!field) return false;
-        field.focus();
         field.position = right ? 0 : field.lastOffset;
+        let attempts = 0;
+        const focusField = () => {
+          if (document.activeElement === field || !field.isConnected ||
+            !view.hasFocus() || !view.state.selection.eq(selection)) return;
+          field.focus();
+          // MathLive can defer focus while its virtual keyboard is closing.
+          if (++attempts < 7) setTimeout(focusField, 50);
+        };
+        focusField();
         return true;
       };
       return { ArrowLeft: () => enter(false), ArrowRight: () => enter(true) };
