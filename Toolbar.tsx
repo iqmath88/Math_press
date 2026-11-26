@@ -41,12 +41,17 @@ type Props = {
   page: PageSettings;
   actions: RibbonActions;
   onOpenLatex: () => void;
+  onSearch?: () => void;
+  educationalTools?: ReactNode;
+  viewTools?: ReactNode;
+  paragraphTools?: ReactNode;
+  mathTools?: ReactNode;
   /** بلا وسيط: رسم جديد. مع موضع: تعديل الرسم الموجود. */
   onGraph: (pos?: number) => void;
   onError: (message: string) => void;
 };
 
-type TabId = "file" | "home" | "insert" | "layout" | "ctx";
+type TabId = "file" | "home" | "insert" | "layout" | "styles" | "view" | "math" | "ctx";
 type CtxId = "graph" | "table" | "image" | "columns";
 const CTX_LABEL: Record<CtxId, string> = { graph: "الرسم", table: "الجدول", image: "الصورة", columns: "الأعمدة" };
 
@@ -94,7 +99,7 @@ function Group(props: { title: string; children: ReactNode; rows?: boolean }) {
 
 const Row = ({ children }: { children: ReactNode }) => <div className="rb-line">{children}</div>;
 
-export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, onError }: Props) {
+export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, educationalTools, viewTools, paragraphTools, mathTools, onGraph, onError }: Props) {
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [tab, setTab] = useState<TabId>("home");
   const [collapsed, setCollapsed] = useState(false);
@@ -136,7 +141,8 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, o
   const pickImage = async (file?: File) => {
     if (!file) return;
     try {
-      chain().setImage({ src: await fileToDataUrl(file), alt: file.name }).run();
+      const src = await fileToDataUrl(file);
+      if (!editor.isDestroyed) chain().setImage({ src, alt: file.name }).run();
     } catch (e) {
       onError(e instanceof Error ? e.message : "تعذر إدراج الصورة");
     }
@@ -149,7 +155,10 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, o
     { id: "file", label: "ملف" },
     { id: "home", label: "الرئيسية" },
     { id: "insert", label: "إدراج" },
+    ...(mathTools ? [{ id: "math" as const, label: "رياضيات" }] : []),
+    ...(educationalTools ? [{ id: "styles" as const, label: "أنماط" }] : []),
     { id: "layout", label: "الصفحة" },
+    ...(viewTools ? [{ id: "view" as const, label: "عرض" }] : []),
     ...(ctx ? [{ id: "ctx" as TabId, label: CTX_LABEL[ctx], ctx: true }] : [])
   ];
 
@@ -160,6 +169,10 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, o
 
   return (
     <div className="ribbon no-print">
+      <input
+        ref={fileRef} className="visually-hidden" type="file" accept="image/*"
+        onChange={e => { void pickImage(e.target.files?.[0]); e.target.value = ""; }}
+      />
       <div className="rb-strip">
         <div className="rb-tabs" role="tablist" aria-label="الأقسام">
           {tabs.map(t => (
@@ -205,7 +218,14 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, o
             </Group>
           </>)}
 
+          {tab === "styles" && educationalTools}
+          {tab === "view" && viewTools}
+          {tab === "math" && mathTools}
           {tab === "home" && (<>
+            {paragraphTools}
+            {onSearch && <Group title="تحرير">
+              <Btn label="بحث واستبدال" wide onClick={onSearch}>بحث واستبدال</Btn>
+            </Group>}
             <Group title="الخط" rows>
               <Row>
                 <select
@@ -279,21 +299,18 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onGraph, o
           </>)}
 
           {tab === "insert" && (<>
-            <Group title="معادلات">
+            {!mathTools && <Group title="معادلات">
               <Big label="معادلة داخل السطر" text="سطرية" onClick={() => chain().insertMathInline().run()}><Sigma size={24} /></Big>
               <Big label="معادلة في سطر مستقل" text="كتلة" onClick={() => chain().insertMathBlock().run()}><Sigma size={24} /></Big>
               <Big label="إدراج معادلة من مصدر LaTeX" text="من LaTeX" onClick={onOpenLatex}><Code2 size={24} /></Big>
-            </Group>
+            </Group>}
             <Group title="رسوم">
               <Big label="رسم بياني أو هندسي" text="رسم" onClick={() => onGraph()}><LineChart size={24} /></Big>
             </Group>
             <Group title="جداول وصور">
               <Big label="إدراج جدول 3×3" text="جدول" onClick={() => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}><TableIcon size={24} /></Big>
               <Big label="إدراج صورة" text="صورة" onClick={() => fileRef.current?.click()}><ImagePlus size={24} /></Big>
-              <input
-                ref={fileRef} className="visually-hidden" type="file" accept="image/*"
-                onChange={e => { void pickImage(e.target.files?.[0]); e.target.value = ""; }}
-              />
+
             </Group>
             <Group title="تخطيط">
               <Big label="كتلة بعمودين" text="عمودان" onClick={() => chain().insertColumns().run()}><Columns2 size={24} /></Big>

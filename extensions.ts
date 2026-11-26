@@ -18,6 +18,9 @@ import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import { MathBlock, MathInline } from "./MathNodes";
 import { Pagination } from "./Pagination";
+import { DocumentSearch } from "./DocumentSearch";
+import { ParagraphFormatAttributes } from "./ParagraphFormat";
+import { EducationalStyleAttributes } from "./educationalStyles";
 import { GraphNode } from "./GraphNode";
 
 declare module "@tiptap/core" {
@@ -214,6 +217,9 @@ export function buildExtensions() {
     Column,
     PageBreak,
     TrailingParagraph,
+    DocumentSearch,
+    EducationalStyleAttributes,
+    ParagraphFormatAttributes,
     // extend() ينشئ نسخة جديدة؛ فيملك كل محرر تخزينه الخاص (إعدادات الصفحة وعدد الصفحات) ولا تتسرب بين المستندات.
     Pagination.extend({})
   ];

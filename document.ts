@@ -1,6 +1,8 @@
 import type { JSONContent } from "@tiptap/core";
 import type { MathPressDocument, PageSettings } from "./types";
 
+import { readEducationalStyles } from "./educationalStyles";
+
 export const DEFAULT_PAGE: PageSettings = {
   size: "A4",
   orientation: "portrait",
@@ -115,6 +117,9 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
     footerText: typeof d.footerText === "string" ? d.footerText : "",
     showPageNumbers: d.showPageNumbers !== false,
     background: typeof d.background === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(d.background) ? d.background : null,
+    ...(typeof d.numberingStart === "number" && Number.isInteger(d.numberingStart) && d.numberingStart >= 1 && d.numberingStart <= 9999
+      ? { numberingStart: d.numberingStart } : {}),
+    ...(d.educationalStyles === undefined ? {} : { educationalStyles: readEducationalStyles(d.educationalStyles) }),
     content: d.content,
     updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : new Date().toISOString()
   };

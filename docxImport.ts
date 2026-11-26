@@ -2,6 +2,58 @@ import JSZip from "jszip";
 import type { JSONContent } from "@tiptap/core";
 import { ommlToLatex } from "./omml";
 
+const MAX_ARCHIVE_SIZE = 32 * 1024 * 1024;
+const MAX_PART_SIZE = 16 * 1024 * 1024;
+const MAX_INFLATED_SIZE = 96 * 1024 * 1024;
+const archiveBytes = new WeakMap<JSZip, number>();
+
+type ZipByteStream = {
+  on(event: "data", listener: (chunk: Uint8Array) => void): void;
+  on(event: "error", listener: (error: Error) => void): void;
+  on(event: "end", listener: () => void): void;
+  resume(): void;
+  pause(): void;
+};
+
+function readPart(zip: JSZip, file: JSZip.JSZipObject, kind: "text" | "base64"): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // JSZip documents internalStream for browsers, but its bundled declarations omit it.
+    const streamed = file as JSZip.JSZipObject & { internalStream(type: "uint8array"): ZipByteStream };
+    const stream = streamed.internalStream("uint8array");
+    const parts: Uint8Array[] = [];
+    let bytes = 0;
+    stream.on("data", chunk => {
+      bytes += chunk.byteLength;
+      const total = (archiveBytes.get(zip) ?? 0) + chunk.byteLength;
+      if (bytes > MAX_PART_SIZE || total > MAX_INFLATED_SIZE) {
+        stream.pause();
+        reject(new Error("يتجاوز الحجم بعد فك ضغط ملف Word حدود الاستيراد."));
+        return;
+      }
+      archiveBytes.set(zip, total);
+      parts.push(chunk);
+    });
+    stream.on("error", reject);
+    stream.on("end", () => {
+      const buffer = new Uint8Array(bytes);
+      let offset = 0;
+      for (const part of parts) { buffer.set(part, offset); offset += part.byteLength; }
+      if (kind === "text") {
+        // TextDecoder handles UTF-8 and UTF-16 BOMs used by some Word producers.
+        const encoding = buffer[0] === 0xff && buffer[1] === 0xfe ? "utf-16le"
+          : buffer[0] === 0xfe && buffer[1] === 0xff ? "utf-16be" : "utf-8";
+        resolve(new TextDecoder(encoding).decode(buffer));
+      } else {
+        const segments: string[] = [];
+        for (let i = 0; i < buffer.length; i += 0x8000)
+          segments.push(String.fromCharCode(...buffer.subarray(i, i + 0x8000)));
+        resolve(btoa(segments.join("")));
+      }
+    });
+    stream.resume();
+  });
+}
+
 const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const M = "http://schemas.openxmlformats.org/officeDocument/2006/math";
 const R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -55,6 +107,7 @@ const HIGHLIGHT: Record<string, string> = {
 };
 
 function parseXml(text: string): Document {
+  if (/<!DOCTYPE/i.test(text)) throw new Error("ملف Word يحتوي تعريف XML غير مدعوم.");
   const doc = new DOMParser().parseFromString(text, "application/xml");
   if (doc.getElementsByTagName("parsererror").length) throw new Error("ملف Word تالف أو غير مدعوم (تعذّر قراءة XML).");
   return doc;
@@ -62,7 +115,7 @@ function parseXml(text: string): Document {
 
 async function readXml(zip: JSZip, path: string): Promise<Document | null> {
   const f = zip.file(path);
-  return f ? parseXml(await f.async("string")) : null;
+  return f ? parseXml(await readPart(zip, f, "text")) : null;
 }
 
 function snapSize(pt: number): number {
@@ -134,7 +187,7 @@ function loadImage(ctx: Ctx, relId: string): Promise<string | null> {
     }
     const f = ctx.zip.file(path);
     if (!f) return null;
-    return `data:${MIME[ext]};base64,${await f.async("base64")}`;
+    return `data:${MIME[ext]};base64,${await readPart(ctx.zip, f, "base64")}`;
   })();
   ctx.images.set(relId, p);
   return p;
@@ -478,10 +531,9 @@ function readPage(body: Element): ImportResult["page"] {
     const v = Number(mar?.getAttributeNS(W, name));
     return Number.isFinite(v) && v > 0 ? Math.min(40, Math.max(5, Math.round(v / 56.7))) : dflt;
   };
-  const side = Math.round((mm("left", 18) + mm("right", 18)) / 2);
   return {
     orientation: landscape ? "landscape" : "portrait",
-    marginsMm: { top: mm("top", 20), bottom: mm("bottom", 20), left: side, right: side }
+    marginsMm: { top: mm("top", 20), bottom: mm("bottom", 20), left: mm("left", 18), right: mm("right", 18) }
   };
 }
 
@@ -489,11 +541,11 @@ function readPage(body: Element): ImportResult["page"] {
 async function readBackground(zip: JSZip): Promise<string | null> {
   let best: { area: number; dataUrl: string } | null = null;
   for (const hf of zip.file(/^word\/header\d*\.xml$/)) {
-    const xml = new DOMParser().parseFromString(await hf.async("string"), "application/xml");
+    const xml = parseXml(await readPart(zip, hf, "text"));
     const relFile = zip.file(hf.name.replace("word/", "word/_rels/") + ".rels");
     if (!relFile) continue;
     const rels = new Map<string, string>();
-    for (const r of Array.from(new DOMParser().parseFromString(await relFile.async("string"), "application/xml").getElementsByTagName("Relationship"))) {
+    for (const r of Array.from(parseXml(await readPart(zip, relFile, "text")).getElementsByTagName("Relationship"))) {
       const id = r.getAttribute("Id"), t = r.getAttribute("Target");
       if (id && t) rels.set(id, t);
     }
@@ -513,7 +565,7 @@ async function readBackground(zip: JSZip): Promise<string | null> {
       const mime = ext2 === "png" ? "image/png" : ext2 === "jpg" || ext2 === "jpeg" ? "image/jpeg" : ext2 === "webp" ? "image/webp" : null;
       const f = zip.file(path);
       if (!mime || !f) continue;
-      best = { area, dataUrl: `data:${mime};base64,${await f.async("base64")}` };
+      best = { area, dataUrl: `data:${mime};base64,${await readPart(zip, f, "base64")}` };
     }
   }
   return best?.dataUrl ?? null;
@@ -521,8 +573,10 @@ async function readBackground(zip: JSZip): Promise<string | null> {
 
 /** يقرأ ملف .docx ويحوّله إلى محتوى المحرر (مع المعادلات) وتقرير بما تعذّر تحويله. */
 export async function importDocx(buffer: ArrayBuffer): Promise<ImportResult> {
+  if (buffer.byteLength > MAX_ARCHIVE_SIZE) throw new Error("ملف Word أكبر من 32 ميغابايت.");
   let zip: JSZip;
   try { zip = await JSZip.loadAsync(buffer); } catch { throw new Error("الملف ليس بصيغة .docx صالحة (ملفات .doc القديمة غير مدعومة، احفظها من Word بصيغة docx)."); }
+  if (Object.keys(zip.files).length > 5000) throw new Error("يحوي ملف Word عددًا كبيرًا من الأجزاء.");
   const docXml = await readXml(zip, "word/document.xml");
   if (!docXml) throw new Error("لم أجد محتوى المستند داخل الملف (word/document.xml).");
 
@@ -553,7 +607,8 @@ export async function importDocx(buffer: ArrayBuffer): Promise<ImportResult> {
       `${ctx.stats.mathType} معادلة بصيغة MathType لم تُحوَّل (وُضعت مكانها علامة [معادلة MathType]). في Word: من تبويب MathType اختر «Convert Equations» وحوّلها إلى «Office Math»، ثم احفظ الملف وأعد استيراده.`
     );
   }
-  if (zip.file("word/footnotes.xml") && /<w:footnote\s[^>]*w:id="[1-9]/.test(await zip.file("word/footnotes.xml")!.async("string"))) {
+  const footnotes = zip.file("word/footnotes.xml");
+  if (footnotes && /<w:footnote\s[^>]*w:id="[1-9]/.test(await readPart(zip, footnotes, "text"))) {
     ctx.warnings.add("الحواشي السفلية لم تُستورد.");
   }
   if (Array.from(zip.file(/word\/(header|footer)\d*\.xml$/)).length) {

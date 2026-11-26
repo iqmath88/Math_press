@@ -118,6 +118,7 @@ export const Pagination = Extension.create({
         showPageNumbers: true
       } as PageLayout,
       pages: 1,
+      pageStarts: [] as number[],
       onPages: null as ((pages: number) => void) | null
     };
   },
@@ -134,19 +135,36 @@ export const Pagination = Extension.create({
   addProseMirrorPlugins() {
     const ext = this;
 
-    const measure = (view: EditorView) => {
+    const measure = (view: EditorView, measurements: WeakMap<HTMLElement, { node: PMNode; item: PageItem }>) => {
       if (!view.dom.isConnected) return;
       const layout: PageLayout = { ...ext.storage.layout };
       const usable = (layout.pageHeightMm - layout.marginTopMm - layout.marginBottomMm) * PX_PER_MM;
       const { doc } = view.state;
+      const zoom = Number(getComputedStyle(view.dom).getPropertyValue("--editor-zoom")) || 1;
       const items: PageItem[] = [];
       const positions: number[] = [];
       doc.forEach((node, offset) => {
-        const dom = view.nodeDOM(offset) as HTMLElement | null;
+        const dom = view.nodeDOM(offset);
         const isBreak = node.type.name === "pageBreak";
-        const height = isBreak || !dom ? 0 : dom.getBoundingClientRect().height;
-        items.push({ height, breakAfter: isBreak });
         positions.push(offset);
+        if (!(dom instanceof HTMLElement)) {
+          items.push({ height: 0, breakAfter: isBreak });
+          return;
+        }
+        const previous = measurements.get(dom);
+        if (previous?.node === node) {
+          items.push(previous.item);
+          return;
+        }
+        const height = isBreak ? 0 : dom.getBoundingClientRect().height / zoom;
+        const placement = dom.matches("[data-educational-style], [data-paragraph-format]") ? getComputedStyle(dom) : null;
+        const item = {
+          height, breakAfter: isBreak,
+          breakBefore: placement?.getPropertyValue("--break-before").trim() === "1",
+          keepWithNext: placement?.getPropertyValue("--keep-with-next").trim() === "1"
+        };
+        measurements.set(dom, { node, item });
+        items.push(item);
       });
       const result = computeBreaks(items, usable);
       const footer = String(ext.storage.footerText ?? "");
@@ -159,6 +177,7 @@ export const Pagination = Extension.create({
       ]);
       const current = paginationKey.getState(view.state);
       ext.storage.pages = result.pages;
+      ext.storage.pageStarts = result.breaks.map(b => positions[b.index]);
       if (current && current.sig === sig) return;
       view.dispatch(view.state.tr.setMeta(paginationKey, { result, positions, sig, footer, layout }).setMeta("addToHistory", false));
       ext.storage.onPages?.(result.pages);
@@ -182,31 +201,50 @@ export const Pagination = Extension.create({
         },
         view(editorView) {
           let raf = 0;
+          let destroyed = false;
+          let observedDoc: PMNode | null = null;
+          let observedBlocks = new Set<HTMLElement>();
+          let measurements = new WeakMap<HTMLElement, { node: PMNode; item: PageItem }>();
           const schedule = () => {
-            if (raf) return;
+            if (raf || destroyed) return;
             raf = requestAnimationFrame(() => {
               raf = 0;
-              measure(editorView);
+              measure(editorView, measurements);
             });
           };
-          const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(schedule) : null;
+          const refresh = () => {
+            measurements = new WeakMap();
+            schedule();
+          };
+          const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(entries => {
+            for (const entry of entries) measurements.delete(entry.target as HTMLElement);
+            schedule();
+          }) : null;
           const observe = () => {
-            if (!ro) return;
-            ro.disconnect();
-            editorView.state.doc.forEach((_node, offset) => {
+            if (!ro || observedDoc === editorView.state.doc) return;
+            observedDoc = editorView.state.doc;
+            const next = new Set<HTMLElement>();
+            observedDoc.forEach((_node, offset) => {
               const dom = editorView.nodeDOM(offset);
-              if (dom instanceof HTMLElement) ro.observe(dom);
+              if (!(dom instanceof HTMLElement)) return;
+              next.add(dom);
+              if (!observedBlocks.has(dom)) ro.observe(dom);
             });
+            for (const dom of observedBlocks) if (!next.has(dom)) ro.unobserve(dom);
+            observedBlocks = next;
           };
-          if (typeof document !== "undefined" && document.fonts?.ready) void document.fonts.ready.then(schedule);
+          if (typeof document !== "undefined" && document.fonts?.ready) void document.fonts.ready.then(refresh);
           observe();
           schedule();
           return {
-            update() {
+            update(view, previous) {
               observe();
-              schedule();
+              const state = view.state;
+              if (state.doc === previous.doc && !paginationKey.getState(state)?.sig) refresh();
+              if (state.doc !== previous.doc) schedule();
             },
             destroy() {
+              destroyed = true;
               if (raf) cancelAnimationFrame(raf);
               ro?.disconnect();
             }

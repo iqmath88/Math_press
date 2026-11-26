@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JSONContent } from "@tiptap/core";
 import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw } from "lucide-react";
+import type { EducationalStyle } from "./educationalStyles";
 import type { MathPressDocument } from "./types";
 import { createDocument, parseDocument } from "./document";
-import { deleteDocument, loadDocuments, saveDocument } from "./storage";
+import { deleteDocument, loadLibrary, saveDocument } from "./storage";
 import DocumentEditor from "./Editor";
 import PageSettingsDialog from "./PageSettingsDialog";
+import { MAX_IMPORT_BYTES, validateImportedContent } from "./importValidation";
 import type { ImportResult } from "./docxImport";
 
 const VERSION = import.meta.env.VITE_APP_VERSION;
@@ -28,6 +30,11 @@ function downloadBlob(blob: Blob, filename: string) {
 export default function App() {
   const [doc, setDoc] = useState<MathPressDocument>(() => createDocument());
   const [savedDocs, setSavedDocs] = useState<MathPressDocument[]>([]);
+  const [migrationBackups, setMigrationBackups] = useState<Map<string, unknown>>(() => new Map());
+  const [editorRevision, setEditorRevision] = useState(0);
+  const latest = useRef(doc);
+  latest.current = doc;
+  const queue = useRef({ snapshot: null as MathPressDocument | null, tail: Promise.resolve() });
   const [saveState, setSaveState] = useState<SaveState>("saving");
   const [notice, setNotice] = useState(`مرحبًا بك في MathPress v${VERSION}`);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -37,34 +44,64 @@ export default function App() {
   const [report, setReport] = useState<{ title: string; result: ImportResult } | null>(null);
 
   const refreshLibrary = useCallback(async () => {
-    try { setSavedDocs(await loadDocuments()); } catch { /* قد يكون التخزين غير متاح في التصفح الخاص */ }
+    try {
+      const library = await loadLibrary();
+      setSavedDocs(library.documents);
+      setMigrationBackups(library.backups);
+    } catch { /* قد يكون التخزين غير متاح في التصفح الخاص */ }
   }, []);
   useEffect(() => { void refreshLibrary(); }, [refreshLibrary]);
 
-  useEffect(() => {
-    setSaveState("saving");
-    const timer = window.setTimeout(async () => {
+  const persist = useCallback((snapshot: MathPressDocument) => {
+    const state = queue.current;
+    if (state.snapshot === snapshot) return;
+    state.snapshot = snapshot;
+    state.tail = state.tail.then(async () => {
       try {
-        await saveDocument(doc);
-        setSaveState("saved");
+        await saveDocument(snapshot);
+        if (latest.current === snapshot) setSaveState("saved");
         void refreshLibrary();
       } catch {
-        setSaveState("error");
-        setNotice("تعذر الحفظ المحلي. صدّر نسخة احتياطية قبل متابعة العمل.");
+        if (state.snapshot === snapshot) state.snapshot = null;
+        if (latest.current === snapshot) setSaveState("error");
+        setNotice(`تعذر حفظ «${snapshot.title}» محليًا. صدّر نسخة احتياطية قبل إغلاقه.`);
       }
-    }, 650);
-    return () => window.clearTimeout(timer);
-  }, [doc, refreshLibrary]);
+    });
+  }, [refreshLibrary]);
 
   useEffect(() => {
+    setSaveState("saving");
+    const timer = window.setTimeout(() => persist(doc), 650);
+    return () => window.clearTimeout(timer);
+  }, [doc, persist]);
+
+  useEffect(() => {
+    const flush = () => persist(latest.current);
+    const hide = () => { if (document.visibilityState === "hidden") flush(); };
     const warn = (e: BeforeUnloadEvent) => {
-      if (saveState !== "saved") { e.preventDefault(); e.returnValue = ""; }
+      if (saveState !== "saved") { flush(); e.preventDefault(); e.returnValue = ""; }
     };
+    document.addEventListener("visibilitychange", hide);
+    window.addEventListener("pagehide", flush);
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [saveState]);
+    return () => {
+      document.removeEventListener("visibilitychange", hide);
+      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", warn);
+    };
+  }, [persist, saveState]);
+
+  const replaceDocument = (next: MathPressDocument) => {
+    persist(latest.current);
+    setDoc(next);
+    setEditorRevision(value => value + 1);
+  };
 
   const onContent = useCallback((content: JSONContent) => setDoc(old => ({ ...old, content })), []);
+  const onStyles = useCallback((educationalStyles: EducationalStyle[]) => {
+    setDoc(old => ({ ...old, educationalStyles }));
+  }, []);
+  const onNumberStart = useCallback((numberingStart: number) => setDoc(old => ({ ...old, numberingStart })), []);
   const onPageCount = useCallback((n: number) => setPages(n), []);
 
   const exportMathDoc = () => {
@@ -76,9 +113,12 @@ export default function App() {
   const openMathDoc = async (file?: File) => {
     if (!file) return;
     try {
+      if (file.size > MAX_IMPORT_BYTES) throw new Error("ملف المستند أكبر من 32 ميغابايت.");
       const parsed = parseDocument(JSON.parse(await file.text()));
-      if (!parsed) throw new Error("صيغة المستند غير معروفة أو غير مكتملة.");
-      setDoc(parsed);
+      const content = parsed && validateImportedContent(parsed.content);
+      if (!parsed || !content) throw new Error("صيغة المستند غير معروفة أو غير مكتملة.");
+      // Opening a backup must not overwrite the current local editing copy.
+      replaceDocument({ ...parsed, id: crypto.randomUUID(), content });
       setNotice("تم فتح المستند بنجاح.");
       setShowLibrary(false);
     } catch (error) {
@@ -91,13 +131,14 @@ export default function App() {
     setImporting(true);
     setNotice(`جارٍ استيراد «${file.name}»…`);
     try {
+      if (file.size > MAX_IMPORT_BYTES) throw new Error("ملف Word أكبر من 32 ميغابايت.");
       const { importDocx } = await import("./docxImport");
       const result = await importDocx(await file.arrayBuffer());
       const title = file.name.replace(/\.docx$/i, "") || "مستند مستورد";
       const fresh = createDocument(title);
       const { scaleDataUrl } = await import("./imageUtil");
       const background = result.background ? await scaleDataUrl(result.background, 2000) : null;
-      setDoc({
+      replaceDocument({
         ...fresh,
         background,
         showPageNumbers: background ? false : fresh.showPageNumbers,
@@ -139,9 +180,14 @@ export default function App() {
         <div className="panel-heading"><strong>المستندات المحفوظة على هذا الجهاز</strong><button className="icon-button" onClick={() => setShowLibrary(false)}>إغلاق</button></div>
         {savedDocs.length === 0 ? <p className="muted">لا توجد مستندات محفوظة بعد، أو أن التخزين المحلي غير متاح.</p> :
           savedDocs.map(item => <div className="library-item" key={item.id}>
-            <button className="library-open" onClick={() => { setDoc(item); setShowLibrary(false); setNotice(`تم فتح: ${item.title}`); }}>
+            <button className="library-open" onClick={() => { if (item.id !== latest.current.id) replaceDocument(item); setShowLibrary(false); setNotice(`تم فتح: ${item.title}`); }}>
               <FileText size={18} /><span><b>{item.title}</b><small>{new Date(item.updatedAt).toLocaleString("ar-IQ")}</small></span>
             </button>
+            {migrationBackups.has(item.id) && <button type="button" onClick={() => {
+              const original = migrationBackups.get(item.id);
+              downloadBlob(new Blob([JSON.stringify(original, null, 2)], { type: "application/json" }),
+                `${safeName(item.title)}-قبل-الترقية.mathdoc`);
+            }}>نسخة قبل الترقية</button>}
             <button className="icon-button danger" aria-label={`حذف ${item.title}`} onClick={async () => {
               if (confirm(`حذف «${item.title}» من هذا الجهاز؟`)) { await deleteDocument(item.id); await refreshLibrary(); }
             }}><Trash2 size={16} /></button>
@@ -154,9 +200,9 @@ export default function App() {
           <div className="page-chip">A4 {doc.page.orientation === "landscape" ? "أفقي" : "عمودي"} · {pages} {pages === 1 ? "صفحة" : "صفحات"}</div>
         </div>
         <DocumentEditor
-          key={doc.id} doc={doc} onChange={onContent} onPageCount={onPageCount} onNotice={setNotice}
+          key={editorRevision} doc={doc} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onPageCount={onPageCount} onNotice={setNotice}
           actions={{
-            onNew: () => { setDoc(createDocument()); setNotice("تم إنشاء مستند جديد."); },
+            onNew: () => { replaceDocument(createDocument()); setNotice("تم إنشاء مستند جديد."); },
             onLibrary: () => setShowLibrary(v => !v),
             onExport: exportMathDoc,
             onOpenFile: f => { void openMathDoc(f); },
