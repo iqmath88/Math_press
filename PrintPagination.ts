@@ -24,6 +24,26 @@ function paragraphBoundaries(paragraph: HTMLElement): Boundary[] {
   return boundaries;
 }
 
+function isolateGraphIds(clone: HTMLElement) {
+  for (const svg of clone.querySelectorAll(".graph-box svg")) {
+    const prefix = `print-${crypto.randomUUID()}-`;
+    const ids = new Map<string, string>();
+    for (const element of [svg, ...svg.querySelectorAll("[id]")]) {
+      if (!element.id) continue;
+      ids.set(element.id, prefix + element.id);
+      element.id = prefix + element.id;
+    }
+    for (const element of [svg, ...svg.querySelectorAll("*")]) {
+      for (const attribute of element.attributes) {
+        const value = attribute.value.replace(/url\(#([^)]*)\)/g, (reference, id) =>
+          ids.has(id) ? `url(#${ids.get(id)})` : reference);
+        const id = attribute.localName === "href" && value.startsWith("#") ? ids.get(value.slice(1)) : undefined;
+        attribute.value = id ? `#${id}` : value;
+      }
+    }
+  }
+}
+
 function printableClone(source: HTMLElement): HTMLElement {
   const clone = source.cloneNode(true) as HTMLElement;
   const originalFields = source.querySelectorAll<MathfieldElement>("math-field");
@@ -240,5 +260,6 @@ export function paginateForPrint(
     footer.append(text, num);
     sheet.append(footer);
   }
+  isolateGraphIds(target);
   return { pages: sheets.length, overflow };
 }

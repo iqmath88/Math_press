@@ -26,9 +26,9 @@ jobs:
           test -f dist/manifest.webmanifest
           ! grep -q 'main.tsx' dist/index.html
           ! grep -q '__BUILD_ID__' dist/sw.js
-      - name: Install Chromium and PDF inspection tools
+      - name: Install browsers and PDF inspection tools
         run: |
-          npx playwright-core install --with-deps chromium
+          npx playwright-core install --with-deps chromium webkit
           sudo apt-get install -y poppler-utils
       - name: Test editing and PDF publishing
         run: |
@@ -40,6 +40,16 @@ jobs:
             sleep 1
           done
           MATHPRESS_QA_URL=http://127.0.0.1:4174/ npm run test:e2e
+          mkdir -p "$RUNNER_TEMP/print-compatibility"
+          export MATHPRESS_QA_OUTPUT="$RUNNER_TEMP/print-compatibility"
+          node printCompatibility.e2e.cjs chromium
+          node printCompatibility.e2e.cjs webkit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: print-compatibility
+          path: ${{ runner.temp }}/print-compatibility/
+          if-no-files-found: ignore
       - name: Test offline upgrade and IndexedDB preservation
         run: |
           baseline=$(mktemp -d)

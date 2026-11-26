@@ -221,6 +221,7 @@ button.primary,
   width: 66px;
 }
 .visually-hidden {
+  inset-inline-start: 0;
   position: absolute;
   width: 1px;
   height: 1px;

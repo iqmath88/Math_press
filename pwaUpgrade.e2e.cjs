@@ -96,6 +96,11 @@ async function run() {
     assert.ok(oldCache);
     const documentTitle = "وثيقة محفوظة قبل تحديث التطبيق";
     await page.getByLabel("عنوان المستند").fill(documentTitle);
+    const savedText = "أثر الترقية على محتوى المستند";
+    await page.locator(".mp-editor > h1").click();
+    await page.keyboard.press("End");
+    await page.keyboard.insertText(savedText);
+    const savedEquations = await page.locator(".mp-editor math-field").evaluateAll(fields => fields.map(field => field.value));
     await page.getByText("محفوظ محليًا", { exact: true }).waitFor();
 
     current = candidate;
@@ -162,6 +167,8 @@ async function run() {
       await page.getByLabel("عنوان المستند").inputValue(),
       documentTitle,
     );
+    await page.locator(".mp-editor > h1").filter({ hasText: savedText }).waitFor();
+    assert.deepEqual(await page.locator(".mp-editor math-field").evaluateAll(fields => fields.map(field => field.value)), savedEquations);
     if (process.env.MATHPRESS_QA_OUTPUT) {
       await page.screenshot({
         path: path.join(process.env.MATHPRESS_QA_OUTPUT, "pwa-offline.png"),
