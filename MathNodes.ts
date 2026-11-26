@@ -100,13 +100,23 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         if (!field) return false;
         field.position = right ? 0 : field.lastOffset;
         let attempts = 0;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const stop = () => {
+          clearTimeout(timer);
+          field.removeEventListener("focus", stop);
+        };
         const focusField = () => {
           if (document.activeElement === field || !field.isConnected ||
-            !view.hasFocus() || !view.state.selection.eq(selection)) return;
+            !view.hasFocus() || !view.state.selection.eq(selection) || attempts === 7) {
+            stop();
+            return;
+          }
+          attempts++;
+          timer = setTimeout(focusField, 50);
           field.focus();
-          // MathLive can defer focus while its virtual keyboard is closing.
-          if (++attempts < 7) setTimeout(focusField, 50);
         };
+        // Once MathLive accepts focus, a retry must never reclaim it after Escape or history.
+        field.addEventListener("focus", stop, { once: true });
         focusField();
         return true;
       };
@@ -156,8 +166,6 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         const returnToText = (before = false) => {
           const pos = nodePos();
           if (pos === null || editor.isDestroyed || dom.closest("[inert]")) return false;
-          // Release the virtual keyboard before taking ownership of the text selection.
-          mf.blur();
           const { view } = editor;
           const boundary = pos + (before ? 0 : current.nodeSize);
           const selection = TextSelection.near(view.state.doc.resolve(boundary), before ? -1 : 1);

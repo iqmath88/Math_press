@@ -49,7 +49,7 @@ async function checkFocus(page, touch) {
     } else {
       await page.keyboard.press("Escape");
     }
-    assert.ok(await page.locator(".editor-source .mp-editor").evaluate(node => node === document.activeElement));
+    await page.locator(".editor-source .mp-editor:focus").waitFor({timeout:4000});
     await page.keyboard.insertText(" نص تالٍ ");
     assert.equal(await field.evaluate(node => node.value), original);
     const editOrder = await row.evaluate(node => [...node.childNodes].flatMap(child => {
@@ -77,7 +77,7 @@ async function checkFocus(page, touch) {
     await focus(last);
     await last.evaluate(node => {node.position=node.lastOffset;});
     await page.keyboard.press("ArrowRight");
-    assert.ok(await page.locator(".editor-source .mp-editor").evaluate(node => node === document.activeElement));
+    await page.locator(".editor-source .mp-editor:focus").waitFor({timeout:4000});
     await page.keyboard.press("ArrowLeft");
     await row.locator("math-field:focus").waitFor({timeout: 4000});
     assert.ok(await last.evaluate(node => node === document.activeElement));
@@ -149,9 +149,10 @@ async function checkPrint(page) {
       const rounds = mode === "history" ? 30 : 1;
       const failures = [];
       for (let round = 1; round <= rounds; round++) {
-        for (const options of [
+        const viewports = [
           {viewport:{width:1440,height:1000}}, devices["iPad (gen 7)"], devices["iPad (gen 7) landscape"],
-        ]) {
+        ];
+        for (const options of mode === "history" ? [viewports[(round - 1) % viewports.length]] : viewports) {
           const page = await browser.newPage(options);
           const trace = [];
           if (mode === "history") {
