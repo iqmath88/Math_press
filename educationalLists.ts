@@ -25,12 +25,12 @@ export const EducationalLists = Extension.create({
   addGlobalAttributes() {
     return [
       { types: ["orderedList"], attributes: {
-        educationalList: attribute("educationalList", value => listKinds.includes(String(value))),
-        listNumbering: attribute("listNumbering", value => numbering.includes(String(value)))
+        educationalList: attribute("educationalList", value => typeof value === "string" && listKinds.includes(value)),
+        listNumbering: attribute("listNumbering", value => typeof value === "string" && numbering.includes(value))
       }},
       { types: ["listItem"], attributes: { points: attribute("points", validMarks) }},
       { types: ["paragraph"], attributes: {
-        solutionRelation: attribute("solutionRelation", value => relations.includes(String(value)))
+        solutionRelation: attribute("solutionRelation", value => typeof value === "string" && relations.includes(value))
       }}
     ];
   },
@@ -104,6 +104,24 @@ export function changeEducationalItem(editor: Editor, action: "up" | "down" | "d
     tr.replaceWith(start, start + current.nodeSize + other.nodeSize, Fragment.fromArray(content));
     const moved = start + (action === "up" ? 0 : other.nodeSize);
     tr.setSelection(TextSelection.near(tr.doc.resolve(moved + editor.state.selection.from - position)));
+  }
+  editor.view.dispatch(closeHistory(tr).scrollIntoView());
+  editor.commands.focus();
+}
+
+export function restartEducationalNumbering(editor: Editor) {
+  const context = educationalItem(editor);
+  if (!context) return;
+  const { list, listPosition, position, index } = context;
+  const { tr, selection } = editor.state;
+  if (index === 0) {
+    tr.setNodeAttribute(listPosition, "start", 1);
+  } else {
+    const boundary = position - listPosition - 1;
+    const before = list.copy(list.content.cut(0, boundary));
+    const after = list.type.create({ ...list.attrs, start: 1 }, list.content.cut(boundary));
+    tr.replaceWith(listPosition, listPosition + list.nodeSize, [before, after]);
+    tr.setSelection(TextSelection.near(tr.doc.resolve(selection.from + 2)));
   }
   editor.view.dispatch(closeHistory(tr).scrollIntoView());
   editor.commands.focus();

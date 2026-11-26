@@ -1,7 +1,7 @@
 import type { Editor, JSONContent } from "@tiptap/core";
 import { useState } from "react";
 import { type EducationalStyle } from "./educationalStyles";
-import { changeEducationalItem, educationalItem, educationalList, insertEducationalItem, insertSolutionRelation, relations } from "./educationalLists";
+import { changeEducationalItem, educationalItem, educationalList, insertEducationalItem, insertSolutionRelation, relations, restartEducationalNumbering } from "./educationalLists";
 
 const templates = {
   question: { label: "سؤال مع مساحة للحل", blocks: [["question", "اكتب السؤال", "question"], ["solution", "الحل"], ["solution", ""], ["solution", ""]] },
@@ -21,15 +21,28 @@ export default function EducationalInsert({ editor, styles, numberStart, onNumbe
   editor: Editor; styles: EducationalStyle[]; numberStart: number; onNumberStart: (value: number) => void;
 }) {
   const [start, setStart] = useState(String(numberStart));
-  const [solutionNumbering, setSolutionNumbering] = useState<string | null>(null);
   const initial = Number(start);
   const valid = Number.isInteger(initial) && initial >= 1 && initial <= 9999;
-  const insert = (id: keyof typeof templates) => {
-    const blocks: JSONContent[] = templates[id].blocks.map(([style, text, sequence]) => ({
+  const templateBlocks = (styleId: string, text?: string, sequence?: string): JSONContent[] => {
+    const style = styles.find(candidate => candidate.id === styleId);
+    const title = style?.templateTitle;
+    const body: JSONContent = {
       type: "paragraph",
-      attrs: { educationalStyle: style, educationalSequence: sequence ?? null },
+      attrs: { educationalStyle: styleId, educationalSequence: title ? null : sequence ?? null },
       ...(text ? { content: [{ type: "text", text }] } : {})
-    }));
+    };
+    if (!title) return [body];
+    return [{
+      type: "paragraph",
+      attrs: {
+        educationalStyle: styleId, templateHeading: true,
+        educationalSequence: style.templateNumbered ? sequence ?? "template" : null
+      },
+      content: [{ type: "text", text: title }]
+    }, body];
+  };
+  const insert = (id: keyof typeof templates) => {
+    const blocks = templates[id].blocks.flatMap(([style, text, sequence]) => templateBlocks(style, text, sequence));
     editor.chain().focus().insertContent(blocks).run();
   };
   const context = educationalItem(editor);
@@ -45,7 +58,6 @@ export default function EducationalInsert({ editor, styles, numberStart, onNumbe
       insertEducationalItem(editor, "exam");
       return;
     }
-    if (kind === "solution") list.attrs!.listNumbering = solutionNumbering;
     editor.chain().focus().insertContent(list).run();
   };
   const setList = (name: string, value: string | number | null) => {
@@ -60,9 +72,7 @@ export default function EducationalInsert({ editor, styles, numberStart, onNumbe
           onChange={e => {
             const value = e.target.value;
             if (value.startsWith("style:")) {
-              editor.chain().focus().insertContent({
-                type: "paragraph", attrs: { educationalStyle: value.slice(6) }
-              }).run();
+              editor.chain().focus().insertContent(templateBlocks(value.slice(6))).run();
             } else if (Object.hasOwn(templates, value)) insert(value as keyof typeof templates);
           }}>
           <option value="" disabled>إدراج قالب…</option>
@@ -86,7 +96,11 @@ export default function EducationalInsert({ editor, styles, numberStart, onNumbe
           </select>
         </>}
         {solution && <>
-          <button type="button" onClick={() => setSolutionNumbering(solution.list.attrs.listNumbering)}>اعتماد ترقيم الحل للحلول التالية</button>
+          <button type="button" onClick={() => {
+            const next = educationalList("solution");
+            next.attrs = { ...next.attrs, listNumbering: solution.list.attrs.listNumbering, start: solution.list.attrs.start };
+            editor.chain().focus().insertContentAt(solution.listPosition + solution.list.nodeSize, next).run();
+          }}>حل جديد بالتنسيق نفسه</button>
           <select aria-label="محاذاة علاقة رياضية" value=""
           onChange={e => insertSolutionRelation(editor, e.target.value)}>
           <option value="" disabled>محاذاة العلاقة…</option>
@@ -102,7 +116,7 @@ export default function EducationalInsert({ editor, styles, numberStart, onNumbe
               if (e.target.validity.valid && editor.state.doc.nodeAt(context.position) === context.current)
                 editor.view.dispatch(editor.state.tr.setNodeAttribute(context.position, "points", e.target.value || null));
             }} /></label>
-          <button type="button" onClick={() => setList("start", 1)}>بدء القائمة من ١</button>
+          <button type="button" onClick={() => restartEducationalNumbering(editor)}>استئناف الترقيم من ١</button>
         </>}
         <label>رقم البداية <input className="numbering-start" type="number" min={1} max={9999}
           value={start} onChange={e => setStart(e.target.value)} /></label>

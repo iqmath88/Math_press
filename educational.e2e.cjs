@@ -47,8 +47,17 @@ async function verify(page, doc, key, touch) {
   const source = page.locator(".editor-source");
   const kind = key === "solution" ? "solution" : "exam";
   await source.locator(`ol[data-educational-list="${kind}"]`).waitFor();
+  if (!touch) {
+    await page.getByText("محفوظ محليًا", { exact: true }).waitFor();
+    const title = await page.getByLabel("عنوان المستند").inputValue();
+    await page.reload();
+    await page.getByRole("tab", { name: "ملف", exact: true }).click();
+    await page.getByRole("button", { name: "المستندات المحفوظة على هذا الجهاز", exact: true }).click();
+    await page.locator(".library-open").filter({ hasText: title }).first().click();
+    await source.locator(`ol[data-educational-list="${kind}"]`).waitFor();
+  }
   await perform(page.getByRole("tab", { name: "أنماط", exact: true }));
-  await page.screenshot({ path: join(output, `educational-${key}-${engine.name()}-${touch}.png`) });
+  await page.screenshot({ path: join(output, `educational-${key}-${engine.name()}-${page.viewportSize().width}.png`) });
   await perform(page.getByRole("button", { name: "طباعة / PDF", exact: true }));
   const sheets = page.locator(".print-sheet");
   await sheets.first().waitFor();
@@ -119,6 +128,20 @@ async function verifyCommands(page) {
   await exam.locator("p").first().click();
   await button("إضافة فروع").click();
   assert.equal(await exam.locator('ol[data-educational-list="branches"] > li').count(), 3);
+  await button("إدارة الأنماط").click();
+  const dialog = page.getByRole("dialog", { name: "إدارة الأنماط التعليمية" });
+  await dialog.getByLabel("النمط الحالي").selectOption("note");
+  await dialog.getByLabel("عنوان القالب (اختياري)").fill("عنوان مخصص");
+  await dialog.getByLabel("لون العنوان").fill("#224466");
+  await dialog.getByLabel("ترقيم عنوان القالب").check();
+  await dialog.getByRole("button", { name: "حفظ النمط", exact: true }).click();
+  await dialog.getByRole("button", { name: "إغلاق", exact: true }).click();
+  await page.getByLabel("إدراج قالب تعليمي").selectOption("note");
+  const heading = source.locator("[data-template-heading]").filter({ hasText: "عنوان مخصص" });
+  await heading.waitFor();
+  assert.equal(await heading.evaluate(node => getComputedStyle(node).color), "rgb(34, 68, 102)");
+  assert.equal(await heading.getAttribute("data-educational-sequence"), "template");
+
 }
 
 (async () => {

@@ -4,7 +4,7 @@
 
 - Add structured solution steps, relation columns, and editable MathLive fields for each side.
 - Add examination lists with Arabic branches, numeric subbranches, multiple-choice lists, and marks.
-- Extend the existing educational template menu with theorem, warning, and homework.
+- Extend the educational template menu with theorem, warning, homework, and reusable custom headings with independent color and optional numbering.
 - MathDoc remains schema 3. Educational metadata uses optional paragraph and list attributes. Readers from earlier releases may discard these attributes when saving.
 - Physical iPad and Windows verification is pending.
 

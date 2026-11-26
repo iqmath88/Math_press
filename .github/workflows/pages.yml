@@ -62,6 +62,8 @@ jobs:
           path: ${{ runner.temp }}/print-compatibility/
           if-no-files-found: ignore
       - name: Test offline upgrade and IndexedDB preservation
+        env:
+          MATHPRESS_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           baseline=$(mktemp -d)
           git fetch --no-tags --depth=1 origin f8cc43cc3c39042d1d1388310efcb9348a87a582
@@ -81,6 +83,19 @@ jobs:
           npm --prefix "$stable" ci
           npm --prefix "$stable" run build
           MATHPRESS_BASELINE_VERSION=0.5.1 MATHPRESS_BASELINE_DIST="$stable/dist" node pwaUpgrade.e2e.cjs
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-educational-authoring" ]; then
+            alpha=$(mktemp -d)
+            git fetch --no-tags --depth=1 origin 2588ba3f71dbb5fe7bf20201912843949d51f238
+            git archive FETCH_HEAD | tar -x -C "$alpha"
+            npm --prefix "$alpha" ci
+            npm --prefix "$alpha" run build
+            MATHPRESS_BASELINE_VERSION=0.6.0-alpha.1 MATHPRESS_BASELINE_DIST="$alpha/dist" node pwaUpgrade.e2e.cjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: (github.head_ref || github.ref_name) == 'feature/v0.6.0-educational-authoring'
+        with:
+          name: alpha2-preview-build
+          path: dist
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:

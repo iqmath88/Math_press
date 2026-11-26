@@ -90,6 +90,10 @@ export default function StyleManager({ overrides, onChange, onApply, onClose }: 
         </div>
         <div className="style-fields">
           <label className="gfield">الاسم<input value={draft.name} maxLength={80} onChange={e => patch({ name: e.target.value })} /></label>
+          <label className="gfield">عنوان القالب (اختياري)<input value={draft.templateTitle ?? ""}
+            maxLength={80} onChange={e => patch({ templateTitle: e.target.value })} /></label>
+          <label className="gfield">لون العنوان<input type="color" value={draft.templateTitleColor ?? draft.color}
+            onChange={e => patch({ templateTitleColor: e.target.value })} /></label>
           <label className="gfield">الخط<select value={draft.font}
             onChange={e => patch({ font: e.target.value as EducationalStyle["font"] })}>
             {styleFonts.map(font => <option key={font}>{font}</option>)}
@@ -113,6 +117,10 @@ export default function StyleManager({ overrides, onChange, onApply, onClose }: 
           ))}
         </div>
         <div className="grow-row">
+          <label className="check"><input type="checkbox" checked={draft.templateTitleBold !== false}
+            onChange={e => patch({ templateTitleBold: e.target.checked })} />عنوان عريض</label>
+          <label className="check"><input type="checkbox" checked={draft.templateNumbered === true}
+            onChange={e => patch({ templateNumbered: e.target.checked })} />ترقيم عنوان القالب</label>
           <button type="button" onClick={() => patch({ background: null })}>إزالة الخلفية</button>
           <button type="button" onClick={() => patch({ border: null })}>إزالة الحدود</button>
           {([["bold", "عريض"], ["keepWithNext", "إبقاء مع الفقرة التالية"], ["breakBefore", "بدء صفحة جديدة"]] as const).map(([key, label]) =>

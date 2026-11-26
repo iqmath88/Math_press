@@ -937,7 +937,8 @@ button.primary:hover:not(:disabled),
 .mp-editor {
   counter-reset: educational-question var(--numbering-start, 0)
     educational-example var(--numbering-start, 0)
-    educational-exercise var(--numbering-start, 0);
+    educational-exercise var(--numbering-start, 0)
+    educational-template var(--numbering-start, 0);
 }
 [data-educational-sequence="question"] { counter-increment: educational-question; }
 [data-educational-sequence="example"] { counter-increment: educational-example; }
@@ -1044,3 +1045,11 @@ p[data-solution-relation]::after {
 }
 
 ol[data-educational-list] > li.educational-continuation { list-style: none; }
+
+.mp-editor [data-educational-style][data-template-heading] {
+  color: var(--template-title-color);
+  font-weight: var(--template-title-weight);
+  --keep-with-next: 1;
+}
+[data-educational-sequence="template"] { counter-increment: educational-template; }
+[data-educational-sequence="template"]::before { content: counter(educational-template) " · "; }

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Editor } from "@tiptap/core";
 import { buildExtensions } from "./extensions";
 import { starterContent } from "./document";
-import { changeEducationalItem, educationalList, educationalParagraph, insertEducationalItem, insertSolutionRelation } from "./educationalLists";
+import { changeEducationalItem, educationalList, educationalParagraph, insertEducationalItem, insertSolutionRelation, restartEducationalNumbering } from "./educationalLists";
 
 let editor: Editor | null = null;
 let host: HTMLElement;
@@ -291,4 +291,16 @@ describe("educational authoring", () => {
     expect(ed.commands.undo()).toBe(true);
     expect(ed.state.doc.firstChild?.childCount).toBe(5);
   });
+
+  it("restarts numbering at the selected question without changing neighboring questions", () => {
+    const exam = educationalList("exam", 3);
+    exam.attrs!.start = 5;
+    const ed = make({ type: "doc", content: [exam] });
+    const first = ed.state.doc.firstChild!.firstChild!;
+    ed.commands.setTextSelection(3 + first.nodeSize);
+    restartEducationalNumbering(ed);
+    expect(ed.getJSON().content?.slice(0, 2).map(node => [node.attrs?.start, node.content?.length]))
+      .toEqual([[5, 1], [1, 2]]);
+  });
+
 });
