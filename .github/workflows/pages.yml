@@ -41,14 +41,14 @@ jobs:
           done
           mkdir -p "$RUNNER_TEMP/print-compatibility"
           export MATHPRESS_QA_OUTPUT="$RUNNER_TEMP/print-compatibility"
+          if [ "${{ github.head_ref || github.ref_name }}" = "feature/v0.6.0-math-authoring-studio" ]; then
+            node stability.e2e.cjs webkit history
+          fi
           npm run test:e2e
           node printCompatibility.e2e.cjs chromium
           node printCompatibility.e2e.cjs webkit
           node stability.e2e.cjs chromium
           node stability.e2e.cjs webkit
-          if [ "${{ github.head_ref || github.ref_name }}" = "feature/v0.6.0-math-authoring-studio" ]; then
-            node stability.e2e.cjs webkit history
-          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

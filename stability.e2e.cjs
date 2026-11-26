@@ -30,6 +30,13 @@ async function checkFocus(page, touch) {
     text("قبل "), math(String.raw`\frac{a}{b}`), math(String.raw`\sqrt{x}`),
     math(String.raw`\begin{bmatrix}a&b\\c&d\end{bmatrix}`), text(" بعد"),
   ], {dir})));
+  if (mode === "history") await page.evaluate(() => {
+    const editor = document.querySelector(".editor-source .mp-editor").editor;
+    editor.on("transaction", ({ transaction }) => {
+      if (transaction.docChanged) window.recordHistoryKey({ change: transaction.steps.map(step => step.toJSON()),
+        stored: editor.state.doc.textContent, undo: editor.can().undo() });
+    });
+  });
   for (const dir of ["rtl", "ltr"]) {
     const row = page.locator(`.editor-source p[dir="${dir}"]`);
     const field = row.locator("math-field").first();
@@ -153,7 +160,7 @@ async function checkPrint(page) {
               if (event.key !== "Escape" && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z")) return;
               const editor = document.querySelector(".mp-editor")?.editor;
               window.recordHistoryKey({ key: event.key, target: event.target.tagName,
-                active: document.activeElement?.tagName, undo: editor?.can().undo(),
+                active: document.activeElement?.tagName, platform: navigator.platform, undo: editor?.can().undo(),
                 position: editor?.state.selection.from });
             }, true));
           }
