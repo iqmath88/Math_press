@@ -24,6 +24,24 @@ function paragraphBoundaries(paragraph: HTMLElement): Boundary[] {
   return boundaries;
 }
 
+// Range rectangles track wrapped lines, including lines with different font sizes.
+function hasTwoLines(paragraph: HTMLElement) {
+  const range = document.createRange();
+  range.selectNodeContents(paragraph);
+  const css = getComputedStyle(paragraph);
+  const lineHeight = parseFloat(css.lineHeight) || parseFloat(css.fontSize) * 1.2;
+  let top = Infinity;
+  let bottom = -Infinity;
+  for (const rect of range.getClientRects()) {
+    if (!rect.height || !rect.width) continue;
+    const middle = (rect.top + rect.bottom) / 2;
+    top = Math.min(top, middle);
+    bottom = Math.max(bottom, middle);
+    if (bottom - top >= lineHeight * 0.65) return true;
+  }
+  return false;
+}
+
 function isolateGraphIds(clone: HTMLElement) {
   for (const svg of clone.querySelectorAll(".graph-box svg")) {
     const prefix = `print-${crypto.randomUUID()}-`;
@@ -67,6 +85,8 @@ export function paginateForPrint(
   const newSheet = () => {
     const sheet = document.createElement("section");
     sheet.className = "print-sheet";
+    // Measurements on this sheet must not invalidate layout inside every previous sheet.
+    sheet.style.contain = "layout";
     const header = document.createElement("header");
     header.className = "paper-header";
     header.textContent = headerText;
@@ -96,6 +116,14 @@ export function paginateForPrint(
   const placeParagraph = (paragraph: HTMLElement) => {
     body.append(paragraph);
     if (fits(paragraph)) return;
+    const css = getComputedStyle(paragraph);
+    const protectLines = Number(css.widows) >= 2 || Number(css.orphans) >= 2;
+    if (css.breakInside === "avoid" && body.childElementCount > 1 &&
+      paragraph.getBoundingClientRect().height <= body.getBoundingClientRect().height + 0.01) {
+      newSheet();
+      body.append(paragraph);
+      return;
+    }
     paragraph.remove();
     const boundaries = paragraphBoundaries(paragraph);
     if (boundaries.length < 3) {
@@ -107,8 +135,8 @@ export function paginateForPrint(
       const fragment = paragraph.cloneNode(false) as HTMLElement;
       if (start) fragment.removeAttribute("data-educational-sequence");
       body.append(fragment);
-      range.setStart(boundaries[start].node, boundaries[start].offset);
-      const probe = (end: number) => {
+      const show = (from: number, end: number) => {
+        range.setStart(boundaries[from].node, boundaries[from].offset);
         range.setEnd(boundaries[end].node, boundaries[end].offset);
         let contents: Node = range.cloneContents();
         let ancestor = range.commonAncestorContainer;
@@ -120,8 +148,14 @@ export function paginateForPrint(
           ancestor = ancestor.parentNode!;
         }
         fragment.replaceChildren(contents);
+      };
+      const probe = (end: number) => {
+        show(start, end);
         return fits(fragment);
       };
+      // Most continuations fit on the next sheet. Skip repeated prefix probes
+      // for modest remainders, while bounding work for very long paragraphs.
+      if (start > 0 && last - start <= 4096 && probe(last)) break;
       let low = start;
       let high = Math.min(last, start + 128);
       while (probe(high)) {
@@ -146,16 +180,42 @@ export function paginateForPrint(
         place(fragment);
         start++;
       } else {
+        if (protectLines) {
+          const continuationHasTwoLines = (from: number) => {
+            for (let count = 128;; count *= 2) {
+              const end = Math.min(last, from + count);
+              show(from, end);
+              if (hasTwoLines(fragment)) return true;
+              if (end === last) return false;
+            }
+          };
+          if (!continuationHasTwoLines(low)) {
+            // Find room for at least two lines on the continuation.
+            let left = start;
+            let right = low;
+            while (right - left > 1) {
+              const middle = (left + right) >>> 1;
+              if (continuationHasTwoLines(middle)) left = middle;
+              else right = middle;
+            }
+            if (left > start) low = left;
+          }
+        }
         // Prefer a word boundary so the two pieces join naturally when read.
         let end = low;
-        const limit = Math.max(start + 1, low - 24);
-        while (end > limit) {
+        const wordLimit = Math.max(start + 1, low - 24);
+        while (end > wordLimit) {
           const boundary = boundaries[end];
           if (boundary.node instanceof Text && /\s/u.test(boundary.node.data[boundary.offset - 1])) break;
           end--;
         }
-        if (end === limit) end = low;
+        if (end === wordLimit) end = low;
         probe(end);
+        if (protectLines && body.childElementCount > 1 && !hasTwoLines(fragment)) {
+          fragment.remove();
+          newSheet();
+          continue;
+        }
         start = end;
       }
       if (start < last) newSheet();
@@ -251,6 +311,7 @@ export function paginateForPrint(
     else place(block);
   }
   for (const sheet of sheets) {
+    sheet.style.removeProperty("contain");
     const footer = document.createElement("footer");
     footer.className = "pg-footer";
     const text = document.createElement("span");

@@ -39,11 +39,13 @@ jobs:
             if curl --fail --silent http://127.0.0.1:4174/ >/dev/null; then break; fi
             sleep 1
           done
-          MATHPRESS_QA_URL=http://127.0.0.1:4174/ npm run test:e2e
           mkdir -p "$RUNNER_TEMP/print-compatibility"
           export MATHPRESS_QA_OUTPUT="$RUNNER_TEMP/print-compatibility"
+          npm run test:e2e
           node printCompatibility.e2e.cjs chromium
           node printCompatibility.e2e.cjs webkit
+          node stability.e2e.cjs chromium
+          node stability.e2e.cjs webkit
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -58,6 +60,12 @@ jobs:
           npm --prefix "$baseline" ci
           npm --prefix "$baseline" run build
           MATHPRESS_BASELINE_DIST="$baseline/dist" node pwaUpgrade.e2e.cjs
+          previous=$(mktemp -d)
+          git fetch --no-tags --depth=1 origin 669bc427973869a2b349ee8b47a77941180aa334
+          git archive FETCH_HEAD | tar -x -C "$previous"
+          npm --prefix "$previous" ci
+          npm --prefix "$previous" run build
+          MATHPRESS_BASELINE_VERSION=0.5.0 MATHPRESS_BASELINE_DIST="$previous/dist" node pwaUpgrade.e2e.cjs
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
