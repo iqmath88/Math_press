@@ -279,7 +279,44 @@ export function paginateForPrint(
           fragment.start = list.start + index;
         fragment.append(item);
       }
-      place(fragment);
+      if (list instanceof HTMLOListElement && list.dataset.educationalList &&
+        item instanceof HTMLLIElement && item.childElementCount > 1 && !fits(fragment)) {
+        const groups = [...item.children].flatMap((child, index) => {
+          // Keep the question prompt and the first branch together when they fit.
+          if (index === 1 && child instanceof HTMLOListElement && child.dataset.educationalList && child.children.length) {
+            return [...child.children].map((branch, branchIndex) => {
+              const nested = child.cloneNode(false) as HTMLOListElement;
+              nested.start = child.start + branchIndex;
+              nested.append(branch);
+              return nested;
+            });
+          }
+          return [child];
+        });
+        item.replaceChildren();
+        let current = item;
+        for (const group of groups) {
+          current.append(group);
+          if (fits(fragment)) continue;
+          if (current.childElementCount === 1) {
+            place(fragment);
+            continue;
+          }
+          newSheet();
+          fragment = list.cloneNode(false) as HTMLOListElement;
+          (fragment as HTMLOListElement).start = list.start + index;
+          current = item.cloneNode(false) as HTMLLIElement;
+          current.removeAttribute("data-points");
+          current.classList.add("educational-continuation");
+          current.append(group);
+          fragment.append(current);
+          body.append(fragment);
+          if (!fits(fragment)) place(fragment);
+        }
+        if (!fits(fragment)) place(fragment);
+      } else {
+        place(fragment);
+      }
     }
   };
 

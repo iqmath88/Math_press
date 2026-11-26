@@ -1,5 +1,13 @@
 # سجل تغييرات MathPress
 
+## v0.6.0-alpha.2
+
+- Add structured solution steps, relation columns, and editable MathLive fields for each side.
+- Add examination lists with Arabic branches, numeric subbranches, multiple-choice lists, and marks.
+- Extend the existing educational template menu with theorem, warning, and homework.
+- MathDoc remains schema 3. Educational metadata uses optional paragraph and list attributes. Readers from earlier releases may discard these attributes when saving.
+- Physical iPad and Windows verification is pending.
+
 ## v0.6.0-alpha.1
 
 - أضيف الإدراج المباشر للمعادلات والبنى الرياضية مع الانتقال إلى الخانة الأولى، ولوحة للبحث والرموز الأخيرة والمفضّلة. يحتفظ التطبيق بمحرر مصدر LaTeX.

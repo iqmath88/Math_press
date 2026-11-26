@@ -352,7 +352,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
               <button type="button" onClick={() => setShowStyles(true)}>إدارة الأنماط</button>
             </div>
           </section>
-          <EducationalInsert editor={editor} numberStart={doc.numberingStart ?? 1} onNumberStart={onNumberStart} />
+          <EducationalInsert editor={editor} styles={styles} numberStart={doc.numberingStart ?? 1} onNumberStart={onNumberStart} />
         </>}
         onOpenLatex={() => openNewLatex()}
         onGraph={openGraph}

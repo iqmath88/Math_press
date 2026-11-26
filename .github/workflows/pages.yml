@@ -1,9 +1,9 @@
 name: MathPress build and Pages
 on:
   push:
-    branches: [main, 'fix/pages-build', 'feature/v0.5.0-editing-engine', 'feature/v0.6.0-math-authoring-studio']
+    branches: [main, 'fix/pages-build', 'feature/v0.5.0-editing-engine', 'feature/v0.6.0-math-authoring-studio', 'feature/v0.6.0-educational-authoring']
   pull_request:
-    branches: [main]
+    branches: [main, 'feature/v0.6.0-math-authoring-studio']
   workflow_dispatch:
 permissions:
   contents: read
@@ -43,7 +43,7 @@ jobs:
           done
           mkdir -p "$RUNNER_TEMP/print-compatibility"
           export MATHPRESS_QA_OUTPUT="$RUNNER_TEMP/print-compatibility"
-          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-math-authoring-studio" ]; then
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-math-authoring-studio" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-educational-authoring" ]; then
             node stability.e2e.cjs webkit history
           fi
           npm run test:e2e
@@ -53,6 +53,8 @@ jobs:
           node stability.e2e.cjs webkit
           node authoring.e2e.cjs chromium
           node authoring.e2e.cjs webkit
+          node educational.e2e.cjs chromium
+          node educational.e2e.cjs webkit
       - uses: actions/upload-artifact@v4
         if: always()
         with:
