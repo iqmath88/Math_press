@@ -85,6 +85,8 @@ export function paginateForPrint(
   const newSheet = () => {
     const sheet = document.createElement("section");
     sheet.className = "print-sheet";
+    // Measurements on this sheet must not invalidate layout inside every previous sheet.
+    sheet.style.contain = "layout";
     const header = document.createElement("header");
     header.className = "paper-header";
     header.textContent = headerText;
@@ -179,15 +181,21 @@ export function paginateForPrint(
         start++;
       } else {
         if (protectLines) {
-          show(low, last);
-          if (!hasTwoLines(fragment)) {
+          const continuationHasTwoLines = (from: number) => {
+            for (let count = 128;; count *= 2) {
+              const end = Math.min(last, from + count);
+              show(from, end);
+              if (hasTwoLines(fragment)) return true;
+              if (end === last) return false;
+            }
+          };
+          if (!continuationHasTwoLines(low)) {
             // Find room for at least two lines on the continuation.
             let left = start;
             let right = low;
             while (right - left > 1) {
               const middle = (left + right) >>> 1;
-              show(middle, last);
-              if (hasTwoLines(fragment)) left = middle;
+              if (continuationHasTwoLines(middle)) left = middle;
               else right = middle;
             }
             if (left > start) low = left;
@@ -303,6 +311,7 @@ export function paginateForPrint(
     else place(block);
   }
   for (const sheet of sheets) {
+    sheet.style.removeProperty("contain");
     const footer = document.createElement("footer");
     footer.className = "pg-footer";
     const text = document.createElement("span");

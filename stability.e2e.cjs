@@ -21,9 +21,8 @@ async function importDoc(page, content) {
       content: {type: "doc", content},
     })),
   });
-  await page.locator(".document-title-input").evaluate(node => {
-    if (node.value !== "Stability fixture") throw new Error("Document import failed");
-  });
+  await page.waitForFunction(() =>
+    document.querySelector(".document-title-input")?.value === "Stability fixture");
 }
 
 async function checkFocus(page, touch) {
