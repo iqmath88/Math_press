@@ -68,6 +68,13 @@ const { randomUUID } = require("node:crypto");
       "Solution step one",
       "Solution step two",
     ]);
+    assert.equal(await steps.locator('p[data-educational-style="solution"]').count(), 2);
+    await page.getByRole("tab", { name: "رياضيات", exact: true }).click();
+    await page.getByRole("button", { name: "إدراج معادلة من مصدر LaTeX" }).click();
+    await dialog.getByRole("textbox", { name: "مصدر LaTeX" }).fill(String.raw`\frac{3}{7}`);
+    await dialog.getByRole("button", { name: "إدراج داخل السطر" }).click();
+    assert.equal(await steps.locator("li").last().locator("math-field").evaluate(field => field.value), String.raw`\frac{3}{7}`);
+    await page.getByRole("tab", { name: "أنماط", exact: true }).click();
     await page.getByLabel("إدراج قالب تعليمي").selectOption("exercise");
     await page.getByLabel("رقم البداية").fill("7");
     await page.getByRole("button", { name: "إعادة الترقيم" }).click();
@@ -98,10 +105,11 @@ const { randomUUID } = require("node:crypto");
       printBackground: true,
       preferCSSPageSize: true,
     });
-    assert.match(
-      cp.execFileSync("pdftotext", [styledFile, "-"], { encoding: "utf8" }),
-      /Solution step two/,
-    );
+    const equationText = cp.execFileSync("pdftotext", [styledFile, "-"], { encoding: "utf8" });
+    assert.match(equationText, /Solution step two/);
+    assert.match(equationText, /√/);
+    assert.match(equationText, /±/);
+    assert.equal(await page.locator(".print-pages ol .math-inline math-field").count(), 1);
     await styledPreview.getByRole("button", { name: "العودة للتحرير" }).click();
     await page.getByRole("tab", { name: "ملف" }).click();
     for (const n of [1, 2, 10, 40, 100]) {
@@ -143,20 +151,22 @@ const { randomUUID } = require("node:crypto");
       );
       await page.evaluate(() => document.fonts.ready);
       const elapsed = Math.round(performance.now() - start);
+      const printStart = performance.now();
       await page
         .getByRole("button", { name: "طباعة / PDF", exact: true })
         .click();
       const print = page.getByRole("region", { name: "معاينة الطباعة" });
       await print.getByText(`${n} صفحة A4`, { exact: true }).waitFor();
+      const previewElapsed = Math.round(performance.now() - printStart);
       await print.getByRole("checkbox", { name: "ترقيم الصفحات" }).uncheck();
       await page.waitForFunction(() =>
-        [...document.querySelectorAll(".pg-footer-num")].every(
+        [...document.querySelectorAll(".print-pages .pg-footer-num")].every(
           (el) => !el.textContent,
         ),
       );
       await print.getByRole("checkbox", { name: "ترقيم الصفحات" }).check();
       await page.waitForFunction(() =>
-        [...document.querySelectorAll(".pg-footer-num")].every(
+        [...document.querySelectorAll(".print-pages .pg-footer-num")].every(
           (el) => el.textContent,
         ),
       );
@@ -194,11 +204,72 @@ const { randomUUID } = require("node:crypto");
         assert.doesNotMatch(pages[i], /MathPress/);
       }
       console.log(
-        `PDF: ${n} A4 pages passed, import to stable view: ${elapsed} ms`,
+        `PDF: ${n} A4 pages passed, import: ${elapsed} ms, preview: ${previewElapsed} ms`,
       );
       await print.getByRole("button", { name: "العودة للتحرير" }).click();
       if (n !== 100) await page.getByRole("tab", { name: "ملف" }).click();
     }
+    await page.getByRole("tab", { name: "ملف" }).click();
+    const paragraph = (text, marks) => ({
+      type: "paragraph", content: [{ type: "text", text, ...(marks ? { marks } : {}) }],
+    });
+    const cell = (text, type = "tableCell", attrs) => ({
+      type, attrs, content: [paragraph(text)],
+    });
+    const row = (...cells) => ({ type: "tableRow", content: cells });
+    const words = Array.from({ length: 720 }, (_, i) => `Word${String(i).padStart(4, "0")}`);
+    const rowNames = Array.from({ length: 110 }, (_, i) => `Row${String(i).padStart(4, "0")}`);
+    const longDocument = {
+      format: "mathpress", schemaVersion: 3, id: randomUUID(), title: "Long blocks",
+      language: "ar", direction: "ltr",
+      page: { size: "A4", orientation: "portrait", marginsMm: { top: 20, bottom: 20, left: 20, right: 20 } },
+      headerText: "LONG HEADER", footerText: "LONG FOOTER", showPageNumbers: true, background: null,
+      content: { type: "doc", content: [
+        { type: "pageBreak" },
+        paragraph(words.join(" "), [{ type: "bold" }]),
+        { type: "pageBreak" }, { type: "pageBreak" },
+        { type: "table", content: [
+          row(cell("Repeated heading", "tableHeader"), cell("Second heading", "tableHeader")),
+          ...rowNames.map((name, i) => i === 21
+            ? row(cell(name, "tableCell", { rowspan: 2 }), cell("Merge start"))
+            : i === 22 ? row(cell(name)) : row(cell(name), cell("Data"))),
+        ] },
+        { type: "pageBreak" },
+      ] },
+      updatedAt: new Date().toISOString(),
+    };
+    await page.locator('input[accept^=".mathdoc"]').setInputFiles({
+      name: "long.mathdoc", mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(longDocument)),
+    });
+    await page.locator(".editor-source table").waitFor();
+    await page.getByRole("button", { name: "طباعة / PDF", exact: true }).click();
+    await page.getByRole("region", { name: "معاينة الطباعة" }).getByText(/صفحة A4/).waitFor();
+    const sheets = page.locator(".print-sheet");
+    const previewPages = await sheets.count();
+    const paragraphs = page.locator(".print-sheet-content > p");
+    assert.ok(await paragraphs.count() > 1);
+    assert.equal(await paragraphs.locator("strong").count(), await paragraphs.count());
+    assert.equal((await paragraphs.allTextContents()).join("").trim(), words.join(" "));
+    const tables = page.locator(".print-sheet-content > table");
+    assert.ok(await tables.count() > 1);
+    assert.equal(await tables.locator("thead").count(), await tables.count());
+    assert.deepEqual((await tables.locator("tbody td").allTextContents()).filter(text => /^Row/.test(text)), rowNames);
+    assert.equal(await tables.locator('td[rowspan="2"]').count(), 1);
+    const longFile = path.join(output, "long-blocks.pdf");
+    await page.pdf({ path: longFile, printBackground: true, preferCSSPageSize: true });
+    const longPages = cp.execFileSync("pdftotext", ["-layout", longFile, "-"], { encoding: "utf8" }).trim().split("\f");
+    assert.equal(longPages.length, previewPages);
+    for (const text of longPages) {
+      assert.match(text, /LONG HEADER/);
+      assert.match(text, /LONG FOOTER/);
+      assert.match(text, /Word\d{4}|Row\d{4}/);
+      if (/Row\d{4}/.test(text)) assert.match(text, /Repeated heading/);
+    }
+    for (const token of [...words, ...rowNames]) {
+      assert.equal(longPages.join(" ").split(token).length, 2, token);
+    }
+    console.log(`PDF: ${previewPages} naturally fragmented pages passed (paragraph and merged table)`);
     for (const [name, device, viewport] of [
       ["phone", "Galaxy S9+", null],
       ["ipad-portrait", "iPad (gen 7)", null],

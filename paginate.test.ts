@@ -42,6 +42,19 @@ describe("computeBreaks", () => {
     expect(r.pages).toBe(4);
   });
 
+  it("ignores redundant leading, consecutive and trailing manual breaks", () => {
+    const marker = { height: 0, breakAfter: true };
+    const r = computeBreaks([marker, ...items(100), marker, marker, ...items(200), marker], 1000);
+    expect(r.breaks).toEqual([{ index: 4, filler: 900 }]);
+    expect(r.pages).toBe(2);
+  });
+
+  it("counts an oversized block that fills an exact number of pages", () => {
+    const r = computeBreaks(items(2000), 1000);
+    expect(r.pages).toBe(2);
+    expect(r.lastFiller).toBe(0);
+  });
+
   it("handles empty input and invalid page height", () => {
     expect(computeBreaks([], 1000).pages).toBe(1);
     expect(computeBreaks(items(10, 10), 0).breaks).toEqual([]);

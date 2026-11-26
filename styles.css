@@ -944,3 +944,39 @@ button.primary:hover:not(:disabled),
   border: 1px solid var(--line);
   border-radius: 6px;
 }
+
+.preview-paper .editor-source {
+  position: absolute;
+  inset-inline: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.mp-editor.print-pages {
+  padding-inline: 0;
+}
+.print-sheet {
+  background: white var(--print-background, none) center / 100% 100% no-repeat;
+}
+.print-sheet + .print-sheet {
+  margin-block-start: var(--gap);
+}
+.print-sheet-content {
+  display: flow-root;
+  padding-left: var(--pl);
+  padding-right: var(--pr);
+  height: calc(var(--ph) - var(--pt) - var(--pb) - 0.5px);
+}
+.print-sheet .pg-footer {
+  height: var(--pb);
+  padding-left: var(--pl);
+  padding-right: var(--pr);
+}
+.print-sheet-overflow .print-sheet-content {
+  height: auto;
+  min-height: calc(var(--ph) - var(--pt) - var(--pb) - 0.5px);
+}
+@media print {
+  .preview-paper .editor-source { display: none; }
+  .print-sheet + .print-sheet { break-before: page; }
+  .print-pages .math-node math-field { border: 1px solid transparent !important; }
+}

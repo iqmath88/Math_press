@@ -98,10 +98,10 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       marginTopMm: m.top,
       marginBottomMm: m.bottom,
       headerText: doc.headerText,
-      showPageNumbers: printOptions?.numbers ?? doc.showPageNumbers
+      showPageNumbers: doc.showPageNumbers
     };
     editor.commands.repaginate();
-  }, [editor, landscape, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers, printOptions?.numbers]);
+  }, [editor, landscape, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers]);
 
   // اتجاه الصفحة عند الطباعة (@page لا يقبل متغيرات CSS فنكتبه ديناميكيًا).
   useEffect(() => {
@@ -201,7 +201,8 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   }, [editor]);
 
   useEffect(() => {
-    if (paperRef.current) paperRef.current.inert = !!printOptions;
+    const source = paperRef.current?.querySelector<HTMLElement>(".editor-source");
+    if (source) source.inert = !!printOptions;
   }, [printOptions]);
 
   if (!editor) return null;
@@ -270,7 +271,9 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
     "--pw": landscape ? "297mm" : "210mm",
     "--ph": landscape ? "210mm" : "297mm"
   } as CSSProperties;
-  if (doc.background && (!printOptions || (printOptions.backgrounds && !printOptions.economical))) {
+  if (doc.background && printOptions?.backgrounds && !printOptions.economical) {
+    Object.assign(paperStyle, { "--print-background": `url("${doc.background}")` });
+  } else if (doc.background && !printOptions) {
     // طبقة لكل صفحة؛ المسافة بين الصفحات على الشاشة 26px وتُصفَّر عند الطباعة (--gap)
     const n = Math.max(1, Math.min(pageCount, 60));
     const url = `url("${doc.background}")`;
@@ -304,7 +307,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
     <>
       <style>{styleSheet}</style>
       {printOptions && <PrintPreview paper={paperRef} editor={editor} options={printOptions}
-        onChange={setPrintOptions} pages={pageCount} usableHeightMm={(landscape ? 210 : 297) - m.top - m.bottom}
+        onChange={setPrintOptions} usableHeightMm={(landscape ? 210 : 297) - m.top - m.bottom}
         onClose={() => { setPrintOptions(null); editor.commands.focus(); }} onPrint={actions.onPrint} />}
       {!printOptions && focusMode && <div className="focus-controls no-print">
         <button type="button" onClick={() => { setFocusMode(false); editor.commands.focus(); }}>إنهاء وضع التركيز</button>
@@ -367,8 +370,11 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
         </nav>}
         <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}`}
           id="print-document" style={paperStyle}>
-          <div className="paper-header" aria-hidden="true"><span>{doc.headerText}</span></div>
-          <EditorContent editor={editor} />
+          <div className="editor-source">
+            <div className="paper-header" aria-hidden="true"><span>{doc.headerText}</span></div>
+            <EditorContent editor={editor} />
+          </div>
+          {printOptions && <div className="mp-editor print-pages" />}
         </article>
       </div>
 

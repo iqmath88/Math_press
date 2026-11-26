@@ -1,5 +1,6 @@
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
 import type { Editor } from "@tiptap/core";
+import { paginateForPrint } from "./PrintPagination";
 import { loadJXG } from "./graph";
 
 export type PrintOptions = { backgrounds: boolean; numbers: boolean; economical: boolean };
@@ -10,10 +11,10 @@ function nextFrame() {
 
 export function findPrintIssues(paper: HTMLElement, usableHeightMm: number): string[] {
   const issues: string[] = [];
-  const editor = paper.querySelector<HTMLElement>(".mp-editor");
+  const editor = paper.querySelector<HTMLElement>(".print-pages");
   if (!editor) return issues;
   const box = editor.getBoundingClientRect();
-  const css = getComputedStyle(editor);
+  const css = getComputedStyle(editor.querySelector(".print-sheet-content") ?? editor);
   const left = box.left + parseFloat(css.paddingLeft);
   const right = box.right - parseFloat(css.paddingRight);
   const maxHeight = usableHeightMm * 96 / 25.4;
@@ -25,8 +26,6 @@ export function findPrintIssues(paper: HTMLElement, usableHeightMm: number): str
   if ([...editor.querySelectorAll("math-field")].some(tooWide)) issues.push("قد تتجاوز معادلة طويلة هامش الطباعة.");
   if ([...editor.querySelectorAll("img")].some(img => tooWide(img) || img.getBoundingClientRect().height > maxHeight))
     issues.push("تتجاوز صورة مساحة الطباعة المتاحة.");
-  if ([...editor.children].some(node => !node.classList.contains("pg-break") && node.getBoundingClientRect().height > maxHeight))
-    issues.push("توجد كتلة أطول من مساحة صفحة واحدة. راجع موضع تقسيمها في معاينة PDF.");
   return issues;
 }
 
@@ -35,13 +34,13 @@ type Props = {
   editor: Editor;
   options: PrintOptions;
   onChange: (options: PrintOptions) => void;
-  pages: number;
   usableHeightMm: number;
   onClose: () => void;
   onPrint: () => void;
 };
 
-export default function PrintPreview({ paper, editor, options, onChange, pages, usableHeightMm, onClose, onPrint }: Props) {
+export default function PrintPreview({ paper, editor, options, onChange, usableHeightMm, onClose, onPrint }: Props) {
+  const [pages, setPages] = useState(1);
   const [issues, setIssues] = useState<string[]>([]);
   const [layoutPending, setLayoutPending] = useState(true);
   useEffect(() => {
@@ -58,11 +57,19 @@ export default function PrintPreview({ paper, editor, options, onChange, pages, 
         ...images.map(image => image.decode())
       ]);
       if (!active || editor.isDestroyed) return;
-      editor.commands.repaginate();
       await nextFrame();
       await nextFrame();
       if (!active) return;
+      const source = editor.view.dom;
+      const target = element.querySelector<HTMLElement>(".print-pages");
+      if (!target) return;
+      const { headerText } = editor.storage.pagination.layout;
+      const result = paginateForPrint(source, target, {
+        headerText, footerText: editor.storage.pagination.footerText
+      });
+      setPages(result.pages);
       const warnings = findPrintIssues(element, usableHeightMm);
+      if (result.overflow) warnings.push("توجد كتلة يتعذر تقسيمها ضمن مساحة صفحة واحدة.");
       if (results.some(result => result.status === "rejected")) warnings.push("تعذر تحميل بعض موارد الطباعة.");
       if (document.fonts.status !== "loaded") warnings.push("تحميل الخطوط مستمر.");
       if (graph && [...element.querySelectorAll(".graph-node .graph-box")].some(box => !box.querySelector("svg")))
@@ -72,7 +79,14 @@ export default function PrintPreview({ paper, editor, options, onChange, pages, 
     };
     void prepare();
     return () => { active = false; };
-  }, [editor, options, paper, usableHeightMm]);
+  }, [editor, paper, usableHeightMm]);
+
+  useLayoutEffect(() => {
+    if (layoutPending) return;
+    paper.current?.querySelectorAll(".print-pages .pg-footer-num").forEach((num, index) => {
+      num.textContent = options.numbers ? `صفحة ${index + 1} من ${pages}` : "";
+    });
+  }, [layoutPending, options.numbers, pages, paper]);
 
   return (
     <section className="print-preview-tools no-print" aria-label="معاينة الطباعة">

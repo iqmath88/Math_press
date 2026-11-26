@@ -26,6 +26,10 @@ export function computeBreaks(items: PageItem[], usable: number): PaginationResu
   let pages = 1;
   let forceNext = false;
   for (let i = 0; i < items.length; i++) {
+    if (items[i].breakAfter) {
+      forceNext ||= y > 0;
+      continue;
+    }
     const h = Math.max(0, items[i].height);
     const availableGroup = joinedHeights[i] <= usable + EPS ? joinedHeights[i] : h;
     const needsNewPage = items[i].breakBefore || y + availableGroup > usable + EPS;
@@ -36,13 +40,12 @@ export function computeBreaks(items: PageItem[], usable: number): PaginationResu
     }
     forceNext = false;
     if (h > usable + EPS) {
-      const extra = Math.floor(h / usable);
+      const extra = Math.ceil((h - EPS) / usable) - 1;
       pages += extra;
       y = h - extra * usable;
     } else {
       y += h;
     }
-    forceNext = !!items[i].breakAfter;
   }
   return { breaks, pages, lastFiller: Math.max(0, usable - y) };
 }

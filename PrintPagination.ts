@@ -1,0 +1,244 @@
+import type { MathfieldElement } from "mathlive";
+
+type Boundary = { node: Node; offset: number };
+
+function paragraphBoundaries(paragraph: HTMLElement): Boundary[] {
+  const boundaries: Boundary[] = [{ node: paragraph, offset: 0 }];
+  const visit = (parent: Node) => {
+    parent.childNodes.forEach((child, index) => {
+      if (child instanceof Text) {
+        let offset = 0;
+        for (const character of child.data) {
+          offset += character.length;
+          boundaries.push({ node: child, offset });
+        }
+      } else if (child instanceof HTMLElement && !child.matches("br, [contenteditable=false], img")) {
+        visit(child);
+      } else {
+        boundaries.push({ node: parent, offset: index + 1 });
+      }
+    });
+  };
+  visit(paragraph);
+  boundaries[boundaries.length - 1] = { node: paragraph, offset: paragraph.childNodes.length };
+  return boundaries;
+}
+
+function printableClone(source: HTMLElement): HTMLElement {
+  const clone = source.cloneNode(true) as HTMLElement;
+  const originalFields = source.querySelectorAll<MathfieldElement>("math-field");
+  clone.querySelectorAll("math-field").forEach((field, index) => {
+    field.textContent = originalFields[index].value;
+    field.setAttribute("read-only", "");
+  });
+  clone.querySelectorAll(".no-print, .ProseMirror-separator").forEach(node => node.remove());
+  return clone;
+}
+
+export function paginateForPrint(
+  source: HTMLElement, target: HTMLElement,
+  { headerText, footerText }: { headerText: string; footerText: string }
+) {
+  const sheets: HTMLElement[] = [];
+  let body: HTMLElement;
+  let limit = 0;
+  let pendingBreak = false;
+  let overflow = false;
+  const newSheet = () => {
+    const sheet = document.createElement("section");
+    sheet.className = "print-sheet";
+    const header = document.createElement("header");
+    header.className = "paper-header";
+    header.textContent = headerText;
+    body = document.createElement("div");
+    body.className = "print-sheet-content";
+    sheet.append(header, body);
+    target.append(sheet);
+    sheets.push(sheet);
+    limit = body.getBoundingClientRect().bottom;
+  };
+  const fits = (block: HTMLElement) =>
+    block.getBoundingClientRect().bottom <= limit + 0.01;
+  const place = (block: HTMLElement) => {
+    body.append(block);
+    if (fits(block)) return;
+    if (body.childElementCount > 1) {
+      newSheet();
+      body.append(block);
+    }
+    if (!fits(block)) {
+      // Keep indivisible content visible even when it exceeds the printable area.
+      body.closest(".print-sheet")?.classList.add("print-sheet-overflow");
+      overflow = true;
+    }
+  };
+
+  const placeParagraph = (paragraph: HTMLElement) => {
+    body.append(paragraph);
+    if (fits(paragraph)) return;
+    paragraph.remove();
+    const boundaries = paragraphBoundaries(paragraph);
+    if (boundaries.length < 3) {
+      place(paragraph);
+      return;
+    }
+    const range = document.createRange();
+    for (let start = 0, last = boundaries.length - 1; start < last;) {
+      const fragment = paragraph.cloneNode(false) as HTMLElement;
+      if (start) fragment.removeAttribute("data-educational-sequence");
+      body.append(fragment);
+      range.setStart(boundaries[start].node, boundaries[start].offset);
+      const probe = (end: number) => {
+        range.setEnd(boundaries[end].node, boundaries[end].offset);
+        let contents: Node = range.cloneContents();
+        let ancestor = range.commonAncestorContainer;
+        if (ancestor instanceof Text) ancestor = ancestor.parentNode!;
+        while (ancestor !== paragraph) {
+          const wrapper = ancestor.cloneNode(false);
+          wrapper.appendChild(contents);
+          contents = wrapper;
+          ancestor = ancestor.parentNode!;
+        }
+        fragment.replaceChildren(contents);
+        return fits(fragment);
+      };
+      let low = start;
+      let high = Math.min(last, start + 128);
+      while (probe(high)) {
+        low = high;
+        if (high === last) break;
+        high = Math.min(last, start + (high - start) * 2);
+      }
+      if (low === last) break;
+      while (high - low > 1) {
+        const middle = (low + high) >>> 1;
+        if (probe(middle)) low = middle;
+        else high = middle;
+      }
+      if (low === start) {
+        fragment.remove();
+        if (body.childElementCount) {
+          newSheet();
+          continue;
+        }
+        // An inline atom can be larger than a whole page.
+        probe(start + 1);
+        place(fragment);
+        start++;
+      } else {
+        // Prefer a word boundary so the two pieces join naturally when read.
+        let end = low;
+        const limit = Math.max(start + 1, low - 24);
+        while (end > limit) {
+          const boundary = boundaries[end];
+          if (boundary.node instanceof Text && /\s/u.test(boundary.node.data[boundary.offset - 1])) break;
+          end--;
+        }
+        if (end === limit) end = low;
+        probe(end);
+        start = end;
+      }
+      if (start < last) newSheet();
+    }
+  };
+
+  const placeTable = (table: HTMLTableElement) => {
+    const rows = [...table.rows];
+    const headerCount = rows.findIndex(row => !row.cells.length || [...row.cells].some(cell => cell.tagName !== "TH"));
+    const headerRows = headerCount > 0 ? rows.slice(0, headerCount) : [];
+    const headers = headerRows.some((row, index) =>
+      [...row.cells].some(cell => !cell.rowSpan || index + cell.rowSpan > headerCount)
+    ) ? [] : headerRows;
+    let fragment: HTMLTableElement;
+    let rowBody: HTMLTableSectionElement;
+    const startTable = () => {
+      fragment = table.cloneNode(false) as HTMLTableElement;
+      table.querySelectorAll(":scope > colgroup").forEach(cols => fragment.append(cols.cloneNode(true)));
+      if (headers.length) fragment.createTHead().append(...headers.map(row => row.cloneNode(true)));
+      rowBody = fragment.createTBody();
+      body.append(fragment);
+    };
+    startTable();
+    for (let i = headers.length; i < rows.length;) {
+      // A rowspan and all rows it touches belong to the same fragment.
+      let end = i + 1;
+      for (let row = i; row < end; row++) {
+        for (const cell of rows[row].cells) {
+          end = Math.max(end, Math.min(rows.length, row + (cell.rowSpan || rows.length)));
+        }
+      }
+      const group = rows.slice(i, end);
+      rowBody!.append(...group);
+      if (!fits(fragment!)) {
+        const previousRows = rowBody!.rows.length > group.length;
+        if (previousRows || body.childElementCount > 1) {
+          group.forEach(row => row.remove());
+          if (!previousRows) fragment!.remove();
+          newSheet();
+          startTable();
+          rowBody!.append(...group);
+        }
+        if (!fits(fragment!)) place(fragment!);
+      }
+      i = end;
+    }
+  };
+
+  const placeList = (list: HTMLOListElement | HTMLUListElement) => {
+    let fragment = list.cloneNode(false) as HTMLElement;
+    body.append(fragment);
+    for (const [index, item] of [...list.children].entries()) {
+      fragment.append(item);
+      if (fits(fragment)) continue;
+      const hasPreviousItems = fragment.childElementCount > 1;
+      if (hasPreviousItems || body.childElementCount > 1) {
+        if (!hasPreviousItems) fragment.remove();
+        newSheet();
+        fragment = list.cloneNode(false) as HTMLElement;
+        if (fragment instanceof HTMLOListElement && list instanceof HTMLOListElement)
+          fragment.start = list.start + index;
+        fragment.append(item);
+      }
+      place(fragment);
+    }
+  };
+
+  target.replaceChildren();
+  newSheet();
+  const blocks = [...source.children].filter((child): child is HTMLElement =>
+    child instanceof HTMLElement && !child.matches(".pg-break, .ProseMirror-gapcursor"));
+  for (const [index, child] of blocks.entries()) {
+    if (child.matches(".page-break-marker")) {
+      pendingBreak = !!body!.childElementCount;
+      continue;
+    }
+    if (index > 0 && index === blocks.length - 1 && child.tagName === "P"
+      && child.matches(":has(> .ProseMirror-trailingBreak:only-child)") && !child.textContent?.trim()) continue;
+    const placement = child.matches("[data-educational-style], [data-paragraph-format]") ? getComputedStyle(child) : null;
+    if (body!.childElementCount && (pendingBreak || placement?.getPropertyValue("--break-before").trim() === "1")) newSheet();
+    pendingBreak = false;
+    const block = printableClone(child);
+    const next = blocks[index + 1];
+    if (body!.childElementCount && placement?.getPropertyValue("--keep-with-next").trim() === "1"
+      && next && !next.matches(".page-break-marker")) {
+      const zoom = body!.getBoundingClientRect().height / body!.offsetHeight || 1;
+      const needed = child.getBoundingClientRect().height + next.getBoundingClientRect().height;
+      if (needed <= body!.clientHeight * zoom && body!.lastElementChild!.getBoundingClientRect().bottom + needed > limit) newSheet();
+    }
+    if (block.tagName === "P") placeParagraph(block);
+    else if (block instanceof HTMLTableElement) placeTable(block);
+    else if (block instanceof HTMLOListElement || block instanceof HTMLUListElement) placeList(block);
+    else place(block);
+  }
+  for (const sheet of sheets) {
+    const footer = document.createElement("footer");
+    footer.className = "pg-footer";
+    const text = document.createElement("span");
+    text.textContent = footerText;
+    const num = document.createElement("span");
+    num.className = "pg-footer-num";
+    footer.append(text, num);
+    sheet.append(footer);
+  }
+  return { pages: sheets.length, overflow };
+}

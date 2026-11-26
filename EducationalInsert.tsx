@@ -32,7 +32,7 @@ export default function EducationalInsert({ editor, numberStart, onNumberStart }
       attrs: { dir: "rtl" },
       content: [{
         type: "listItem",
-        content: [{ type: "paragraph" }]
+        content: [{ type: "paragraph", attrs: { educationalStyle: "solution" } }]
       }]
     }).run();
   };
