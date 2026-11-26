@@ -49,9 +49,11 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
       setLayoutPending(true);
       const element = paper.current;
       if (!element) return;
-      const images = [...element.querySelectorAll("img")];
-      const graph = element.querySelector(".graph-node");
-      const results = await Promise.allSettled([
+      const source = editor.view.dom;
+      const images = [...source.querySelectorAll("img")].filter(image =>
+        !image.closest(".no-print, .graph-box, math-field"));
+      const graph = source.querySelector(".graph-node");
+      const [, ...resourceResults] = await Promise.allSettled([
         document.fonts.ready,
         ...(graph ? [loadJXG()] : []),
         ...images.map(image => image.decode())
@@ -60,7 +62,6 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
       await nextFrame();
       await nextFrame();
       if (!active) return;
-      const source = editor.view.dom;
       const target = element.querySelector<HTMLElement>(".print-pages");
       if (!target) return;
       const { headerText } = editor.storage.pagination.layout;
@@ -70,8 +71,9 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
       setPages(result.pages);
       const warnings = findPrintIssues(element, usableHeightMm);
       if (result.overflow) warnings.push("توجد كتلة يتعذر تقسيمها ضمن مساحة صفحة واحدة.");
-      if (results.some(result => result.status === "rejected")) warnings.push("تعذر تحميل بعض موارد الطباعة.");
-      if (document.fonts.status !== "loaded") warnings.push("تحميل الخطوط مستمر.");
+      if (resourceResults.some(result => result.status === "rejected")) warnings.push("تعذر تحميل بعض موارد الطباعة.");
+      if ([...document.fonts].some(font => font.status === "error")) warnings.push("تعذر تحميل بعض خطوط الطباعة.");
+      else if (document.fonts.status !== "loaded") warnings.push("تحميل الخطوط مستمر.");
       if (graph && [...element.querySelectorAll(".graph-node .graph-box")].some(box => !box.querySelector("svg")))
         warnings.push("لم يكتمل عرض بعض الرسوم.");
       setIssues(warnings);

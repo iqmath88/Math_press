@@ -69,6 +69,11 @@ async function run() {
       await page.getByRole("button", { name: "طباعة / PDF", exact: true }).tap();
       const preview = page.getByRole("region", { name: "معاينة الطباعة" });
       await preview.getByText(/صفحة A4/).waitFor();
+      assert.deepEqual(await preview.locator(".print-issues li").allTextContents(), [],
+        JSON.stringify(await page.evaluate(() => ({
+          fonts: [...document.fonts].filter(font => font.status === "error").map(font => font.family),
+          images: [...document.querySelectorAll(".editor-source img")].map(img => img.getAttribute("src")?.slice(0, 80)),
+        }))));
       const sheets = page.locator(".print-sheet");
       const pages = await sheets.count();
       assert.ok(pages >= 3);
