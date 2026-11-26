@@ -123,21 +123,43 @@ async function checkPrint(page) {
   const browser = await engine.launch(engine === chromium && process.env.MATHPRESS_CHROMIUM
     ? {executablePath:process.env.MATHPRESS_CHROMIUM} : {});
   try {
-    if (mode !== "math") {
+    if (mode !== "math" && mode !== "history") {
       const page = await browser.newPage({viewport:{width:1440,height:1000}});
       await page.goto(url);
       await checkPrint(page);
       await page.close();
     }
     if (mode !== "print") {
-      for (const options of [
-        {viewport:{width:1440,height:1000}}, devices["iPad (gen 7)"], devices["iPad (gen 7) landscape"],
-      ]) {
-        const page = await browser.newPage(options);
-        await page.goto(url);
-        await checkFocus(page, !!options.hasTouch);
-        await page.close();
+      const rounds = mode === "history" ? 30 : 1;
+      const failures = [];
+      for (let round = 1; round <= rounds; round++) {
+        for (const options of [
+          {viewport:{width:1440,height:1000}}, devices["iPad (gen 7)"], devices["iPad (gen 7) landscape"],
+        ]) {
+          const page = await browser.newPage(options);
+          const trace = [];
+          if (mode === "history") {
+            await page.exposeFunction("recordHistoryKey", event => trace.push(event));
+            await page.addInitScript(() => document.addEventListener("keydown", event => {
+              if (event.key !== "Escape" && !(event.ctrlKey && event.key.toLowerCase() === "z")) return;
+              const editor = document.querySelector(".mp-editor")?.editor;
+              window.recordHistoryKey({ key: event.key, target: event.target.tagName,
+                active: document.activeElement?.tagName, undo: editor?.can().undo(),
+                position: editor?.state.selection.from });
+            }, true));
+          }
+          try {
+            await page.goto(url);
+            await checkFocus(page, !!options.hasTouch);
+          } catch (error) {
+            if (mode !== "history") throw error;
+            failures.push({ round, viewport: options.viewport, error: String(error), trace });
+            console.log("History failure", JSON.stringify(failures.at(-1)));
+          } finally { await page.close(); }
+        }
+        if (mode === "history") console.log(`History round ${round}/${rounds}`);
       }
+      assert.equal(failures.length, 0, `${failures.length} history scenarios failed across ${rounds} rounds`);
     }
     console.log(`${engine.name()} ${browser.version()} stability ${mode || "print and focus (desktop and both iPad orientations)"} passed`);
   } finally { await browser.close(); }
