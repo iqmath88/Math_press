@@ -156,6 +156,8 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         const returnToText = (before = false) => {
           const pos = nodePos();
           if (pos === null || editor.isDestroyed || dom.closest("[inert]")) return false;
+          // Release the virtual keyboard before taking ownership of the text selection.
+          mf.blur();
           const { view } = editor;
           const boundary = pos + (before ? 0 : current.nodeSize);
           const selection = TextSelection.near(view.state.doc.resolve(boundary), before ? -1 : 1);

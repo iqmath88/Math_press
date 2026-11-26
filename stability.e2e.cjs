@@ -76,10 +76,19 @@ async function checkFocus(page, touch) {
     assert.ok(await last.evaluate(node => node === document.activeElement));
     await page.keyboard.press("Escape");
   }
-  await page.keyboard.press("Control+z");
-  assert.doesNotMatch(await page.locator('.editor-source p[dir="ltr"]').textContent(), /نص تالٍ/);
-  await page.keyboard.press("Control+Shift+z");
-  assert.match(await page.locator('.editor-source p[dir="ltr"]').textContent(), /نص تالٍ/);
+  await page.waitForFunction(() => {
+    const source = document.querySelector(".editor-source .mp-editor");
+    return source === document.activeElement && source.editor.can().undo();
+  });
+  const historyShortcut = await page.evaluate(() => /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? "Meta" : "Control");
+  const hasEdit = expected => page.waitForFunction(value => {
+    const row = document.querySelector('.editor-source p[dir="ltr"]');
+    return !!row && row.textContent.includes("نص تالٍ") === value;
+  }, expected, {timeout:4000});
+  await page.keyboard.press(historyShortcut + "+z");
+  await hasEdit(false);
+  await page.keyboard.press(historyShortcut + "+Shift+z");
+  await hasEdit(true);
 }
 
 async function checkPrint(page) {
@@ -141,7 +150,7 @@ async function checkPrint(page) {
           if (mode === "history") {
             await page.exposeFunction("recordHistoryKey", event => trace.push(event));
             await page.addInitScript(() => document.addEventListener("keydown", event => {
-              if (event.key !== "Escape" && !(event.ctrlKey && event.key.toLowerCase() === "z")) return;
+              if (event.key !== "Escape" && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z")) return;
               const editor = document.querySelector(".mp-editor")?.editor;
               window.recordHistoryKey({ key: event.key, target: event.target.tagName,
                 active: document.activeElement?.tagName, undo: editor?.can().undo(),
