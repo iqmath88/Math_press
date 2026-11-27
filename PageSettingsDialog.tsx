@@ -21,6 +21,7 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
   const [orientation, setOrientation] = useState(doc.page.orientation);
   const [top, setTop] = useState(String(m.top));
   const [bottom, setBottom] = useState(String(m.bottom));
+  const [size, setSize] = useState(doc.page.size);
   const [left, setLeft] = useState(String(m.left));
   const [right, setRight] = useState(String(m.right));
   const [header, setHeader] = useState(doc.headerText);
@@ -41,7 +42,7 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
   const apply = () => {
     if (!valid) return;
     onApply({
-      page: { size: "A4", orientation, marginsMm: { top: t, bottom: b, left: l, right: r } },
+      page: { size, orientation, marginsMm: { top: t, bottom: b, left: l, right: r } },
       headerText: header,
       footerText: footer,
       showPageNumbers: numbers,
@@ -60,7 +61,10 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
   return (
     <div className="modal-backdrop no-print" onClick={onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-label="إعدادات الصفحة" onClick={e => e.stopPropagation()}>
-        <strong>إعدادات الصفحة (A4)</strong>
+        <strong>إعدادات الصفحة</strong>
+        <label>حجم الورق <select value={size} onChange={event=>setSize(event.target.value as typeof size)}>
+          <option>A4</option><option>A5</option><option>A3</option>
+        </select></label>
 
         <div className="setting-block">
           <span className="setting-title">الاتجاه</span>

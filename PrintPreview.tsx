@@ -1,3 +1,4 @@
+import { pendingStudioImages } from "./StudioImage";
 import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
 import type { Editor } from "@tiptap/core";
 import { paginateForPrint } from "./PrintPagination";
@@ -34,6 +35,7 @@ type Props = {
   editor: Editor;
   options: PrintOptions;
   onChange: (options: PrintOptions) => void;
+  paperSize?: string;
   usableHeightMm: number;
   onClose: () => void;
   onPrint: () => void;
@@ -41,7 +43,7 @@ type Props = {
   selectedOffset?: number;
 };
 
-export default function PrintPreview({ paper, editor, options, onChange, usableHeightMm, onClose, onPrint, selectedBlock, selectedOffset }: Props) {
+export default function PrintPreview({ paper, editor, options, onChange, paperSize = "A4", usableHeightMm, onClose, onPrint, selectedBlock, selectedOffset }: Props) {
   const [pages, setPages] = useState(1);
   const [issues, setIssues] = useState<string[]>([]);
   const [layoutPending, setLayoutPending] = useState(true);
@@ -58,7 +60,10 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
       const [, ...resourceResults] = await Promise.allSettled([
         document.fonts.ready,
         ...(graph ? [loadJXG()] : []),
-        ...images.map(image => image.decode())
+        ...images.map(async image => {
+          await pendingStudioImages.get(image);
+          await image.decode();
+        })
       ]);
       if (!active || editor.isDestroyed) return;
       await nextFrame();
@@ -97,7 +102,7 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
     <section className="print-preview-tools no-print" aria-label="معاينة الطباعة">
       <div className="grow-row">
         <strong>معاينة الطباعة</strong>
-        <span aria-live="polite">{layoutPending ? "جارٍ تجهيز الصفحات…" : `${pages} صفحة A4`}</span>
+        <span aria-live="polite">{layoutPending ? "جارٍ تجهيز الصفحات…" : `${pages} صفحة ${paperSize}`}</span>
         <button type="button" className="primary-action" disabled={layoutPending} onClick={onPrint}>طباعة / PDF</button>
         <button type="button" onClick={onClose}>العودة للتحرير</button>
       </div>

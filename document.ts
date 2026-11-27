@@ -97,20 +97,20 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
   const d = raw as Record<string, unknown>;
   if (d.format !== "mathpress" || typeof d.id !== "string" || typeof d.title !== "string") return null;
   if (d.schemaVersion === 1) return migrateV1(d);
-  if ((d.schemaVersion !== 2 && d.schemaVersion !== 3 && d.schemaVersion !== 4) || !isDocJson(d.content)) return null;
+  if ((d.schemaVersion !== 2 && d.schemaVersion !== 3 && d.schemaVersion !== 4 && d.schemaVersion !== 5) || !isDocJson(d.content)) return null;
   const page = d.page as Partial<PageSettings> | undefined;
   const m = page?.marginsMm;
   const margins = m && [m.top, m.right, m.bottom, m.left].every(n => typeof n === "number" && n >= 0 && n < 60)
     ? m : DEFAULT_PAGE.marginsMm;
   return {
     format: "mathpress",
-    schemaVersion: d.schemaVersion === 4 ? 4 : 3,
+    schemaVersion: d.schemaVersion === 5 ? 5 : d.schemaVersion === 4 ? 4 : 3,
     id: d.id,
     title: d.title,
     language: "ar",
     direction: "rtl",
     page: {
-      size: "A4",
+      size: page?.size === "A3" || page?.size === "A5" ? page.size : "A4",
       orientation: page?.orientation === "landscape" ? "landscape" : "portrait",
       marginsMm: { ...margins }
     },
@@ -130,6 +130,17 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
 
 /** Older editors reject version 4 before loading content they cannot preserve. */
 export function protectEducationalDocument(doc: MathPressDocument): MathPressDocument {
+  if (doc.schemaVersion === 5) return doc;
+  if (doc.page.size !== "A4") return {...doc,schemaVersion:5};
+  const nodes = [doc.content];
+  while(nodes.length) {
+    const node = nodes.pop()!;
+    if (node.type === "studioShape" || node.type === "image" &&
+      (String(node.attrs?.src ?? "").startsWith("mathpress-asset:") ||
+        ["widthMm","rotation","opacity","border","align","crop","caption"].some(key=>node.attrs?.[key]!=null)))
+      return {...doc,schemaVersion:5};
+    if(node.content) for(const child of node.content) nodes.push(child);
+  }
   if (doc.schemaVersion === 4) return doc;
   if (doc.creativeDesign) return { ...doc, schemaVersion: 4 };
   if (doc.educationalStyles?.some(style => style.templateTitle || style.templateTitleColor ||

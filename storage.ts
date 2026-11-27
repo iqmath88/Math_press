@@ -4,7 +4,7 @@ import { parseDocument, protectEducationalDocument } from "./document";
 const DB_NAME = "mathpress-local";
 const STORE = "documents";
 const checkedForMigration = new Set<string>();
-const protectedIds = new Set<string>();
+const protectedIds = new Map<string, 4 | 5>();
 const BACKUP_FORMAT = "mathpress-migration-backup";
 const backupKey = (id: string) => `\u0000mathpress-backup:${id}`;
 
@@ -29,7 +29,8 @@ function openDb(): Promise<IDBDatabase> {
 }
 
 export async function saveDocument(doc: MathPressDocument): Promise<void> {
-  const protectedDoc = protectedIds.has(doc.id) ? { ...doc, schemaVersion: 4 } : protectEducationalDocument(doc);
+  const previousVersion = protectedIds.get(doc.id);
+  const protectedDoc = protectEducationalDocument(previousVersion && doc.schemaVersion < previousVersion ? { ...doc, schemaVersion: previousVersion } : doc);
   const db = await openDb();
   try {
     await new Promise<void>((resolve, reject) => {
@@ -59,7 +60,7 @@ export async function saveDocument(doc: MathPressDocument): Promise<void> {
       }
       tx.oncomplete = () => {
         checkedForMigration.add(doc.id);
-        if (protectedDoc.schemaVersion === 4) protectedIds.add(doc.id);
+        if (protectedDoc.schemaVersion === 4 || protectedDoc.schemaVersion === 5) protectedIds.set(doc.id, protectedDoc.schemaVersion);
         resolve();
       };
       tx.onerror = () => reject(tx.error ?? new Error("تعذر حفظ المستند"));

@@ -1252,3 +1252,9 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .creative-block { border-radius:var(--block-radius,0); }
 .creative-block[data-block-padding] { padding:var(--block-padding); }
 .creative-block[data-block-padding] > .creative-block-content { padding:0; }
+.studio-image,.studio-shape { max-width:100%; margin-block:8px; margin-inline:0; }
+.studio-image img { display:block; width:100%; height:auto; max-width:100%; }
+.studio-image:not([style*="width"]) img { width:auto; }
+.studio-image figcaption { text-align:center; font-size:.9em; }
+.studio-shape svg { display:block; width:100%; height:auto; }
+.studio-image.ProseMirror-selectednode,.studio-shape.ProseMirror-selectednode { outline:2px solid var(--accent); outline-offset:3px; }

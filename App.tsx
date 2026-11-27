@@ -1,3 +1,4 @@
+import { localizeImages, portableImages } from "./imageAssets";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JSONContent } from "@tiptap/core";
 import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw, Moon, Sun } from "lucide-react";
@@ -121,10 +122,14 @@ export default function App() {
   }, []);
   const onNumberStart = useCallback((numberingStart: number) => setDoc(old => ({ ...old, numberingStart })), []);
 
-  const exportMathDoc = () => {
-    const blob = new Blob([JSON.stringify({ ...protectEducationalDocument(doc), updatedAt: new Date().toISOString() }, null, 2)], { type: "application/json;charset=utf-8" });
-    downloadBlob(blob, `${safeName(doc.title)}.mathdoc`);
-    setNotice("تم تجهيز نسخة المستند القابلة للتحرير.");
+  const exportMathDoc = async () => {
+    try {
+      const content = await portableImages(doc.content);
+      const blob = new Blob([JSON.stringify({ ...protectEducationalDocument(doc), content, updatedAt: new Date().toISOString() }, null, 2)], {type:"application/json;charset=utf-8"});
+      if (blob.size > MAX_IMPORT_BYTES) throw new Error("النسخة الاحتياطية أكبر من حد الاستيراد (32 ميغابايت).");
+      downloadBlob(blob, `${safeName(doc.title)}.mathdoc`);
+      setNotice("تم تجهيز نسخة المستند القابلة للتحرير.");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "تعذر تصدير المستند."); }
   };
 
   const openMathDoc = async (file?: File) => {
@@ -132,17 +137,17 @@ export default function App() {
     try {
       if (file.size > MAX_IMPORT_BYTES) throw new Error("ملف المستند أكبر من 32 ميغابايت.");
       const raw = JSON.parse(await file.text());
-      if (raw?.format === "mathpress" && Number.isInteger(raw.schemaVersion) && raw.schemaVersion > 4)
+      if (raw?.format === "mathpress" && Number.isInteger(raw.schemaVersion) && raw.schemaVersion > 5)
         throw new Error("يتطلب هذا المستند إصدارًا أحدث من MathPress. لم يُستبدل المستند الحالي.");
       const parsed = parseDocument(raw);
-      const protectedFormat = parsed?.schemaVersion === 4;
+      const protectedFormat = parsed != null && parsed.schemaVersion >= 4;
       const content = parsed && validateImportedContent(parsed.content);
       if (protectedFormat && (!content || !preservesSuppliedContent(raw, { ...parsed, content }))) {
-        throw new Error("يتضمن ملف MathDoc 4 محتوى أو خصائص غير مدعومة. احتُفظ بالمستند المفتوح وبالملف الأصلي.");
+        throw new Error("يتضمن ملف MathDoc محتوى أو خصائص غير مدعومة. احتُفظ بالمستند المفتوح وبالملف الأصلي.");
       }
       if (!parsed || !content) throw new Error("صيغة المستند غير معروفة أو غير مكتملة.");
       // Opening a backup must not overwrite the current local editing copy.
-      replaceDocument({ ...parsed, id: crypto.randomUUID(), content });
+      replaceDocument({ ...parsed, id: crypto.randomUUID(), content: parsed.schemaVersion === 5 ? await localizeImages(content) : content });
       setNotice("تم فتح المستند بنجاح.");
       setShowLibrary(false);
     } catch (error) {

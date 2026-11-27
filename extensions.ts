@@ -11,7 +11,8 @@ import FontFamily from "@tiptap/extension-font-family";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Placeholder from "@tiptap/extension-placeholder";
-import Image from "@tiptap/extension-image";
+import { StudioShape } from "./StudioShape";
+import { StudioImage } from "./StudioImage";
 import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
@@ -82,20 +83,6 @@ const FontSize = Extension.create({
     return {
       setFontSize: size => ({ chain }) => chain().setMark("textStyle", { fontSize: size }).run(),
       unsetFontSize: () => ({ chain }) => chain().setMark("textStyle", { fontSize: null }).removeEmptyTextStyle().run()
-    };
-  }
-});
-
-/** صورة بعرض قابل للتحكم (نسبة مئوية). */
-const ResizableImage = Image.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      width: {
-        default: null,
-        parseHTML: el => (el as HTMLElement).style.width || null,
-        renderHTML: attrs => (attrs.width ? { style: `width:${attrs.width}` } : {})
-      }
     };
   }
 });
@@ -206,7 +193,8 @@ export function buildExtensions() {
     Highlight.configure({ multicolor: true }),
     TextAlign.configure({ types: ["heading", "paragraph"] }),
     Direction,
-    ResizableImage.configure({ inline: false, allowBase64: true }),
+    StudioShape,
+    StudioImage.configure({ inline: false, allowBase64: true }),
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,

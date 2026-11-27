@@ -11,6 +11,7 @@ async function choose(page, title) {
   await page.getByRole("region",{name:"مكتبة القوالب"}).getByRole("button",{name:title}).click();
 }
 async function lesson(page, capture) {
+  page.setDefaultTimeout(10000);
   await page.goto(home);
   await choose(page,/تطبيقات التفاضل/);
   const editor = page.locator(".editor-source .tiptap");
@@ -34,6 +35,59 @@ async function lesson(page, capture) {
   assert.equal(persisted.creativeDesign,"emerald");
   assert.equal(persisted.content.content.find(node=>node.type==="educationBlock").attrs.title,"تعريف محرّر");
   if (capture) await download.saveAs(join(output,"applied-derivatives.mathdoc"));
+  const tools = page.getByLabel("الأشكال الهندسية");
+  await tools.selectOption("triangle");
+  const shape = editor.locator(".studio-shape").first();
+  await shape.click();
+  await page.getByRole("group",{name:"خصائص الشكل"}).getByLabel("التسمية").fill("مثلث المماس");
+  await shape.getByText("مثلث المماس").waitFor();
+  await editor.evaluate(async el=>{
+    const canvas = document.createElement("canvas");
+    canvas.width = 2048;
+    canvas.height = 1200;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#f1faf7";
+    ctx.fillRect(0,0,2048,1200);
+    ctx.strokeStyle = "#9bbcac";
+    ctx.lineWidth = 2;
+    for (let step=40;step<2048;step+=80) {
+      ctx.beginPath(); ctx.moveTo(step,0); ctx.lineTo(step,1200); ctx.stroke();
+    }
+    for (let step=40;step<1200;step+=80) {
+      ctx.beginPath(); ctx.moveTo(0,step); ctx.lineTo(2048,step); ctx.stroke();
+    }
+    ctx.fillStyle = "#105542";
+    ctx.font = "84px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("معدل التغير ومنحدر المماس",1024,165);
+    ctx.strokeStyle = "#11634e"; ctx.lineWidth = 13;
+    ctx.beginPath(); ctx.moveTo(250,1000); ctx.quadraticCurveTo(950,970,1750,245); ctx.stroke();
+    ctx.strokeStyle = "#273d91";
+    ctx.beginPath(); ctx.moveTo(500,1180); ctx.lineTo(1840,380); ctx.stroke();
+    const blob = await new Promise(resolve=>canvas.toBlob(resolve));
+    const data = new DataTransfer();
+    data.items.add(new File([blob],"tangent.png",{type:"image/png"}));
+    el.dispatchEvent(new ClipboardEvent("paste",{clipboardData:data,bubbles:true,cancelable:true}));
+  });
+  const image = editor.locator(".studio-image img");
+  await image.waitFor();
+  await image.evaluate(element=>element.decode());
+  assert.equal(await image.evaluate(element=>element.naturalWidth),2048);
+  await image.click();
+  await page.getByRole("group",{name:"خصائص الصورة"}).getByLabel("العرض (مم)").fill("90");
+  await page.getByRole("group",{name:"خصائص الصورة"}).getByLabel("القص من كل حافة (%)").fill("3");
+  await page.getByText("محفوظ محليًا",{exact:true}).waitFor();
+  await page.getByRole("tab",{name:"ملف",exact:true}).click();
+  const mediaFile = page.waitForEvent("download");
+  await page.getByRole("button",{name:"تصدير المستند كملف قابل للتحرير"}).click();
+  const media = await mediaFile;
+  const saved = JSON.parse(await readFile(await media.path(),"utf8"));
+  const serialized = JSON.stringify(saved.content);
+  assert.equal(saved.schemaVersion,5);
+  assert.match(serialized,/data:image\/png;base64,/);
+  assert.doesNotMatch(serialized,/mathpress-asset:/);
+  assert.match(serialized,/مثلث المماس/);
+  if (capture) await media.saveAs(join(output,"applied-derivatives.mathdoc"));
   await page.reload();
   await page.getByRole("tab",{name:"ملف",exact:true}).click();
   await page.getByRole("button",{name:"المستندات المحفوظة على هذا الجهاز"}).click();
@@ -41,15 +95,33 @@ async function lesson(page, capture) {
   await def.getByText("تعريف محرّر",{exact:true}).waitFor();
   await def.locator("math-field").waitFor();
   await editor.locator(".graph-box svg").first().waitFor();
+  await image.waitFor();
+  await shape.getByText("مثلث المماس").waitFor();
   if (capture) await page.screenshot({path:join(output,"creative-editor.png")});
   await page.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
   await page.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A4/).waitFor();
   assert.ok(await page.locator(".print-sheet").count() >= 5);
+  await page.locator(".print-sheet .studio-image img").waitFor();
+  await page.locator(".print-sheet .studio-shape").getByText("مثلث المماس").waitFor();
   assert.equal(await page.locator(".print-sheet .creative-block-label").filter({hasText:"تعريف محرّر"}).count(),1);
   if (capture) {
     await page.pdf({path:join(output,"applied-derivatives.pdf"),preferCSSPageSize:true});
     await page.screenshot({path:join(output,"creative-preview.png")});
   }
+  const restored = await page.context().browser().newPage();
+  try {
+    await restored.goto(home);
+    await restored.getByRole("button",{name:"مستند فارغ",exact:true}).click();
+    await restored.getByRole("tab",{name:"ملف",exact:true}).click();
+    await restored.locator('input[accept^=".mathdoc"]').setInputFiles({
+      name:"restored.mathdoc",mimeType:"application/json",buffer:Buffer.from(JSON.stringify(saved))
+    });
+    const restoredImage = restored.locator(".editor-source .studio-image img");
+    await restoredImage.waitFor();
+    await restoredImage.evaluate(element=>element.decode());
+    assert.equal(await restoredImage.evaluate(element=>element.naturalWidth),2048);
+    await restored.locator(".editor-source .studio-shape").getByText("مثلث المماس").waitFor();
+  } finally { await restored.close(); }
 }
 async function verifyLongBox(page) {
   await page.goto(home);

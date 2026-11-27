@@ -35,3 +35,9 @@ rendering and A4 output. The Pages workflow also runs the WebKit variant.
 The rc.2 recovery point is the tree of `cb9913c`. The manual iPad and 15% performance
 gates established there still apply. Continue by measuring long-box fragmentation
 and finishing reusable styles before introducing an independent asset-store migration.
+
+## Preview.2 media compatibility
+
+MathDoc 5 identifies documents that use editable shapes, new image properties, IndexedDB image references, or A3/A5. Export resolves local image references into portable data URLs. Import validates the document before replacing the open document. PNG, JPEG, WebP, and sanitized SVG are accepted, with a 20 MiB limit per asset and a 32 MiB limit per MathDoc backup. Images already embedded in a MathDoc 3 or 4 document are preserved as supplied.
+
+The image library uses a separate database so the document database does not require a schema migration. Assets remain available after deletion from a page to preserve historical references. Automatic asset cleanup, lightweight preview derivatives, arbitrary crop rectangles, editable shape vertices, grouping, and advanced spatial construction are pending.

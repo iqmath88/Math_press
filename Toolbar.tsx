@@ -9,7 +9,7 @@ import {
   RectangleHorizontal, RectangleVertical, ChevronUp, ChevronDown, FileUp, FileText
 } from "lucide-react";
 import type { PageSettings } from "./types";
-import { fileToDataUrl } from "./imageUtil";
+import { storeImage } from "./imageAssets";
 import { returnFromMath } from "./MathNodes";
 import type { MathfieldElement } from "mathlive";
 
@@ -146,7 +146,7 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
   const pickImage = async (file?: File) => {
     if (!file) return;
     try {
-      const src = await fileToDataUrl(file);
+      const src = await storeImage(file);
       if (!editor.isDestroyed) chain().setImage({ src, alt: file.name }).run();
     } catch (e) {
       onError(e instanceof Error ? e.message : "تعذر إدراج الصورة");

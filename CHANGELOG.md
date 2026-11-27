@@ -1,5 +1,12 @@
 # سجل تغييرات MathPress
 
+## v0.7.0-preview.2 — Creative Studio
+
+- Keep inserted raster originals in IndexedDB and embed them in portable MathDoc backups.
+- Add editable SVG shapes and image controls for physical width, rotation, opacity, caption, and symmetric clipping.
+- Add A3 and A5 to the existing page and print settings.
+- Use MathDoc 5 for new media attributes, editable SVG shapes, and non-A4 paper. MathDoc 3 and 4 remain readable.
+
 ## v0.7.0-preview.1 — Creative Studio
 
 - Add editable educational blocks, scoped formatting controls and document design presets.

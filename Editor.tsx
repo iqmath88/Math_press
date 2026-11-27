@@ -3,7 +3,8 @@ import type { CSSProperties } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import type { MathfieldElement } from "mathlive";
-import type { MathPressDocument } from "./types";
+import { paperDimensions, type MathPressDocument } from "./types";
+import StudioMediaControls from "./StudioMediaControls";
 import { blockTypes, designVariables, designs, educationBlock } from "./creativeDesign";
 import { createEditorSnapshot } from "./editorSnapshot";
 import { SmartMathInput } from "./SmartMathInput";
@@ -38,6 +39,7 @@ type ZoomMode = number | "width" | "page";
 export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNumberStart, onNotice, actions }: Props) {
   const m = doc.page.marginsMm;
   const landscape = doc.page.orientation === "landscape";
+  const [paperWidth,paperHeight] = paperDimensions(doc.page.size,landscape);
   const [smartMath, setSmartMath] = useState(() => {
     try { return localStorage.getItem("mathpress-smart-math") !== "off"; }
     catch { return true; }
@@ -118,14 +120,14 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
     const st = editor.storage.pagination;
     st.footerText = doc.footerText;
     st.layout = {
-      pageHeightMm: landscape ? 210 : 297,
+      pageHeightMm: paperHeight,
       marginTopMm: m.top,
       marginBottomMm: m.bottom,
       headerText: doc.headerText,
       showPageNumbers: doc.showPageNumbers
     };
     editor.commands.repaginate();
-  }, [editor, landscape, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers]);
+  }, [editor, paperHeight, paperWidth, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers]);
 
   // اتجاه الصفحة عند الطباعة (@page لا يقبل متغيرات CSS فنكتبه ديناميكيًا).
   useEffect(() => {
@@ -135,8 +137,8 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
       style.id = "mp-page-style";
       document.head.appendChild(style);
     }
-    style.textContent = `@page{size:A4 ${landscape ? "landscape" : "portrait"};margin:0}`;
-  }, [landscape]);
+    style.textContent = `@page{size:${doc.page.size} ${landscape ? "landscape" : "portrait"};margin:0}`;
+  }, [landscape, doc.page.size]);
 
   const openGraph = useCallback((pos?: number) => {
     if (!editor) return;
@@ -164,12 +166,15 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
       setLatexOpen(true);
     };
     dom.addEventListener(EDIT_GRAPH_EVENT, handler);
+    const imageHandler = (event: Event) => onNotice((event as CustomEvent<string>).detail);
+    dom.addEventListener("studio-image-error",imageHandler);
     dom.addEventListener(EDIT_MATH_EVENT, mathHandler);
     return () => {
       dom.removeEventListener(EDIT_GRAPH_EVENT, handler);
       dom.removeEventListener(EDIT_MATH_EVENT, mathHandler);
+      dom.removeEventListener("studio-image-error",imageHandler);
     };
-  }, [editor, openGraph]);
+  }, [editor, openGraph, onNotice]);
 
   useEffect(() => {
     if (!latexOpen || !previewRef.current) return;
@@ -184,8 +189,8 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage || typeof zoomMode === "number" || printOptions) return;
-    const width = (landscape ? 297 : 210) * 96 / 25.4;
-    const height = (landscape ? 210 : 297) * 96 / 25.4;
+    const width = (paperWidth) * 96 / 25.4;
+    const height = (paperHeight) * 96 / 25.4;
     const fit = () => {
       const css = getComputedStyle(stage);
       const availableWidth = stage.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
@@ -203,7 +208,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
       window.removeEventListener("resize", fit);
       window.visualViewport?.removeEventListener("resize", fit);
     };
-  }, [zoomMode, landscape, printOptions]);
+  }, [zoomMode, landscape, paperWidth, paperHeight, printOptions]);
 
   useEffect(() => {
     if (!editor) return;
@@ -332,8 +337,8 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
     "--px": `${m.left}mm`,
     "--pl": `${m.left}mm`,
     "--pr": `${m.right}mm`,
-    "--pw": landscape ? "297mm" : "210mm",
-    "--ph": landscape ? "210mm" : "297mm"
+    "--pw": paperWidth+"mm",
+    "--ph": paperHeight+"mm"
   } as CSSProperties;
   if (doc.background && printOptions?.backgrounds && !printOptions.economical) {
     Object.assign(paperStyle, { "--print-background": `url("${doc.background}")` });
@@ -378,7 +383,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
     <>
       <style>{styleSheet}</style>
       {printOptions && <PrintPreview paper={paperRef} editor={editor} options={printOptions}
-        onChange={setPrintOptions} usableHeightMm={(landscape ? 210 : 297) - m.top - m.bottom}
+        onChange={setPrintOptions} paperSize={doc.page.size} usableHeightMm={(paperHeight) - m.top - m.bottom}
         selectedBlock={printOrigin.current?.block} selectedOffset={printOrigin.current?.offset}
         onClose={() => {
           const origin = printOrigin.current;
@@ -450,6 +455,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
       {!focusMode && !printOptions && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
         <button type="button" onClick={() => setShowCreative(value => !value)} aria-expanded={showCreative}>التصميم والصناديق</button>
         {showCreative && <>
+          <StudioMediaControls editor={editor} onNotice={onNotice}/>
           <label>هوية المستند <select value={doc.creativeDesign ?? ""} onChange={event =>
             onDesign(event.target.value || undefined)}>
             <option value="">الافتراضية</option>
@@ -506,7 +512,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
           <div className="panel-heading"><strong>خصائص المستند</strong><button type="button" onClick={() => setProperties(false)}>إغلاق</button></div>
           <label><input type="checkbox" checked={smartMath} onChange={e => toggleSmartMath(e.target.checked)} /> التحويل التلقائي للمعادلات</label>
           <p>اكتب <bdi>$…$</bdi> لمعادلة سطرية أو <bdi>$$…$$</bdi> لمعادلة مستقلة.</p>
-          <p>A4 · {landscape ? "أفقي" : "عمودي"}</p>
+          <p>{doc.page.size} · {landscape ? "أفقي" : "عمودي"}</p>
           <label><input type="checkbox" checked={showMargins} onChange={e => setShowMargins(e.target.checked)} /> حدود مساحة الكتابة</label>
           <button type="button" onClick={actions.onPageSettings}>إعدادات الهوامش والصفحة</button>
           <button type="button" onClick={() => setShowParagraphFormat(true)}>خصائص الفقرة</button>
