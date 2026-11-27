@@ -25,14 +25,13 @@ type Props = {
   onChange: (content: JSONContent) => void;
   onStyles: (styles: EducationalStyle[]) => void;
   onNumberStart: (numberingStart: number) => void;
-  onPageCount: (pages: number) => void;
   onNotice: (message: string) => void;
   actions: RibbonActions;
 };
 
 type ZoomMode = number | "width" | "page";
 
-export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart, onPageCount, onNotice, actions }: Props) {
+export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart, onNotice, actions }: Props) {
   const m = doc.page.marginsMm;
   const landscape = doc.page.orientation === "landscape";
   const extensions = useMemo(() => buildExtensions(), []);
@@ -63,6 +62,10 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   const [graph, setGraph] = useState<{ pos: number | null; spec: GraphSpec | null } | null>(null);
   const previewRef = useRef<MathfieldElement | null>(null);
 
+  const [properties, setProperties] = useState(false);
+  const [showMargins, setShowMargins] = useState(false);
+  const printOrigin = useRef<{ block: Element | null; x: number; y: number } | null>(null);
+
   const editor = useEditor({
     extensions,
     content: doc.content,
@@ -82,11 +85,10 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
 
   useEffect(() => {
     if (!editor) return;
-    editor.storage.pagination.onPages = (n: number) => { setPageCount(n); onPageCount(n); };
+    editor.storage.pagination.onPages = setPageCount;
     setPageCount(editor.storage.pagination.pages);
-    onPageCount(editor.storage.pagination.pages);
     return () => { editor.storage.pagination.onPages = null; };
-  }, [editor, onPageCount]);
+  }, [editor]);
 
   // إعدادات الصفحة تصل إلى مقسّم الصفحات عبر تخزين الإضافة ثم يُعاد القياس.
   useEffect(() => {
@@ -205,6 +207,20 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
     if (source) source.inert = !!printOptions;
   }, [printOptions]);
 
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!editor || !viewport) return;
+    const keepActiveVisible = () => {
+      const field = document.activeElement;
+      if (!(field instanceof HTMLElement) || !editor.view.dom.contains(field)) return;
+      const rect = field.getBoundingClientRect();
+      if (field.matches("math-field") && rect.bottom > viewport.offsetTop + viewport.height)
+        field.scrollIntoView({ block: "center", inline: "nearest" });
+    };
+    viewport.addEventListener("resize", keepActiveVisible);
+    return () => viewport.removeEventListener("resize", keepActiveVisible);
+  }, [editor]);
+
   if (!editor) return null;
 
   const openNewLatex = (latex = "") => {
@@ -287,6 +303,9 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   }
 
   const openPrint = () => {
+    const { $from } = editor.state.selection;
+    const block = $from.depth > 0 ? editor.view.nodeDOM($from.before($from.depth)) : null;
+    printOrigin.current = { block: block instanceof Element ? block : null, x: window.scrollX, y: window.scrollY };
     setShowSearch(false);
     setPrintOptions({ backgrounds: true, numbers: doc.showPageNumbers, economical: false });
   };
@@ -308,12 +327,23 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       <style>{styleSheet}</style>
       {printOptions && <PrintPreview paper={paperRef} editor={editor} options={printOptions}
         onChange={setPrintOptions} usableHeightMm={(landscape ? 210 : 297) - m.top - m.bottom}
-        onClose={() => { setPrintOptions(null); editor.commands.focus(); }} onPrint={actions.onPrint} />}
+        selectedBlock={printOrigin.current?.block}
+        onClose={() => {
+          const origin = printOrigin.current;
+          setPrintOptions(null);
+          requestAnimationFrame(() => {
+            if (editor.isDestroyed) return;
+            editor.commands.focus(undefined, { scrollIntoView: false });
+            if (origin) window.scrollTo(origin.x, origin.y);
+          });
+        }} onPrint={actions.onPrint} />}
       {!printOptions && focusMode && <div className="focus-controls no-print">
         <button type="button" onClick={() => { setFocusMode(false); editor.commands.focus(); }}>إنهاء وضع التركيز</button>
       </div>}
       {!printOptions && !focusMode && <Toolbar
         editor={editor}
+        onProperties={() => setProperties(value => !value)}
+        propertiesOpen={properties}
         page={doc.page}
         actions={{ ...actions, onPrint: openPrint }}
         onSearch={() => setShowSearch(v => !v)}
@@ -367,9 +397,16 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
           {Array.from({ length: pageCount }, (_, index) => <button type="button" key={index}
             aria-current={currentPage === index + 1 ? "page" : undefined} onClick={() => goToPage(index + 1)}>صفحة {index + 1}</button>)}
         </nav>}
+        {properties && !focusMode && !printOptions && <aside className="studio-properties no-print" aria-label="خصائص المستند">
+          <div className="panel-heading"><strong>خصائص المستند</strong><button type="button" onClick={() => setProperties(false)}>إغلاق</button></div>
+          <p>A4 · {landscape ? "أفقي" : "عمودي"}</p>
+          <label><input type="checkbox" checked={showMargins} onChange={e => setShowMargins(e.target.checked)} /> حدود مساحة الكتابة</label>
+          <button type="button" onClick={actions.onPageSettings}>إعدادات الهوامش والصفحة</button>
+          <button type="button" onClick={() => setShowParagraphFormat(true)}>خصائص الفقرة</button>
+        </aside>}
         <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}`}
           id="print-document" style={paperStyle}>
-          <div className="editor-source">
+          <div className={`editor-source${showMargins && !printOptions ? " studio-margins" : ""}`}>
             <div className="paper-header" aria-hidden="true"><span>{doc.headerText}</span></div>
             <EditorContent editor={editor} />
           </div>
@@ -378,7 +415,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       </div>
 
       {!focusMode && !printOptions && <div className="document-view-status no-print">
-        <span>صفحة {currentPage} من {pageCount}</span><span>{wordCount} كلمة</span><span dir="ltr">{Math.round(zoom * 100)}%</span>
+        <span title="الصفحات النهائية في معاينة الطباعة">صفحة {currentPage} من {pageCount} · تقديري</span><span>{wordCount} كلمة</span><span dir="ltr">{Math.round(zoom * 100)}%</span>
       </div>}
       {graph && <GraphDialog initial={graph.spec} onSave={saveGraph} onClose={() => setGraph(null)} />}
 

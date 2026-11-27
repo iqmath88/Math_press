@@ -1,7 +1,7 @@
 import type { Editor, JSONContent } from "@tiptap/core";
 import { useState } from "react";
 import { type EducationalStyle } from "./educationalStyles";
-import { changeEducationalItem, educationalItem, educationalList, insertEducationalItem, insertSolutionRelation, relations, restartEducationalNumbering } from "./educationalLists";
+import { createExamOutline, changeEducationalItem, educationalItem, educationalList, insertEducationalItem, insertSolutionRelation, relations, restartEducationalNumbering } from "./educationalLists";
 
 const templates = {
   question: { label: "سؤال مع مساحة للحل", blocks: [["question", "اكتب السؤال", "question"], ["solution", "الحل"], ["solution", ""], ["solution", ""]] },
@@ -21,6 +21,10 @@ export default function EducationalInsert({ editor, styles, numberStart, onNumbe
   editor: Editor; styles: EducationalStyle[]; numberStart: number; onNumberStart: (value: number) => void;
 }) {
   const [start, setStart] = useState(String(numberStart));
+  const [outline, setOutline] = useState(false);
+  const [questions, setQuestions] = useState("4");
+  const [branches, setBranches] = useState("3");
+  const bounded = (value: string, min: number, max: number) => /^\d+$/.test(value) && Number(value) >= min && Number(value) <= max;
   const initial = Number(start);
   const valid = Number.isInteger(initial) && initial >= 1 && initial <= 9999;
   const templateBlocks = (styleId: string, text?: string, sequence?: string): JSONContent[] => {
@@ -84,6 +88,19 @@ export default function EducationalInsert({ editor, styles, numberStart, onNumbe
         </select>
         <button type="button" onClick={() => insertList("solution")}>خطوات الحل</button>
         <button type="button" onClick={() => insertList("exam")}>سؤال امتحاني</button>
+        <button type="button" aria-expanded={outline} onClick={() => setOutline(value => !value)}>هيكل امتحان</button>
+        {outline && <div className="exam-outline" aria-label="هيكل الامتحان">
+          <label>الأسئلة <input type="number" min="1" max="50" value={questions} onChange={e => setQuestions(e.target.value)} /></label>
+          <label>الفروع لكل سؤال <input type="number" min="0" max="12" value={branches} onChange={e => setBranches(e.target.value)} /></label>
+          <button type="button" disabled={!bounded(questions, 1, 50) || !bounded(branches, 0, 12)}
+            onClick={() => {
+              const exam = createExamOutline(Number(questions), Number(branches));
+              const at = context ? context.listPosition + context.list.nodeSize : editor.state.selection.from;
+              editor.chain().focus().insertContentAt(at, exam).run();
+              setOutline(false);
+            }}>إدراج الهيكل</button>
+          <span className="muted" dir="ltr">Alt + ↑ / ↓</span>
+        </div>}
         {context && <>
           <button type="button" onClick={() => insertEducationalItem(editor)}>إضافة بند</button>
           <button type="button" onClick={() => changeEducationalItem(editor, "up")}>نقل لأعلى</button>

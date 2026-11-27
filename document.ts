@@ -96,14 +96,14 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
   const d = raw as Record<string, unknown>;
   if (d.format !== "mathpress" || typeof d.id !== "string" || typeof d.title !== "string") return null;
   if (d.schemaVersion === 1) return migrateV1(d);
-  if ((d.schemaVersion !== 2 && d.schemaVersion !== 3) || !isDocJson(d.content)) return null;
+  if ((d.schemaVersion !== 2 && d.schemaVersion !== 3 && d.schemaVersion !== 4) || !isDocJson(d.content)) return null;
   const page = d.page as Partial<PageSettings> | undefined;
   const m = page?.marginsMm;
   const margins = m && [m.top, m.right, m.bottom, m.left].every(n => typeof n === "number" && n >= 0 && n < 60)
     ? m : DEFAULT_PAGE.marginsMm;
   return {
     format: "mathpress",
-    schemaVersion: 3,
+    schemaVersion: d.schemaVersion === 4 ? 4 : 3,
     id: d.id,
     title: d.title,
     language: "ar",
@@ -123,4 +123,25 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
     content: d.content,
     updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : new Date().toISOString()
   };
+}
+
+
+/** Older editors reject version 4 before loading content they cannot preserve. */
+export function protectEducationalDocument(doc: MathPressDocument): MathPressDocument {
+  if (doc.schemaVersion === 4) return doc;
+  if (doc.educationalStyles?.some(style => style.templateTitle || style.templateTitleColor ||
+    style.templateTitleBold !== undefined || style.templateNumbered !== undefined)) {
+    return { ...doc, schemaVersion: 4 };
+  }
+  const pending = [doc.content];
+  while (pending.length) {
+    const node = pending.pop()!;
+    const attrs = node.attrs;
+    if (attrs?.educationalList || attrs?.listNumbering || attrs?.points != null ||
+      attrs?.solutionRelation || attrs?.templateHeading || attrs?.educationalSequence === "template") {
+      return { ...doc, schemaVersion: 4 };
+    }
+    if (node.content) for (const child of node.content) pending.push(child);
+  }
+  return doc;
 }

@@ -10,7 +10,7 @@ export type PageSettings = {
 
 export type MathPressDocument = {
   format: "mathpress";
-  schemaVersion: 3;
+  schemaVersion: 3 | 4;
   id: string;
   title: string;
   language: "ar";

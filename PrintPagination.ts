@@ -75,7 +75,7 @@ function printableClone(source: HTMLElement): HTMLElement {
 
 export function paginateForPrint(
   source: HTMLElement, target: HTMLElement,
-  { headerText, footerText }: { headerText: string; footerText: string }
+  { headerText, footerText, selectedBlock }: { headerText: string; footerText: string; selectedBlock?: Element | null }
 ) {
   const sheets: HTMLElement[] = [];
   let body: HTMLElement;
@@ -335,6 +335,19 @@ export function paginateForPrint(
     if (body!.childElementCount && (pendingBreak || placement?.getPropertyValue("--break-before").trim() === "1")) newSheet();
     pendingBreak = false;
     const block = printableClone(child);
+    if (selectedBlock && child.contains(selectedBlock)) {
+      const indexes: number[] = [];
+      for (let node = selectedBlock; node !== child; node = node.parentElement!)
+        indexes.unshift([...node.parentElement!.children].filter(sibling => !sibling.matches(".no-print, .ProseMirror-separator")).indexOf(node));
+      // The clone drops editor-only nodes. Mark the matching content element when present.
+      let anchor: Element = block;
+      for (const index of indexes) {
+        const next: Element | undefined = [...anchor.children].filter(node => !node.matches(".no-print, .ProseMirror-separator"))[index];
+        if (!next) break;
+        anchor = next;
+      }
+      anchor.setAttribute("data-studio-print-anchor", "");
+    }
     const next = blocks[index + 1];
     if (body!.childElementCount && placement?.getPropertyValue("--keep-with-next").trim() === "1"
       && next && !next.matches(".page-break-marker")) {

@@ -37,9 +37,10 @@ type Props = {
   usableHeightMm: number;
   onClose: () => void;
   onPrint: () => void;
+  selectedBlock?: Element | null;
 };
 
-export default function PrintPreview({ paper, editor, options, onChange, usableHeightMm, onClose, onPrint }: Props) {
+export default function PrintPreview({ paper, editor, options, onChange, usableHeightMm, onClose, onPrint, selectedBlock }: Props) {
   const [pages, setPages] = useState(1);
   const [issues, setIssues] = useState<string[]>([]);
   const [layoutPending, setLayoutPending] = useState(true);
@@ -66,7 +67,7 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
       if (!target) return;
       const { headerText } = editor.storage.pagination.layout;
       const result = paginateForPrint(source, target, {
-        headerText, footerText: editor.storage.pagination.footerText
+        headerText, footerText: editor.storage.pagination.footerText, selectedBlock
       });
       setPages(result.pages);
       const warnings = findPrintIssues(element, usableHeightMm);
@@ -78,10 +79,11 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
         warnings.push("لم يكتمل عرض بعض الرسوم.");
       setIssues(warnings);
       setLayoutPending(false);
+      if (selectedBlock) target.querySelector("[data-studio-print-anchor]")?.closest(".print-sheet")?.scrollIntoView({ block: "nearest" });
     };
     void prepare();
     return () => { active = false; };
-  }, [editor, paper, usableHeightMm]);
+  }, [editor, paper, usableHeightMm, selectedBlock]);
 
   useLayoutEffect(() => {
     if (layoutPending) return;

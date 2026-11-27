@@ -36,6 +36,8 @@ export const EducationalLists = Extension.create({
   },
   addKeyboardShortcuts() {
     return {
+      "Alt-ArrowDown": () => moveBetweenExamItems(this.editor, 1),
+      "Alt-ArrowUp": () => moveBetweenExamItems(this.editor, -1),
       Enter: () => {
         const { selection } = this.editor.state;
         const step = educationalItem(this.editor, "solution");
@@ -64,6 +66,26 @@ export const educationalList = (kind: string, count = 1): JSONContent => ({
   type: "orderedList", attrs: { dir: "rtl", educationalList: kind },
   content: Array.from({ length: count }, () => item(kind))
 });
+
+export function createExamOutline(questions: number, branches: number): JSONContent {
+  const exam = educationalList("exam", questions);
+  if (branches > 0) for (const question of exam.content ?? [])
+    question.content?.push(educationalList("branches", branches));
+  return exam;
+}
+
+function moveBetweenExamItems(editor: Editor, direction: -1 | 1) {
+  const exam = educationalItem(editor, "exam");
+  const current = educationalItem(editor);
+  if (!exam || !current) return false;
+  const positions: number[] = [];
+  exam.list.descendants((node, offset) => {
+    if (node.type.name === "listItem") positions.push(exam.listPosition + 1 + offset);
+  });
+  const target = positions[positions.indexOf(current.position) + direction];
+  return target === undefined ? false : editor.commands.setTextSelection(target + 2) &&
+    editor.commands.scrollIntoView();
+}
 
 export function educationalItem(editor: Editor, kind?: string) {
   const { $from } = editor.state.selection;

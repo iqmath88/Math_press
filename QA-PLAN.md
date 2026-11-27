@@ -80,3 +80,10 @@ Record the device model, OS and browser version, input method, and pass/fail evi
 - On both devices, open the native PDF print dialog. Verify A4 margins, page numbers, marks, and all six steps across the break. Compare the horizontal equality coordinates against each sheet in the exported PDF within 1 mm.
 - On both devices, open an existing saved document after the preview build updates. Confirm local autosave, reopen and offline mode using a disposable copy.
 - Playwright iPad profiles exercise responsive layout and touch emulation on a Linux runner. The native Safari print dialog, physical input, and Windows desktop tests still require the listed hardware.
+
+## Studio beta.1 manual acceptance
+
+- On physical iPad Safari and Windows, measure a representative booklet and a complete exam from blank page to PDF. Record clicks, input method and elapsed time for stable and Studio. Include moving and removing questions, changing numbering and checking the printed result.
+- On iPad, repeat in both orientations with the virtual keyboard open. Confirm the active equation remains visible, touch controls remain usable, and focus returns to the previous insertion point after printing.
+- On Windows, exercise keyboard shortcuts, properties, dark mode and the native PDF dialog. Compare RTL and LTR content, print colors and cursor restoration.
+- Test offline reopening of a protected MathDoc 4. Older builds should refuse an exported protected file; users should keep original legacy exports and avoid editing the same document in an older tab while upgrading.

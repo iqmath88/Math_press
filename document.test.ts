@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDocument, parseDocument } from "./document";
+import { createDocument, protectEducationalDocument, parseDocument } from "./document";
 
 describe("MathPress document model", () => {
   it("creates a valid v3 A4 document with a block equation", () => {
@@ -73,4 +73,19 @@ describe("page background", () => {
     expect(parseDocument(JSON.parse(JSON.stringify({ ...d, background: "javascript:alert(1)" })))?.background).toBeNull();
     expect(parseDocument(JSON.parse(JSON.stringify(d)))?.background).toBeNull();
   });
+});
+
+it("uses version 4 for educational metadata and retains older compatible documents", () => {
+  const plain = createDocument();
+  expect(protectEducationalDocument(plain)).toBe(plain);
+  const fixture = {
+    ...plain,
+    content: { type: "doc", content: [{ type: "orderedList", attrs: { educationalList: "exam" },
+      content: [{ type: "listItem", attrs: { points: "10" }, content: [{ type: "paragraph" }] }]
+    }] }
+  };
+  const saved = protectEducationalDocument(fixture);
+  expect(saved.schemaVersion).toBe(4);
+  expect(fixture.schemaVersion).toBe(3);
+  expect(parseDocument(saved)?.content).toEqual(fixture.content);
 });

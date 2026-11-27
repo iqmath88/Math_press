@@ -1,5 +1,11 @@
 # سجل تغييرات MathPress
 
+## v0.6.0-beta.1
+
+- Introduce the Studio workspace, separate light and dark chrome, document properties, and editing-to-print navigation.
+- Insert configurable examination outlines as one undoable edit and navigate questions and branches from the keyboard.
+- Write MathDoc 4 for structured content that older builds would silently flatten. Existing compatible documents retain MathDoc 3.
+
 ## v0.6.0-alpha.2
 
 - Add structured solution steps, relation columns, and editable MathLive fields for each side. Tab moves between relation fields; Escape returns to Arabic explanation text.

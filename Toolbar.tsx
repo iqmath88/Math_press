@@ -46,6 +46,8 @@ type Props = {
   onOpenLatex: () => void;
   onSearch?: () => void;
   educationalTools?: ReactNode;
+  onProperties?: () => void;
+  propertiesOpen?: boolean;
   viewTools?: ReactNode;
   paragraphTools?: ReactNode;
   mathTools?: ReactNode;
@@ -102,7 +104,7 @@ function Group(props: { title: string; children: ReactNode; rows?: boolean }) {
 
 const Row = ({ children }: { children: ReactNode }) => <div className="rb-line">{children}</div>;
 
-export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, educationalTools, viewTools, paragraphTools, mathTools, onGraph, onError }: Props) {
+export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, educationalTools, viewTools, paragraphTools, mathTools, onGraph, onError, onProperties, propertiesOpen }: Props) {
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [tab, setTab] = useState<TabId>("home");
   const [collapsed, setCollapsed] = useState(false);
@@ -202,6 +204,9 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
           <Btn label="تراجع" disabled={!editor.can().undo()} onClick={() => chain().undo().run()}><Undo2 size={18} /></Btn>
           <Btn label="إعادة" disabled={!editor.can().redo()} onClick={() => chain().redo().run()}><Redo2 size={18} /></Btn>
           <Btn label="طباعة / PDF" wide primary onClick={actions.onPrint}><Printer size={17} /><span>طباعة / PDF</span></Btn>
+          {onProperties && <Btn label="خصائص المستند" active={propertiesOpen} onClick={onProperties}>
+            <span>خصائص</span>
+          </Btn>}
           <Btn label={collapsed ? "إظهار الأدوات" : "إخفاء الأدوات"} onClick={() => setCollapsed(c => !c)}>
             {collapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
           </Btn>
