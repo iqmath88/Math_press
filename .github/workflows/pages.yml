@@ -43,6 +43,13 @@ jobs:
           done
           mkdir -p "$RUNNER_TEMP/print-compatibility"
           export MATHPRESS_QA_OUTPUT="$RUNNER_TEMP/print-compatibility"
+          trap 'echo "::error::Failed command: $BASH_COMMAND"' ERR
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.7.0-live-page-layout" ]; then
+            node live-layout.e2e.cjs chromium
+            node live-layout.e2e.cjs webkit
+            ffmpeg -y -framerate 1 -pattern_type glob -i "$MATHPRESS_QA_OUTPUT/live-chromium-desktop-0[1-3]*.png" \
+              -c:v libvpx-vp9 -pix_fmt yuv420p "$MATHPRESS_QA_OUTPUT/live-layout-flow.webm"
+          fi
           if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-math-authoring-studio" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-educational-authoring" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 || "$MATHPRESS_BRANCH" == feature/v0.7.0-page-layout-engine || "$MATHPRESS_BRANCH" == feature/v0.7.0-live-page-layout ]]; then
             node stability.e2e.cjs webkit history
           fi
@@ -61,12 +68,6 @@ jobs:
             if [[ "$MATHPRESS_BRANCH" == feature/v0.7.0-page-layout-engine || "$MATHPRESS_BRANCH" == feature/v0.7.0-live-page-layout ]]; then
               node layout.e2e.cjs chromium
               node layout.e2e.cjs webkit
-            fi
-            if [ "$MATHPRESS_BRANCH" = "feature/v0.7.0-live-page-layout" ]; then
-              node live-layout.e2e.cjs chromium
-              node live-layout.e2e.cjs webkit
-              ffmpeg -y -framerate 1 -pattern_type glob -i "$MATHPRESS_QA_OUTPUT/live-chromium-desktop-0[1-3]*.png" \
-                -c:v libvpx-vp9 -pix_fmt yuv420p "$MATHPRESS_QA_OUTPUT/live-layout-flow.webm"
             fi
             if [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 || "$MATHPRESS_BRANCH" == feature/v0.7.0-page-layout-engine || "$MATHPRESS_BRANCH" == feature/v0.7.0-live-page-layout ]]; then node rc.e2e.cjs; fi
           fi

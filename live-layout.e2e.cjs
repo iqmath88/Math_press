@@ -212,4 +212,11 @@ async function exercise(page, name) {
     }
     console.log(engine.name() + " live layout, source selection, history, MathLive and merged headers passed");
   } finally { await browser.close(); }
-})().catch(error => { console.error(error); process.exitCode = 1; });
+})().catch(error => {
+  console.error(error);
+  if (process.env.GITHUB_ACTIONS) {
+    const detail = String(error.stack || error).replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+    console.log(`::error title=Live layout ${engine.name()}::${detail}`);
+  }
+  process.exitCode = 1;
+});
