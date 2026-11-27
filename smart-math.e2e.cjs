@@ -84,6 +84,54 @@ async function check(page, capture) {
   }
 }
 
+async function edgeCases(page) {
+  await page.goto(base);
+  const blank = () => page.getByRole("button", {name:"مستند فارغ", exact:true}).click();
+  await blank();
+  const editor = page.locator(".editor-source .tiptap");
+  const paragraph = () => editor.locator("p").first();
+  await paragraph().click();
+  const literal = String.raw`السعر $50.00 والدولار المهروب \$x\$ وغير المكتمل $y`;
+  await page.keyboard.insertText(literal);
+  await page.keyboard.press("Enter");
+  await page.keyboard.insertText("$$");
+  assert.equal(await editor.locator("math-field").count(), 0);
+  assert.equal(await paragraph().textContent(), literal);
+  const paste = (text, html) => editor.evaluate((root, data) => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/plain", data.text);
+    if (data.html) clipboardData.setData("text/html", data.html);
+    root.dispatchEvent(new ClipboardEvent("paste", {clipboardData, bubbles:true, cancelable:true}));
+  }, {text, html});
+  await blank();
+  await paragraph().click();
+  await paste("قبل $x$ وسط $$y^2$$ ثم $$z^2$$ نهاية",
+    "<p><strong>قبل </strong>$x$ <em>وسط</em> $$y^2$$ ثم $$z^2$$ <strong>نهاية</strong></p>");
+  assert.deepEqual(await editor.locator("math-field").evaluateAll(fields => fields.map(node => node.value)), ["x","y^2","z^2"]);
+  assert.equal(await editor.locator("strong").first().textContent(), "قبل ");
+  assert.equal(await editor.locator("em").textContent(), "وسط");
+  assert.equal(await editor.locator("strong").last().textContent(), "نهاية");
+  const mod = await page.evaluate(() => /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? "Meta" : "Control");
+  await page.keyboard.press(mod + "+z");
+  await editor.getByText(/وسط.*\$\$y/).waitFor();
+  assert.equal(await editor.locator("math-field").count(), 0);
+  await page.keyboard.press(mod + "+Shift+z");
+  await editor.locator("math-field").nth(2).waitFor();
+
+  await page.getByRole("button", {name:"خصائص المستند", exact:true}).click();
+  const preference = page.getByRole("checkbox", {name:"التحويل التلقائي للمعادلات"});
+  await preference.uncheck();
+  await blank();
+  await paragraph().click();
+  await page.keyboard.insertText("$x");
+  await page.keyboard.press("$");
+  await editor.getByText("$x$", {exact:true}).waitFor();
+  assert.equal(await editor.locator("math-field").count(), 0);
+  await page.reload();
+  await page.getByRole("button", {name:"خصائص المستند", exact:true}).click();
+  assert.equal(await preference.isChecked(), false);
+}
+
 (async () => {
   const browser = await engine.launch(engine === chromium && process.env.MATHPRESS_CHROMIUM
     ? { executablePath: process.env.MATHPRESS_CHROMIUM } : {});
@@ -103,9 +151,15 @@ async function check(page, capture) {
         finally { await context.close(); }
       }
     }
+    const edge = await browser.newPage();
+    try { edge.setDefaultTimeout(5000); await edgeCases(edge); }
+    finally { await edge.close(); }
     if (output) writeFileSync(join(output, "smart-math-results.json"), JSON.stringify(results, null, 2));
     console.log(JSON.stringify(results));
-    assert.ok(Object.values(results).every(run => !run.failures.length));
+    const summary = Object.fromEntries(Object.entries(results).map(([name, run]) => [name, {
+      passed: run.passed, failures: run.failures.length, firstFailure: run.failures[0]?.error
+    }]));
+    assert.ok(Object.values(results).every(run => !run.failures.length), JSON.stringify(summary));
   } finally { await browser.close(); }
 })().catch(error => {
   if (process.env.GITHUB_ACTIONS) console.log("::error::" + error.message.replaceAll("\n", "%0A"));

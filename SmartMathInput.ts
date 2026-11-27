@@ -99,7 +99,7 @@ function finish(view: EditorView, input: Transaction, matches: Match[], caret?: 
   for (const step of trial.steps) transformation.step(step);
   const pos = target ?? trial.mapping.map(raw.selection.head);
   transformation.setSelection(TextSelection.near(transformation.doc.resolve(pos), 1));
-  if (raw.storedMarks) transformation.setStoredMarks(raw.storedMarks);
+  if (caret !== undefined) transformation.setStoredMarks(raw.storedMarks ?? raw.selection.$head.marks());
   view.dispatch(transformation.scrollIntoView());
   view.dispatch(closeHistory(view.state.tr).setMeta("addToHistory", false));
   return true;
