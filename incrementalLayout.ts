@@ -53,6 +53,8 @@ export function createIncrementalLayout() {
     stage.inert = true;
     target.after(stage);
     const next = new Map<number, Cached>();
+    const byFirstBlock = reuse ? new Map([...cache.values()].map(part => [part.blocks[0], part])) : new Map<HTMLElement, Cached>();
+    const shifts: { sheets: HTMLElement[]; delta: number }[] = [];
     const sheets: HTMLElement[] = [];
     const ranges: (PageRange | null)[] = [];
     let overflow = false;
@@ -67,11 +69,20 @@ export function createIncrementalLayout() {
       for (const part of parts.length ? parts : [null]) {
         if (signal.aborted) return;
         if (part) {
-          const cached = reuse ? cache.get(part.start) : undefined;
+          const cached = byFirstBlock.get(part.blocks[0]);
           if (cached && cached.final === part.final && same(cached.nodes, part.nodes)
             && same(cached.blocks, part.blocks) && !part.blocks.some(block => invalidated.has(block))) {
-            next.set(part.start, cached);
-            append(cached);
+            const delta = part.start - cached.start;
+            const moved = delta === 0 ? cached : {
+              ...cached, start: part.start,
+              ranges: cached.ranges.map(range => range && ({
+                start: { ...range.start, block: range.start.block + delta },
+                end: { ...range.end, block: range.end.block + delta }
+              }))
+            };
+            if (delta) shifts.push({ sheets: cached.sheets, delta });
+            next.set(part.start, moved);
+            append(moved);
             continue;
           }
         }
@@ -92,6 +103,9 @@ export function createIncrementalLayout() {
         }
       }
       if (signal.aborted) return;
+      for (const { sheets: moved, delta } of shifts) for (const sheet of moved)
+        for (const block of sheet.querySelectorAll<HTMLElement>(".print-sheet-content > [data-page-source]"))
+          block.dataset.pageSource = String(Number(block.dataset.pageSource) + delta);
       const wanted = new Set(sheets);
       for (const child of [...target.children]) if (!wanted.has(child as HTMLElement)) child.remove();
       sheets.forEach((sheet, index) => {

@@ -37,6 +37,17 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
         sheet === window.originalSheets[index]).length), 199);
       const ranges = JSON.parse(await page.locator("[data-ranges]").getAttribute("data-ranges"));
       assert.deepEqual(ranges[1].start, { block: 2, offset: 0 });
+      await source.evaluate(root => {
+        const editor = root.editor;
+        editor.commands.insertContentAt(editor.state.doc.child(0).nodeSize, {
+          type: "paragraph", content: [{ type: "text", text: "تعديل بنيوي قبل الفاصل" }]
+        });
+      });
+      await projection.locator('[data-print-page="1"]').filter({ hasText: "تعديل بنيوي قبل الفاصل" }).waitFor();
+      assert.equal(await page.locator("[data-rebuilt]").getAttribute("data-rebuilt"), "1");
+      const moved = JSON.parse(await page.locator("[data-ranges]").getAttribute("data-ranges"));
+      assert.deepEqual(moved[1].start, { block: 3, offset: 0 });
+      assert.equal(await projection.evaluate(root => root.children[2] === window.originalSheets[2]), true);
       await page.getByLabel("الهامش الرأسي").selectOption("28");
       await page.waitForFunction(() => document.querySelector("[data-rebuilt]")?.dataset.rebuilt === "200");
 
