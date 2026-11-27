@@ -116,10 +116,18 @@ async function exercise(page, name) {
   await math.press("End");
   await page.keyboard.type("+2");
   await page.keyboard.press("Escape");
+  await page.waitForFunction(() => {
+    const root = document.querySelector(".live-lab-source .tiptap");
+    const selection = document.getSelection();
+    return document.activeElement === root && root.contains(selection?.anchorNode) &&
+      root.editor.state.selection.$from.parent.type.name === "paragraph";
+  });
   await page.keyboard.insertText(" بعد المعادلة");
-  await settle();
+  await page.waitForFunction(() =>
+    document.querySelector(".live-lab-source .tiptap").editor.state.doc.firstChild?.textContent.includes("بعد المعادلة")
+  );
   assert.notEqual(await math.evaluate(field => field.value), "x^2+1");
-  assert.match(await source.innerText(), /بعد المعادلة/);
+  await settle();
   await snapshot("04-mixed");
   if (name === "desktop") {
     await page.getByLabel("التكبير").selectOption("1");
