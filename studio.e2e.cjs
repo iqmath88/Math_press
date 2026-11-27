@@ -145,7 +145,7 @@ const samples = [
       const surface = await browser.newPage(options);
       await surface.goto(url);
       await surface.locator(".pg-last").waitFor();
-      assert.equal(await surface.locator(".version").textContent(), "v0.6.0-beta.1");
+      assert.equal(await surface.locator(".version").textContent(), "v" + require("./package.json").version);
       assert.equal(await surface.evaluate(() => document.documentElement.scrollWidth), surface.viewportSize().width);
       await surface.screenshot({ path: join(output, `studio-${engine.name()}-${name}.png`) });
       await surface.close();

@@ -87,3 +87,5 @@ Record the device model, OS and browser version, input method, and pass/fail evi
 - On iPad, repeat in both orientations with the virtual keyboard open. Confirm the active equation remains visible, touch controls remain usable, and focus returns to the previous insertion point after printing.
 - On Windows, exercise keyboard shortcuts, properties, dark mode and the native PDF dialog. Compare RTL and LTR content, print colors and cursor restoration.
 - Test offline reopening of a protected MathDoc 4. Older builds should refuse an exported protected file; users should keep original legacy exports and avoid editing the same document in an older tab while upgrading.
+
+- [حزمة اعتماد RC وخطة الإصدار](RC-ACCEPTANCE.md)

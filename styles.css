@@ -1182,3 +1182,21 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 @media screen {
   .print-preview-tools { position: sticky; inset-block-start: 0; z-index: 10; }
 }
+
+@media screen {
+  .app-shell :is(.modal, .print-preview-tools, .studio-properties, .library-panel) .muted {
+    color: var(--studio-muted);
+  }
+  .app-shell :is(button, select, input, textarea):focus-visible {
+    outline: 2px solid var(--studio-focus, #17668d);
+    outline-offset: 2px;
+  }
+  .app-shell[data-theme="dark"] { --studio-focus: #9bcfee; }
+  .studio-properties { max-inline-size: calc(100% - 12px); max-block-size: 70dvh; overflow: auto; }
+  .app-shell .modal { max-block-size: calc(100dvh - 24px); overflow: auto; }
+}
+@media screen and (pointer: coarse) {
+  .app-shell :is(.rb-tabs, .rb-panel, .studio-properties, .modal-actions) :is(button, select) {
+    min-block-size: 44px;
+  }
+}

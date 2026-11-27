@@ -1,5 +1,11 @@
 # سجل تغييرات MathPress
 
+## v0.6.0-rc.1
+
+- Reject protected MathDoc imports that would lose unsupported content or properties.
+- Cancel MathLive listeners and pending focus callbacks when equation views are removed.
+- Improve dismissible panels and touch controls for release validation.
+
 ## v0.6.0-beta.1
 
 - Introduce the Studio workspace, separate light and dark chrome, document properties, and editing-to-print navigation.

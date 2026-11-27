@@ -185,10 +185,15 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           view.focus();
           return true;
         };
-        controls.addEventListener("mousedown", ev => ev.preventDefault());
+        const listeners = new AbortController();
+        const options = { signal: listeners.signal };
+        const capture = { ...options, capture: true };
+        let focusFrame = 0;
+        let arrowTimer: ReturnType<typeof setTimeout> | undefined;
+        controls.addEventListener("mousedown", ev => ev.preventDefault(), options);
         mf.addEventListener("pointerdown", () => {
           if (document.activeElement !== mf && editor.isEditable && !dom.closest("[inert]")) mf.focus();
-        }, true);
+        }, capture);
         const focusOtherSide = (backward: boolean) => {
           if (!dom.parentElement?.hasAttribute("data-solution-relation")) return false;
           let sibling = backward ? dom.previousElementSibling : dom.nextElementSibling;
@@ -201,12 +206,13 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           return true;
         };
         let horizontalArrow: string | undefined;
-        editButton.addEventListener("click", openSource);
-        exitButton.addEventListener("click", () => returnToText(false, true));
-        mf.addEventListener(RETURN_TO_TEXT, () => returnToText(false, true));
+        editButton.addEventListener("click", openSource, options);
+        exitButton.addEventListener("click", () => returnToText(false, true), options);
+        mf.addEventListener(RETURN_TO_TEXT, () => returnToText(false, true), options);
         mf.addEventListener("keydown", ev => {
           horizontalArrow = !ev.shiftKey && (ev.key === "ArrowLeft" || ev.key === "ArrowRight") ? ev.key : undefined;
-          if (horizontalArrow) setTimeout(() => { horizontalArrow = undefined; }, 0);
+          clearTimeout(arrowTimer);
+          if (horizontalArrow) arrowTimer = setTimeout(() => { horizontalArrow = undefined; }, 0);
           if (ev.isComposing) return;
           if (ev.key === "Tab" && !ev.altKey && !ev.ctrlKey && !ev.metaKey &&
             mf.position === (ev.shiftKey ? 0 : mf.lastOffset) && focusOtherSide(ev.shiftKey)) {
@@ -220,7 +226,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
             ev.stopImmediatePropagation();
             openSource();
           }
-        }, true);
+        }, capture);
 
         mf.addEventListener("input", () => {
           const pos = nodePos();
@@ -230,7 +236,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           editor.view.dispatch(
             editor.view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, latex })
           );
-        });
+        }, options);
 
         mf.addEventListener("keydown", ev => {
           const key = (ev as KeyboardEvent).key;
@@ -241,7 +247,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
               editor.chain().focus().deleteRange({ from: pos, to: pos + current.nodeSize }).run();
             }
           }
-        });
+        }, options);
 
         // عند الخروج من الحقل بالأسهم يعود المؤشر إلى النص قبل المعادلة أو بعدها.
         mf.addEventListener("move-out", ev => {
@@ -253,10 +259,10 @@ function createMathNode(name: "mathInline" | "mathBlock") {
             : dir === "backward" || dir === "upward";
           if (((dir === "forward" || dir === "backward") && focusOtherSide(before)) ||
             returnToText(before)) ev.preventDefault();
-        });
+        }, options);
 
         if (focusNext.delete(editor)) {
-          requestAnimationFrame(() => {
+          focusFrame = requestAnimationFrame(() => {
             if (!dom.isConnected || !editor.view.hasFocus() || dom.closest("[inert]")) return;
             mf.focus();
             if (current.attrs.latex.includes("\\placeholder")) {
@@ -277,7 +283,12 @@ function createMathNode(name: "mathInline" | "mathBlock") {
             return true;
           },
           stopEvent: () => true,
-          ignoreMutation: () => true
+          ignoreMutation: () => true,
+          destroy: () => {
+            listeners.abort();
+            cancelAnimationFrame(focusFrame);
+            clearTimeout(arrowTimer);
+          }
         };
       };
     }

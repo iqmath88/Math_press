@@ -7,7 +7,7 @@ import { createDocument, parseDocument, protectEducationalDocument } from "./doc
 import { deleteDocument, loadLibrary, saveDocument } from "./storage";
 import DocumentEditor from "./Editor";
 import PageSettingsDialog from "./PageSettingsDialog";
-import { MAX_IMPORT_BYTES, validateImportedContent } from "./importValidation";
+import { MAX_IMPORT_BYTES, preservesSuppliedContent, validateImportedContent } from "./importValidation";
 import type { ImportResult } from "./docxImport";
 
 const VERSION = import.meta.env.VITE_APP_VERSION;
@@ -125,7 +125,12 @@ export default function App() {
       if (raw?.format === "mathpress" && Number.isInteger(raw.schemaVersion) && raw.schemaVersion > 4)
         throw new Error("يتطلب هذا المستند إصدارًا أحدث من MathPress. لم يُستبدل المستند الحالي.");
       const parsed = parseDocument(raw);
-      const content = parsed && validateImportedContent(parsed.content);
+      const protectedFormat = parsed?.schemaVersion === 4;
+      const content = parsed && validateImportedContent(parsed.content, protectedFormat);
+      if (protectedFormat && (!content || (raw.educationalStyles !== undefined &&
+        !preservesSuppliedContent(raw.educationalStyles, parsed.educationalStyles)))) {
+        throw new Error("يتضمن ملف MathDoc 4 محتوى أو خصائص غير مدعومة. احتُفظ بالمستند المفتوح وبالملف الأصلي.");
+      }
       if (!parsed || !content) throw new Error("صيغة المستند غير معروفة أو غير مكتملة.");
       // Opening a backup must not overwrite the current local editing copy.
       replaceDocument({ ...parsed, id: crypto.randomUUID(), content });

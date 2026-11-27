@@ -427,7 +427,9 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
             <span className="studio-page-caption" aria-hidden="true">{pageLabels[index]}</span>
           </button>)}
         </nav>}
-        {properties && !focusMode && !printOptions && <aside className="studio-properties no-print" aria-label="خصائص المستند">
+        {properties && !focusMode && !printOptions && <aside className="studio-properties no-print" aria-label="خصائص المستند" onKeyDown={event => {
+          if (event.key === "Escape") { setProperties(false); editor.commands.focus(); }
+        }}>
           <div className="panel-heading"><strong>خصائص المستند</strong><button type="button" onClick={() => setProperties(false)}>إغلاق</button></div>
           <p>A4 · {landscape ? "أفقي" : "عمودي"}</p>
           <label><input type="checkbox" checked={showMargins} onChange={e => setShowMargins(e.target.checked)} /> حدود مساحة الكتابة</label>
