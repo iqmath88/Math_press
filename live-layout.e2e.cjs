@@ -69,11 +69,12 @@ async function exercise(page, name) {
   });
   assert.ok(clipboard.length > 0);
   assert.deepEqual((await state()).doc, after.doc);
+  const beforeArrow = await state();
   await page.keyboard.press("ArrowLeft");
-  await page.waitForFunction(() => {
+  await page.waitForFunction(position => {
     const selection = document.querySelector(".live-lab-source .tiptap").editor.state.selection;
-    return selection.empty;
-  });
+    return selection.empty && selection.from !== position;
+  }, beforeArrow.from);
 
   const toggle = page.getByLabel("عرض الصفحات الحية");
   const beforeToggle = await state();
