@@ -1,5 +1,12 @@
 # سجل تغييرات MathPress
 
+## v0.6.0 — MathPress Studio
+
+- Consolidate Studio, direct MathLive authoring, aligned solutions, structured exams, the refreshed workspace and A4 print improvements.
+- Preserve educational metadata in MathDoc 4 and refuse imports that would discard protected values.
+- Validate IndexedDB upgrades, offline use, browser compatibility and PDF output before deployment.
+- Older builds may refuse protected MathDoc 4 files. Retain old MathDoc 3 originals and see RC-ACCEPTANCE.md for recovery and rollback.
+
 ## v0.6.0-rc.1
 
 - Reject protected MathDoc imports that would lose unsupported content or properties.
