@@ -112,7 +112,13 @@ export default function LiveLayoutLab() {
   return <main className="live-lab" dir="rtl">
     <style>{educational}{`@page { size: A4 ${orientation}; margin: 0 }`}</style>
     <header className="live-lab-tools no-print">
-      <a href="./">العودة إلى Studio</a>
+      <a href="./" onClick={event => {
+        event.preventDefault();
+        const destination = new URL(location.href);
+        destination.hash = "";
+        history.replaceState(null, "", destination);
+        location.reload();
+      }}>العودة إلى Studio</a>
       <strong>مختبر الصفحات الحية</strong>
       <span className="version" dir="ltr">v{import.meta.env.VITE_APP_VERSION}</span>
       <label><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)} /> عرض الصفحات الحية</label>

@@ -194,6 +194,9 @@ async function exercise(page, name) {
       await page.pdf({ path: join(artifacts, "sixth-differential.pdf"), preferCSSPageSize: true, printBackground: true });
     }
   }
+  await page.getByRole("link", { name: "العودة إلى Studio" }).click();
+  await page.locator(".app-shell").waitFor();
+  assert.equal(new URL(page.url()).hash, "");
 }
 
 (async () => {
