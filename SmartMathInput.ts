@@ -21,6 +21,11 @@ function completeLatex(latex: string) {
   return braces === 0 && validateLatex(latex).length === 0;
 }
 
+// Keep both Arabic and Latin amounts as text.
+const amount = /^[\s\p{Nd}\p{Sc}.,٫٬]+$/u;
+const pricedProse = /^\s*\p{Nd}[\p{Nd}.,٫٬]*\s+[\p{L}\s,.]+$/u;
+const completeAmountInput = /^[^$\\\r\n]*\$[\s\p{Nd}\p{Sc}.,٫٬]+\$$/u;
+
 export function delimitedMath(text: string): Match[] {
   const matches: Match[] = [];
   let opening: { at: number; width: number } | undefined;
@@ -40,10 +45,10 @@ export function delimitedMath(text: string): Match[] {
     else if (opening?.width === width) {
       const latex = text.slice(opening.at + width, at);
       // Amounts and prose between two unrelated dollar signs stay literal.
-      const currency = /^[\s\p{Nd}\p{Sc}.,٫٬]+$/u.test(latex) ||
-        /^\s*\p{Nd}[\p{Nd}.,٫٬]*\s+[\p{L}\s,.]+$/u.test(latex);
-      if (latex.trim() && latex.length <= MAX_FORMULA_LENGTH && !currency && completeLatex(latex)) {
-        matches.push({ from: opening.at, to: end, latex: latex.trim(), block: width === 2 });
+      const trimmed = latex.trim();
+      if (trimmed && latex.length <= MAX_FORMULA_LENGTH && !amount.test(latex) &&
+        !pricedProse.test(latex) && completeLatex(latex)) {
+        matches.push({ from: opening.at, to: end, latex: trimmed, block: width === 2 });
         opening = undefined;
       } else opening = { at, width };
     } else opening = { at, width };
@@ -113,13 +118,15 @@ export const SmartMathInput = Extension.create<{ enabled: () => boolean }>({
     return [new Plugin({
       props: {
         handleTextInput(view, from, to, text, defaultInput) {
-          if (!enabled() || view.composing || !text.endsWith("$")) return false;
+          if (!text.endsWith("$") || !enabled() || view.composing || completeAmountInput.test(text)) return false;
           const $from = view.state.doc.resolve(from);
           if (!$from.parent.isTextblock || $from.parent.type.spec.code ||
             !$from.sameParent(view.state.doc.resolve(to))) return false;
           const start = Math.max(0, $from.parentOffset - MAX_FORMULA_LENGTH - 4);
           const prefix = $from.parent.textBetween(start, $from.parentOffset, "", NON_TEXT);
-          const match = delimitedMath(prefix + text).at(-1);
+          const affected = prefix + text;
+          if (affected.indexOf("$") === affected.length - 1) return false;
+          const match = delimitedMath(affected).at(-1);
           if (!match || match.to !== prefix.length + text.length) return false;
           const base = from - prefix.length;
           const input = defaultInput();

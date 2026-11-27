@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Editor } from "@tiptap/core";
 import { buildExtensions } from "./extensions";
+import { createEditorSnapshot } from "./editorSnapshot";
 import { starterContent } from "./document";
 import { changeEducationalItem, educationalList, educationalParagraph, insertEducationalItem, insertSolutionRelation, restartEducationalNumbering } from "./educationalLists";
 
@@ -25,6 +26,21 @@ afterEach(() => {
 });
 
 describe("editor schema", () => {
+  it("reuses unchanged block snapshots without changing JSON or word counts", () => {
+    const ed = make();
+    const snapshot = createEditorSnapshot();
+    const first = snapshot(ed.state.doc);
+    expect(first.content).toEqual(ed.getJSON());
+    expect(snapshot(ed.state.doc)).toBe(first);
+    ed.commands.insertContentAt(1, "كلمات جديدة ");
+    const next = snapshot(ed.state.doc);
+    expect(next.content).toEqual(ed.getJSON());
+    const doc = ed.state.doc;
+    const words = doc.textBetween(0, doc.content.size, " ").match(/[\p{L}\p{N}][\p{L}\p{N}\p{M}]*/gu);
+    expect(next.words).toEqual(words?.length ?? 0);
+    expect(next.content.content?.at(-1)).toBe(first.content.content?.at(-1));
+  });
+
   it("loads the starter document and keeps inline and block equations", () => {
     const ed = make();
     const json = ed.getJSON();

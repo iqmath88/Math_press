@@ -1,5 +1,10 @@
 # سجل تغييرات MathPress
 
+## v0.6.1-rc.1
+
+- Skip delimiter searches for complete currency input and reuse unchanged block serialization and word counts.
+- Extend the browser tests to headings, lists, tables, educational content and malformed input.
+
 ## v0.6.1-beta.1
 
 - Convert completed LaTeX delimiters during typing and paste using the existing MathLive nodes.

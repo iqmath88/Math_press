@@ -4,6 +4,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import type { MathfieldElement } from "mathlive";
 import type { MathPressDocument } from "./types";
+import { createEditorSnapshot } from "./editorSnapshot";
 import { SmartMathInput } from "./SmartMathInput";
 import { buildExtensions } from "./extensions";
 import { EDIT_GRAPH_EVENT, type EditGraphDetail } from "./GraphNode";
@@ -55,6 +56,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   const [showPages, setShowPages] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [wordCount, setWordCount] = useState(0);
+  const snapshotOf = useMemo(createEditorSnapshot, []);
   const stageRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLElement>(null);
   const zoom = printOptions ? 1 : typeof zoomMode === "number" ? zoomMode : fitZoom;
@@ -93,7 +95,11 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       },
       attributes: { dir: "rtl", lang: "ar", spellcheck: "true", class: "mp-editor", "aria-label": "محتوى المستند" }
     },
-    onUpdate: ({ editor: ed }) => onChange(ed.getJSON())
+    onUpdate: ({ editor: ed }) => {
+      const snapshot = snapshotOf(ed.state.doc);
+      setWordCount(snapshot.words);
+      onChange(snapshot.content);
+    }
   });
 
   useEffect(() => {
@@ -198,22 +204,16 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
 
   useEffect(() => {
     if (!editor) return;
-    const refreshWords = () => {
-      const content = editor.state.doc;
-      const text = content.textBetween(0, content.content.size, " ");
-      setWordCount(text.match(/[\p{L}\p{N}][\p{L}\p{N}\p{M}]*/gu)?.length ?? 0);
-    };
     const refreshPage = () => {
       const { from } = editor.state.selection;
       const starts = editor.storage.pagination.pageStarts as number[];
       setCurrentPage(1 + starts.filter(pos => pos <= from).length);
     };
-    editor.on("update", refreshWords);
     editor.on("transaction", refreshPage);
-    refreshWords();
+    setWordCount(snapshotOf(editor.state.doc).words);
     refreshPage();
-    return () => { editor.off("update", refreshWords); editor.off("transaction", refreshPage); };
-  }, [editor]);
+    return () => { editor.off("transaction", refreshPage); };
+  }, [editor, snapshotOf]);
 
   useEffect(() => {
     const source = paperRef.current?.querySelector<HTMLElement>(".editor-source");

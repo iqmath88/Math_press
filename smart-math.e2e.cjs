@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const { randomUUID } = require("node:crypto");
 const { join } = require("node:path");
 const { writeFileSync } = require("node:fs");
 const { chromium, webkit, devices } = require("playwright-core");
@@ -87,6 +88,51 @@ async function check(page, capture) {
   }
 }
 
+async function documentContexts(page, editor) {
+  const text = value => ({type:"text",text:value});
+  const paragraph = value => ({type:"paragraph",content:[text(value)]});
+  const list = (tag, label) => ({type:"orderedList", attrs: {educationalList:tag},
+    content:[{type:"listItem",content:[paragraph(label)]}]});
+  const document = {
+    format:"mathpress", schemaVersion:3, id:randomUUID(), title:"Smart contexts",
+    content:{type:"doc",content:[
+      {type:"heading",attrs:{level:2},content:[text("عنوان Heading")]},
+      paragraph("فقرة Paragraph"),
+      list(null, "قائمة List"),
+      {type:"table",content:[{type:"tableRow",content:[{type:"tableCell",content:[paragraph("جدول Cell")]}]}]},
+      list("exam", "سؤال Exam"),
+      list("solution", "خطوة Solution")
+    ]}
+  };
+  await page.getByRole("tab", {name:"ملف",exact:true}).click();
+  await page.locator('input[accept^=".mathdoc"]').setInputFiles({name:"contexts.mathdoc",mimeType:"application/json",
+    buffer:Buffer.from(JSON.stringify(document))});
+  await editor.getByText("عنوان Heading", {exact:true}).waitFor();
+  for (const label of ["عنوان Heading","فقرة Paragraph","قائمة List","جدول Cell","سؤال Exam","خطوة Solution"]) {
+    const row = editor.locator("p,h2").filter({hasText:label});
+    await row.click();
+    await editor.evaluate(root => {
+      const editor = root.editor;
+      const head = editor.state.selection.$head;
+      editor.commands.setTextSelection(head.end());
+    });
+    await page.keyboard.insertText(" $x+2");
+    await page.keyboard.press("Backspace");
+    await page.keyboard.insertText("3");
+    await page.keyboard.press("$");
+    await page.keyboard.insertText("$y");
+    await page.keyboard.press("$");
+    const fields = row.locator("math-field");
+    await fields.nth(1).waitFor();
+    assert.deepEqual(await fields.evaluateAll(nodes => nodes.map(node => node.value)), ["x+3","y"]);
+  }
+  const last = editor.locator("math-field").last();
+  await last.click();
+  await editor.locator("math-field:focus").waitFor();
+  await page.keyboard.insertText("$z$");
+  assert.equal(await editor.locator("math-field").count(), 12);
+}
+
 async function edgeCases(page) {
   await page.goto(base);
   const blank = () => page.getByRole("button", {name:"مستند فارغ", exact:true}).click();
@@ -132,6 +178,17 @@ async function edgeCases(page) {
     await cdp.detach();
     assert.equal(await editor.locator("math-field").count(), 0);
   }
+
+  await documentContexts(page, editor);
+  await blank();
+  await paragraph().click();
+  await page.keyboard.insertText("$" + "x".repeat(2050));
+  await page.keyboard.press("$");
+  await page.keyboard.press("Enter");
+  await page.keyboard.insertText(String.raw`$\frac{x`);
+  await page.keyboard.press("$");
+  assert.equal(await editor.locator("math-field").count(), 0);
+  assert.equal(await paragraph().textContent(), "$" + "x".repeat(2050) + "$");
 
   await page.getByRole("button", {name:"خصائص المستند", exact:true}).click();
   const preference = page.getByRole("checkbox", {name:"التحويل التلقائي للمعادلات"});
