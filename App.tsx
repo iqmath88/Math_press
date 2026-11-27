@@ -126,9 +126,8 @@ export default function App() {
         throw new Error("يتطلب هذا المستند إصدارًا أحدث من MathPress. لم يُستبدل المستند الحالي.");
       const parsed = parseDocument(raw);
       const protectedFormat = parsed?.schemaVersion === 4;
-      const content = parsed && validateImportedContent(parsed.content, protectedFormat);
-      if (protectedFormat && (!content || (raw.educationalStyles !== undefined &&
-        !preservesSuppliedContent(raw.educationalStyles, parsed.educationalStyles)))) {
+      const content = parsed && validateImportedContent(parsed.content);
+      if (protectedFormat && (!content || !preservesSuppliedContent(raw, { ...parsed, content }))) {
         throw new Error("يتضمن ملف MathDoc 4 محتوى أو خصائص غير مدعومة. احتُفظ بالمستند المفتوح وبالملف الأصلي.");
       }
       if (!parsed || !content) throw new Error("صيغة المستند غير معروفة أو غير مكتملة.");
