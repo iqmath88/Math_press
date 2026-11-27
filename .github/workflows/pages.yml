@@ -30,6 +30,9 @@ jobs:
         run: |
           npx playwright-core install --with-deps chromium webkit
           sudo apt-get install -y poppler-utils
+      - name: Install the lab video encoder
+        if: (github.head_ref || github.ref_name) == 'feature/v0.7.0-live-page-layout'
+        run: sudo apt-get install -y ffmpeg
       - name: Test editing and PDF publishing
         env:
           MATHPRESS_BRANCH: ${{ github.head_ref || github.ref_name }}
