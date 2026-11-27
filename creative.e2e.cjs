@@ -43,6 +43,7 @@ async function lesson(page, capture) {
   await shape.click();
   await page.getByRole("group",{name:"خصائص الشكل"}).getByLabel("التسمية").fill("مثلث المماس");
   await shape.getByText("مثلث المماس").waitFor();
+  await page.getByRole("group",{name:"خصائص الشكل"}).getByLabel("العرض (مم)").fill("32");
   await editor.evaluate(async el=>{
     const canvas = document.createElement("canvas");
     canvas.width = 2048;
@@ -76,7 +77,7 @@ async function lesson(page, capture) {
   await image.evaluate(element=>element.decode());
   assert.equal(await image.evaluate(element=>element.naturalWidth),2048);
   await image.click();
-  await page.getByRole("group",{name:"خصائص الصورة"}).getByLabel("العرض (مم)").fill("90");
+  await page.getByRole("group",{name:"خصائص الصورة"}).getByLabel("العرض (مم)").fill("64");
   await page.getByRole("group",{name:"خصائص الصورة"}).getByLabel("القص من كل حافة (%)").fill("3");
   await page.getByText("محفوظ محليًا",{exact:true}).waitFor();
   await page.getByRole("tab",{name:"ملف",exact:true}).click();
@@ -102,7 +103,6 @@ async function lesson(page, capture) {
   if (capture) await page.screenshot({path:join(output,"creative-editor.png")});
   await page.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
   await page.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A4/).waitFor();
-  assert.equal(await page.locator(".print-sheet").count(),5);
   await page.locator(".print-sheet .studio-image img").waitFor();
   await page.locator(".print-sheet .studio-shape").getByText("مثلث المماس").waitFor();
   assert.equal(await page.locator(".print-sheet .creative-block-label").filter({hasText:"تعريف محرّر"}).count(),1);
@@ -110,6 +110,7 @@ async function lesson(page, capture) {
     await page.pdf({path:join(output,"applied-derivatives.pdf"),preferCSSPageSize:true});
     await page.screenshot({path:join(output,"creative-preview.png")});
   }
+  assert.equal(await page.locator(".print-sheet").count(),5);
   const restored = await page.context().browser().newPage();
   try {
     await restored.goto(home);
