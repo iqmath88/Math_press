@@ -96,6 +96,9 @@ export async function portableImages(node: JSONContent, cache = new Map<string,P
 
 export async function localizeImages(node: JSONContent): Promise<JSONContent> {
   let attrs = node.attrs;
+  if (node.type === "image" && typeof attrs?.src === "string" && assetReference.test(attrs.src)) {
+    throw new Error("النسخة الاحتياطية تشير إلى أصل محلي غير مضمن. احتُفظ بالمستند المفتوح.");
+  }
   if (node.type === "image" && typeof attrs?.src === "string" && /^data:image\/(png|jpeg|webp|svg\+xml);base64,/i.test(attrs.src)) {
     attrs = {...attrs,src:await storeImage(await (await fetch(attrs.src)).blob())};
   }

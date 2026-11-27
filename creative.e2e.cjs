@@ -35,6 +35,8 @@ async function lesson(page, capture) {
   assert.equal(persisted.creativeDesign,"emerald");
   assert.equal(persisted.content.content.find(node=>node.type==="educationBlock").attrs.title,"تعريف محرّر");
   if (capture) await download.saveAs(join(output,"applied-derivatives.mathdoc"));
+  await editor.locator("p").last().click();
+  await page.keyboard.press("End");
   const tools = page.getByLabel("الأشكال الهندسية");
   await tools.selectOption("triangle");
   const shape = editor.locator(".studio-shape").first();
@@ -100,7 +102,7 @@ async function lesson(page, capture) {
   if (capture) await page.screenshot({path:join(output,"creative-editor.png")});
   await page.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
   await page.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A4/).waitFor();
-  assert.ok(await page.locator(".print-sheet").count() >= 5);
+  assert.equal(await page.locator(".print-sheet").count(),5);
   await page.locator(".print-sheet .studio-image img").waitFor();
   await page.locator(".print-sheet .studio-shape").getByText("مثلث المماس").waitFor();
   assert.equal(await page.locator(".print-sheet .creative-block-label").filter({hasText:"تعريف محرّر"}).count(),1);
@@ -121,6 +123,12 @@ async function lesson(page, capture) {
     await restoredImage.evaluate(element=>element.decode());
     assert.equal(await restoredImage.evaluate(element=>element.naturalWidth),2048);
     await restored.locator(".editor-source .studio-shape").getByText("مثلث المماس").waitFor();
+    await restored.getByRole("tab",{name:"الصفحة",exact:true}).click();
+    await restored.getByRole("button",{name:"هوامش مخصصة، الرأس والتذييل، الترقيم"}).click();
+    await restored.getByLabel("حجم الورق").selectOption("A5");
+    await restored.getByRole("button",{name:"تطبيق",exact:true}).click();
+    await restored.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
+    await restored.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A5/).waitFor();
   } finally { await restored.close(); }
 }
 async function verifyLongBox(page) {
