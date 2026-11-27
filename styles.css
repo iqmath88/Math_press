@@ -1124,7 +1124,15 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
     border-radius: 12px;
   }
   .studio-properties p { margin: 0; }
-  .studio-margins > .mp-editor { outline: 1px dashed #8095a8; outline-offset: -1px; }
+  .studio-margins::after {
+    content: "";
+    position: absolute;
+    inset: var(--pt) var(--pr) var(--pb) var(--pl);
+    border: 1px dashed #8095a8;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .app-shell .version { color: var(--studio-muted); border-color: var(--studio-rule); }
   .page-navigation button { min-inline-size: 72px; min-block-size: 50px; }
   .exam-outline { display: flex; align-items: center; gap: 6px; }
   .exam-outline input { inline-size: 4em; }
