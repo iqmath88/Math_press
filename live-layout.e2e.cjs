@@ -70,7 +70,10 @@ async function exercise(page, name) {
   assert.ok(clipboard.length > 0);
   assert.deepEqual((await state()).doc, after.doc);
   await page.keyboard.press("ArrowLeft");
-  assert.equal((await state()).from, (await state()).to);
+  await page.waitForFunction(() => {
+    const selection = document.querySelector(".live-lab-source .tiptap").editor.state.selection;
+    return selection.empty;
+  });
 
   const toggle = page.getByLabel("عرض الصفحات الحية");
   const beforeToggle = await state();
