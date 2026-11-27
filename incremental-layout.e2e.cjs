@@ -128,6 +128,20 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
           root.contains(selection.anchorNode) && view.state.selection.empty &&
           view.state.selection.from === end && view.posAtDOM(selection.anchorNode, selection.anchorOffset) === end;
       });
+      // Reproduce a stale native focus after returning from the final inline field.
+      await setDoc([{ type: "paragraph", content: [{ type: "text", text: "قبل " },
+        { type: "mathInline", attrs: { latex: "x=2" } }] }]);
+      const lastField = source.locator("math-field");
+      await lastField.click();
+      await source.locator("math-field:focus").waitFor();
+      await page.keyboard.press("Escape");
+      await focusRoot();
+      await lastField.evaluate(field => HTMLElement.prototype.focus.call(field));
+      await focusRoot();
+      await lastField.click();
+      await source.locator("math-field:focus").waitFor();
+      await page.keyboard.press("Escape");
+      await focusRoot();
       const record = { keyboard, attempted: 0, passed: 0, failures: [] };
       results[name] = record;
       page.setDefaultTimeout(3500);
