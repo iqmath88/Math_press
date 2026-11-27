@@ -56,6 +56,9 @@ async function check(page, capture) {
   await page.keyboard.press(mod + "+z");
   await page.waitForFunction(() => !document.querySelector(".editor-source .tiptap").editor.state.doc.textContent.includes("ثم العربية"));
   await latexIs(newLatex);
+  // Undo has moved the caret since Escape. A late field focus must still be ignored.
+  await field.evaluate(node => HTMLElement.prototype.focus.call(node));
+  await page.waitForFunction(() => document.querySelector(".editor-source .tiptap") === document.activeElement);
   await page.keyboard.press(mod + "+Shift+z");
   await editor.getByText(/ثم العربية/).waitFor();
   await latexIs(newLatex);

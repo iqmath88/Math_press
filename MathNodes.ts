@@ -14,7 +14,7 @@ declare module "@tiptap/core" {
 
 export const EDIT_MATH_EVENT = "mathpress:edit-math";
 const RETURN_TO_TEXT = "mathpress:return-to-text";
-const textHandoff = new WeakMap<Editor, { field: MathfieldElement; anchor: number; head: number }>();
+const textHandoff = new WeakMap<Editor, MathfieldElement>();
 
 // MathLive's programmatic focus can defer focusing its shadow keyboard sink
 // while the editor still owns focus. Native focus delegates into the shadow
@@ -201,7 +201,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           // Changing editing surfaces ends the MathLive history group. Otherwise
           // immediately adjacent prose can be undone together with the equation.
           view.dispatch(closeHistory(view.state.tr.setSelection(selection).setMeta("addToHistory", false)).scrollIntoView());
-          textHandoff.set(editor, { field: mf, anchor: selection.anchor, head: selection.head });
+          textHandoff.set(editor, mf);
           view.focus();
           return true;
         };
@@ -216,15 +216,13 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           else focusMathfield(editor, mf);
         }, capture);
         mf.addEventListener("focusin", event => {
-          const handoff = textHandoff.get(editor);
-          const matchesHandoff = () => handoff?.anchor === editor.state.selection.anchor && handoff?.head === editor.state.selection.head;
-          if (handoff?.field !== mf || event.relatedTarget !== editor.view.dom ||
-            !matchesHandoff()) return;
-          // WebKit can let the previous field reclaim focus after the handoff.
-          // Recover only from that transition, and never override a new edit.
+          if (textHandoff.get(editor) !== mf || event.relatedTarget !== editor.view.dom) return;
+          // Undo can move the text selection while the same handoff is active.
+          // Keep that current selection if MathLive tries to reclaim focus.
+          const state = editor.view.state;
           queueMicrotask(() => {
-            if (editor.isDestroyed || textHandoff.get(editor) !== handoff || document.activeElement !== mf ||
-              !matchesHandoff()) return;
+            if (editor.isDestroyed || textHandoff.get(editor) !== mf || document.activeElement !== mf ||
+              state.doc !== editor.state.doc || !state.selection.eq(editor.state.selection)) return;
             editor.view.focus();
           });
         }, capture);
@@ -319,7 +317,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           stopEvent: () => true,
           ignoreMutation: () => true,
           destroy: () => {
-            if (textHandoff.get(editor)?.field === mf) textHandoff.delete(editor);
+            if (textHandoff.get(editor) === mf) textHandoff.delete(editor);
             listeners.abort();
             cancelAnimationFrame(focusFrame);
             clearTimeout(arrowTimer);
