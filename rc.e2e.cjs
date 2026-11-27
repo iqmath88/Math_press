@@ -29,6 +29,7 @@ const { chromium } = require("playwright-core");
     await source.getByText("نص محفوظ قبل إغلاق النافذة").waitFor();
 
     const original = await page.getByLabel("عنوان المستند").inputValue();
+    await tab("ملف").click();
     await page.locator('input[accept^=".mathdoc"]').setInputFiles({
       name: "unsupported.mathdoc", mimeType: "application/json",
       buffer: Buffer.from(JSON.stringify({
