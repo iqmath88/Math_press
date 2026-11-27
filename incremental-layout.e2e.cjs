@@ -50,9 +50,10 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
       const columns = () => source.evaluate(root => {
         const range = document.createRange();
         range.selectNodeContents(root.querySelector("p"));
-        return new Set([...range.getClientRects()].filter(rect => rect.height > 0).map(rect => Math.round(rect.right))).size;
+        const edges = [...range.getClientRects()].filter(rect => rect.height > 0).map(rect => rect.right);
+        return Math.max(...edges) - Math.min(...edges);
       });
-      assert.ok(await columns() > 1);
+      assert.ok(await columns() > 270);
       await source.evaluate(root => root.editor.commands.focus("end"));
       await page.waitForFunction(() => {
         const root = document.querySelector(".live-lab-source .tiptap");
@@ -60,6 +61,8 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
         return document.activeElement === root && root.contains(caret?.anchorNode) &&
           root.editor.state.selection.from === root.editor.state.doc.content.size - 1;
       });
+      if (process.env.MATHPRESS_QA_OUTPUT && engine === chromium && name === "desktop")
+        await page.screenshot({ path: join(process.env.MATHPRESS_QA_OUTPUT, "direct-column-01.png") });
       await page.keyboard.insertText(" نهاية النص العربي");
       await source.getByText(/نهاية النص العربي/).waitFor();
       await page.keyboard.press("Control+z");
@@ -68,6 +71,8 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
       await page.keyboard.press("Control+Shift+z");
       await source.getByText(/نهاية النص العربي/).waitFor();
       const edited = await snapshot();
+      if (process.env.MATHPRESS_QA_OUTPUT && engine === chromium && name === "desktop")
+        await page.screenshot({ path: join(process.env.MATHPRESS_QA_OUTPUT, "direct-column-02.png") });
       await direct.uncheck();
       await projection.locator(".print-sheet").first().waitFor();
       assert.deepEqual(await snapshot(), edited);
@@ -76,9 +81,47 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
           JSON.stringify({ pages: 200, rebuilt: 1, reused: 199, ranges }, null, 2));
         await page.screenshot({ path: join(process.env.MATHPRESS_QA_OUTPUT, `incremental-${engine.name()}-${name}.png`) });
       }
+      await direct.check();
+      const review = " النص العربي بعد الحقل";
+      const focusRoot = () => page.waitForFunction(() => {
+        const root = document.querySelector(".live-lab-source .tiptap");
+        return document.activeElement === root && root.contains(document.getSelection()?.anchorNode);
+      });
+      for (let round = 0; round < 30; round++) {
+        await setDoc([
+          { type: "paragraph", content: [{ type: "text", text: "فقرة عربية x=2. ".repeat(190) }] },
+          { type: "pageBreak" },
+          { type: "paragraph", content: [{ type: "text", text: "حول الفاصل " },
+            { type: "mathInline", attrs: { latex: "x=2" } }] }
+        ]);
+        const atom = source.locator("math-field").first();
+        await atom.click();
+        await atom.press("End");
+        await page.keyboard.type("+1");
+        await page.keyboard.press("Escape");
+        await focusRoot();
+        await page.keyboard.insertText(review);
+        await page.waitForFunction(text =>
+          document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
+        const state = await snapshot();
+        await page.keyboard.press("Control+z");
+        await page.waitForFunction(text =>
+          !document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
+        await page.keyboard.press("Control+Shift+z");
+        await page.waitForFunction(text =>
+          document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
+        assert.deepEqual(await snapshot(), state);
+        await source.evaluate(root => {
+          const editor = root.editor;
+          editor.commands.setTextSelection({ from: 1, to: editor.state.doc.content.size - 1 });
+        });
+        assert.ok(await source.evaluate(root => !root.editor.state.selection.empty));
+        await page.keyboard.press("Backspace");
+        await page.waitForFunction(() => document.querySelector(".live-lab-source .tiptap").editor.state.doc.textContent.trim() === "");
+      }
       await page.close();
     }
-    console.log(engine.name() + " verified incremental page reuse and isolated direct columns");
+    console.log(engine.name() + " verified incremental page reuse and 30 direct-layout rounds per viewport");
   } finally { await browser.close(); }
 })().catch(error => {
   console.error(error);

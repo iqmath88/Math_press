@@ -53,6 +53,8 @@ jobs:
             if [ "$MATHPRESS_BRANCH" = "feature/v0.7.0-incremental-page-engine" ]; then
               node incremental-layout.e2e.cjs chromium
               node incremental-layout.e2e.cjs webkit
+              ffmpeg -y -framerate 1 -pattern_type glob -i "$MATHPRESS_QA_OUTPUT/direct-column-*.png" \
+                -c:v libvpx-vp9 -pix_fmt yuv420p "$MATHPRESS_QA_OUTPUT/direct-column-flow.webm"
             fi
             ffmpeg -y -framerate 1 -pattern_type glob -i "$MATHPRESS_QA_OUTPUT/live-chromium-desktop-0[1-3]*.png" \
               -c:v libvpx-vp9 -pix_fmt yuv420p "$MATHPRESS_QA_OUTPUT/live-layout-flow.webm"
