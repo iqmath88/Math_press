@@ -4,6 +4,7 @@
 
 - Added an isolated hybrid page preview with page thumbnails and navigation back to the single editor.
 - A full projection pass now uses the shared print renderer once and seeds reuse only where the rendered ranges respect the explicit page breaks.
+- Exiting a MathLive field closes its undo group so subsequent prose has independent undo.
 - Added independent direct-editing sessions and a continuous-editor comparison with failure diagnostics. The lab remains experimental.
 
 

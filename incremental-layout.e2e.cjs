@@ -152,6 +152,8 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
           await page.keyboard.press("Control+z");
           await page.waitForFunction(text =>
             !document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
+          const afterUndo = await source.evaluate(root => root.editor.state.doc.lastChild?.lastChild?.attrs.latex);
+          assert.equal(afterUndo, "x=2+1", "Undoing prose must preserve the committed equation.");
           stage = "redo";
           await page.keyboard.press("Control+Shift+z");
           await page.waitForFunction(text =>

@@ -1,4 +1,5 @@
 import { Node, mergeAttributes, type Editor } from "@tiptap/core";
+import { closeHistory } from "@tiptap/pm/history";
 import { TextSelection } from "@tiptap/pm/state";
 import type { MathfieldElement } from "mathlive";
 
@@ -181,7 +182,9 @@ function createMathNode(name: "mathInline" | "mathBlock") {
             if (next?.type.name === "paragraph" && !next.attrs.solutionRelation) boundary = end + 1;
           }
           const selection = TextSelection.near(doc.resolve(boundary), before ? -1 : 1);
-          view.dispatch(view.state.tr.setSelection(selection).setMeta("addToHistory", false).scrollIntoView());
+          // Changing editing surfaces ends the MathLive history group. Otherwise
+          // immediately adjacent prose can be undone together with the equation.
+          view.dispatch(closeHistory(view.state.tr.setSelection(selection).setMeta("addToHistory", false)).scrollIntoView());
           view.focus();
           return true;
         };
