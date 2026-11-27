@@ -62,9 +62,10 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   const [graph, setGraph] = useState<{ pos: number | null; spec: GraphSpec | null } | null>(null);
   const previewRef = useRef<MathfieldElement | null>(null);
 
+  const [pageLabels, setPageLabels] = useState<string[]>([]);
   const [properties, setProperties] = useState(false);
   const [showMargins, setShowMargins] = useState(false);
-  const printOrigin = useRef<{ block: Element | null; x: number; y: number } | null>(null);
+  const printOrigin = useRef<{ block: Element | null; offset: number; x: number; y: number } | null>(null);
 
   const editor = useEditor({
     extensions,
@@ -221,6 +222,24 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
     return () => viewport.removeEventListener("resize", keepActiveVisible);
   }, [editor]);
 
+  useEffect(() => {
+    if (!showPages || !editor || printOptions) return;
+    const timer = window.setTimeout(() => {
+      const labels: string[] = [];
+      const source = editor.view.dom;
+      const breaks = [...source.querySelectorAll(".pg-header")].map(marker => marker.getBoundingClientRect().top);
+      let page = 0;
+      for (const block of source.children) {
+        if (block.matches(".pg-break, .ProseMirror-gapcursor") || !block.textContent?.trim()) continue;
+        const top = block.getBoundingClientRect().top;
+        while (page < breaks.length && top >= breaks[page]) page++;
+        if (!labels[page]) labels[page] = block.textContent.trim().slice(0, 54);
+      }
+      setPageLabels(labels);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [editor, showPages, pageCount, doc.content, printOptions, zoom]);
+
   if (!editor) return null;
 
   const openNewLatex = (latex = "") => {
@@ -305,7 +324,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   const openPrint = () => {
     const { $from } = editor.state.selection;
     const block = $from.depth > 0 ? editor.view.nodeDOM($from.before($from.depth)) : null;
-    printOrigin.current = { block: block instanceof Element ? block : null, x: window.scrollX, y: window.scrollY };
+    printOrigin.current = { block: block instanceof Element ? block : null, offset: $from.parentOffset, x: window.scrollX, y: window.scrollY };
     setShowSearch(false);
     setPrintOptions({ backgrounds: true, numbers: doc.showPageNumbers, economical: false });
   };
@@ -327,7 +346,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       <style>{styleSheet}</style>
       {printOptions && <PrintPreview paper={paperRef} editor={editor} options={printOptions}
         onChange={setPrintOptions} usableHeightMm={(landscape ? 210 : 297) - m.top - m.bottom}
-        selectedBlock={printOrigin.current?.block}
+        selectedBlock={printOrigin.current?.block} selectedOffset={printOrigin.current?.offset}
         onClose={() => {
           const origin = printOrigin.current;
           setPrintOptions(null);
@@ -395,7 +414,11 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       <div className={`page-stage${focusMode ? " document-focus" : ""}`} ref={stageRef}>
         {showPages && !focusMode && !printOptions && <nav className="page-navigation no-print" aria-label="التنقل بين الصفحات">
           {Array.from({ length: pageCount }, (_, index) => <button type="button" key={index}
-            aria-current={currentPage === index + 1 ? "page" : undefined} onClick={() => goToPage(index + 1)}>صفحة {index + 1}</button>)}
+            aria-label={`صفحة ${index + 1}`} aria-current={currentPage === index + 1 ? "page" : undefined}
+            onClick={() => goToPage(index + 1)}>
+            <span className="studio-page-number">{index + 1}</span>
+            <span className="studio-page-caption" aria-hidden="true">{pageLabels[index]}</span>
+          </button>)}
         </nav>}
         {properties && !focusMode && !printOptions && <aside className="studio-properties no-print" aria-label="خصائص المستند">
           <div className="panel-heading"><strong>خصائص المستند</strong><button type="button" onClick={() => setProperties(false)}>إغلاق</button></div>

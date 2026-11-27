@@ -2,8 +2,11 @@ import type { MathfieldElement } from "mathlive";
 
 type Boundary = { node: Node; offset: number };
 
-function paragraphBoundaries(paragraph: HTMLElement): Boundary[] {
+function paragraphBoundaries(paragraph: HTMLElement, offsets?: number[]): Boundary[] {
   const boundaries: Boundary[] = [{ node: paragraph, offset: 0 }];
+  const advance = (length: number) => {
+    if (offsets) offsets.push(offsets[offsets.length - 1] + length);
+  };
   const visit = (parent: Node) => {
     parent.childNodes.forEach((child, index) => {
       if (child instanceof Text) {
@@ -11,11 +14,13 @@ function paragraphBoundaries(paragraph: HTMLElement): Boundary[] {
         for (const character of child.data) {
           offset += character.length;
           boundaries.push({ node: child, offset });
+          if (offsets) advance(character.length);
         }
       } else if (child instanceof HTMLElement && !child.matches("br, [contenteditable=false], img")) {
         visit(child);
       } else {
         boundaries.push({ node: parent, offset: index + 1 });
+        if (offsets) advance(1);
       }
     });
   };
@@ -75,7 +80,7 @@ function printableClone(source: HTMLElement): HTMLElement {
 
 export function paginateForPrint(
   source: HTMLElement, target: HTMLElement,
-  { headerText, footerText, selectedBlock }: { headerText: string; footerText: string; selectedBlock?: Element | null }
+  { headerText, footerText, selectedBlock, selectedOffset }: { headerText: string; footerText: string; selectedBlock?: Element | null; selectedOffset?: number }
 ) {
   const sheets: HTMLElement[] = [];
   let body: HTMLElement;
@@ -125,7 +130,8 @@ export function paginateForPrint(
       return;
     }
     paragraph.remove();
-    const boundaries = paragraphBoundaries(paragraph);
+    const offsets = selectedOffset !== undefined && paragraph.hasAttribute("data-studio-print-anchor") ? [0] : undefined;
+    const boundaries = paragraphBoundaries(paragraph, offsets);
     if (boundaries.length < 3) {
       place(paragraph);
       return;
@@ -134,6 +140,7 @@ export function paginateForPrint(
     for (let start = 0, last = boundaries.length - 1; start < last;) {
       const fragment = paragraph.cloneNode(false) as HTMLElement;
       if (start) fragment.removeAttribute("data-educational-sequence");
+      if (offsets) fragment.removeAttribute("data-studio-print-anchor");
       body.append(fragment);
       const show = (from: number, end: number) => {
         range.setStart(boundaries[from].node, boundaries[from].offset);
@@ -155,7 +162,14 @@ export function paginateForPrint(
       };
       // Most continuations fit on the next sheet. Skip repeated prefix probes
       // for modest remainders, while bounding work for very long paragraphs.
-      if (start > 0 && last - start <= 4096 && probe(last)) break;
+      const mark = (end: number) => {
+        if (offsets && selectedOffset !== undefined && selectedOffset >= offsets[start] &&
+          (selectedOffset < offsets[end] || end === last)) fragment.setAttribute("data-studio-print-anchor", "");
+      };
+      if (start > 0 && last - start <= 4096 && probe(last)) {
+        mark(last);
+        break;
+      }
       let low = start;
       let high = Math.min(last, start + 128);
       while (probe(high)) {
@@ -163,7 +177,10 @@ export function paginateForPrint(
         if (high === last) break;
         high = Math.min(last, start + (high - start) * 2);
       }
-      if (low === last) break;
+      if (low === last) {
+        mark(last);
+        break;
+      }
       while (high - low > 1) {
         const middle = (low + high) >>> 1;
         if (probe(middle)) low = middle;
@@ -177,6 +194,7 @@ export function paginateForPrint(
         }
         // An inline atom can be larger than a whole page.
         probe(start + 1);
+        mark(start + 1);
         place(fragment);
         start++;
       } else {
@@ -216,6 +234,7 @@ export function paginateForPrint(
           newSheet();
           continue;
         }
+        mark(end);
         start = end;
       }
       if (start < last) newSheet();

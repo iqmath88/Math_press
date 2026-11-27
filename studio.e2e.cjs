@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { randomUUID } = require("node:crypto");
 const { execFileSync } = require("node:child_process");
-const { mkdtempSync, writeFileSync } = require("node:fs");
+const { mkdtempSync, readFileSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { chromium, webkit, devices } = require("playwright-core");
@@ -73,6 +73,10 @@ const samples = [
     await button("إدراج الهيكل").click();
     assert.equal(await source.locator('[data-educational-list="exam"] > li').count(), 4);
     assert.equal(await source.locator('[data-educational-list="branches"] > li').count(), 12);
+    await button("تراجع").click();
+    assert.equal(await source.locator('[data-educational-list="exam"]').count(), 0);
+    await button("إعادة").click();
+    assert.equal(await source.locator('[data-educational-list="branches"] > li').count(), 12);
     await source.locator('[data-educational-list="exam"] > li > p').first().click();
     await page.keyboard.insertText("عنوان السؤال");
     await page.keyboard.press("Alt+ArrowDown");
@@ -85,6 +89,22 @@ const samples = [
     await button("الوضع الداكن").click();
     assert.equal(await page.locator(".app-shell").getAttribute("data-theme"), "dark");
     assert.equal(await page.locator(".paper").evaluate(node => getComputedStyle(node).backgroundColor), paperColor);
+    await page.screenshot({ path: join(output, `studio-${engine.name()}-dark.png`) });
+    await tab("ملف").click();
+    const downloadReady = page.waitForEvent("download");
+    await button("تصدير المستند كملف قابل للتحرير").click();
+    const download = await downloadReady;
+    const exported = JSON.parse(readFileSync(await download.path(), "utf8"));
+    assert.equal(exported.schemaVersion, 4);
+    assert.equal(exported.content.content[0].attrs.educationalList, "exam");
+    const currentTitle = await page.getByLabel("عنوان المستند").inputValue();
+    await page.locator('input[accept^=".mathdoc"]').setInputFiles({
+      name: "future.mathdoc", mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify({ ...exported, schemaVersion: 5, title: "عنوان مستقبلي" }))
+    });
+    await page.getByText(/يتطلب هذا المستند إصدارًا أحدث/).waitFor();
+    assert.equal(await page.getByLabel("عنوان المستند").inputValue(), currentTitle);
+    assert.equal(await source.locator('[data-educational-list="branches"] > li').count(), 12);
 
     for (const [name, title, headerText, content] of samples) {
       await page.goto(url);
@@ -101,10 +121,13 @@ const samples = [
       await source.locator("math-field").first().waitFor();
       assert.equal(await page.getByLabel("عنوان المستند").inputValue(), title);
       if (name !== "fifth-exam") await source.locator(".graph-box svg").first().waitFor();
+      const selected = name === "long-math" ? source.getByText("المسألة 10 · تمثيل الدوال", { exact: true }) : null;
+      if (selected) await selected.click();
       await button("طباعة / PDF").click();
       await page.getByRole("region", { name: "معاينة الطباعة" }).getByText(/صفحة A4/).waitFor();
       const sheets = await page.locator(".print-sheet").count();
       assert.ok(sheets >= (name === "long-math" ? 10 : 1));
+      if (selected) assert.equal(await page.locator('[data-studio-print-anchor]').textContent(), "المسألة 10 · تمثيل الدوال");
       if (engine === chromium) {
         writeFileSync(join(output, `${name}.mathdoc`), json);
         const path = join(output, `${name}.pdf`);

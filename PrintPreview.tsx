@@ -38,9 +38,10 @@ type Props = {
   onClose: () => void;
   onPrint: () => void;
   selectedBlock?: Element | null;
+  selectedOffset?: number;
 };
 
-export default function PrintPreview({ paper, editor, options, onChange, usableHeightMm, onClose, onPrint, selectedBlock }: Props) {
+export default function PrintPreview({ paper, editor, options, onChange, usableHeightMm, onClose, onPrint, selectedBlock, selectedOffset }: Props) {
   const [pages, setPages] = useState(1);
   const [issues, setIssues] = useState<string[]>([]);
   const [layoutPending, setLayoutPending] = useState(true);
@@ -67,7 +68,7 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
       if (!target) return;
       const { headerText } = editor.storage.pagination.layout;
       const result = paginateForPrint(source, target, {
-        headerText, footerText: editor.storage.pagination.footerText, selectedBlock
+        headerText, footerText: editor.storage.pagination.footerText, selectedBlock, selectedOffset
       });
       setPages(result.pages);
       const warnings = findPrintIssues(element, usableHeightMm);
@@ -83,7 +84,7 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
     };
     void prepare();
     return () => { active = false; };
-  }, [editor, paper, usableHeightMm, selectedBlock]);
+  }, [editor, paper, usableHeightMm, selectedBlock, selectedOffset]);
 
   useLayoutEffect(() => {
     if (layoutPending) return;

@@ -1157,3 +1157,20 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
   .page-stage:has(.studio-properties) { padding-left: max(248px, 19%); }
   .studio-properties { position: absolute; left: 12px; top: 12px; }
 }
+@media screen {
+  .page-navigation button {
+    display: grid;
+    align-content: start;
+    justify-items: start;
+    gap: 2px;
+    width: 84px;
+    min-height: 72px;
+    text-align: start;
+    border-radius: 4px;
+  }
+  .studio-page-number { font-weight: 700; font-size: 11px; }
+  .studio-page-caption { font-size: 9px; line-height: 1.35; overflow: hidden; max-height: 3em; }
+}
+@media screen {
+  .print-preview-tools { position: sticky; inset-block-start: 0; z-index: 10; }
+}
