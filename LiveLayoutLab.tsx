@@ -77,7 +77,7 @@ export default function LiveLayoutLab() {
         setOverflow(result.overflow);
         setRebuilt(result.rebuilt);
         setLayoutMs(result.elapsed);
-      }, 35);
+      }, 20);
     };
     let active = true;
     const refresh = () => { if (active) { invalidateAll = true; schedule(); } };

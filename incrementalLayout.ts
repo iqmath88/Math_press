@@ -43,6 +43,7 @@ function segments(doc: PMNode, source: HTMLElement): Segment[] {
 export function createIncrementalLayout() {
   let cache = new Map<number, Cached>();
   let previousOptions: Options | undefined;
+  let previousCount = 0;
   return async (doc: PMNode, source: HTMLElement, target: HTMLElement, options: Options,
     signal: AbortSignal, invalidateAll: boolean, invalidated: ReadonlySet<HTMLElement>) => {
     const started = performance.now();
@@ -110,7 +111,11 @@ export function createIncrementalLayout() {
       for (const child of [...target.children]) if (!wanted.has(child as HTMLElement)) child.remove();
       sheets.forEach((sheet, index) => {
         if (target.children[index] !== sheet) target.insertBefore(sheet, target.children[index] ?? null);
-        sheet.dataset.printPage = String(index + 1);
+        const number = String(index + 1);
+        const alreadyNumbered = sheet.dataset.printPage === number && sheet.dataset.totalPages === String(sheets.length);
+        if (alreadyNumbered && reuse && previousCount === sheets.length) return;
+        sheet.dataset.printPage = number;
+        sheet.dataset.totalPages = String(sheets.length);
         const label = sheet.querySelector(".pg-footer-num");
         if (label) {
           const text = options.showPageNumbers ? `صفحة ${index + 1} من ${sheets.length}` : "";
@@ -119,6 +124,7 @@ export function createIncrementalLayout() {
       });
       cache = next;
       previousOptions = options;
+      previousCount = sheets.length;
       return { ranges, overflow, rebuilt, elapsed: performance.now() - started };
     } finally { stage.remove(); }
   };
