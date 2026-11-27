@@ -84,7 +84,12 @@ export function createIncrementalLayout() {
     let overflow = false;
     let rebuilt = 0;
     let slice = performance.now();
-    const full = !reuse || !parts.length || !cache.size;
+    const matching = (part: Segment) => {
+      const cached = byFirstBlock.get(part.blocks[0]);
+      if (cached && cached.final === part.final && same(cached.nodes, part.nodes)
+        && same(cached.blocks, part.blocks) && !part.blocks.some(block => invalidated.has(block))) return cached;
+    };
+    const full = !reuse || !parts.some(matching);
     const append = (part: Cached) => {
       sheets.push(...part.sheets);
       ranges.push(...part.ranges);
@@ -94,9 +99,8 @@ export function createIncrementalLayout() {
       for (const part of full ? [null] : parts) {
         if (signal.aborted) return;
         if (part) {
-          const cached = byFirstBlock.get(part.blocks[0]);
-          if (cached && cached.final === part.final && same(cached.nodes, part.nodes)
-            && same(cached.blocks, part.blocks) && !part.blocks.some(block => invalidated.has(block))) {
+          const cached = matching(part);
+          if (cached) {
             const delta = part.start - cached.start;
             const moved = delta === 0 ? cached : {
               ...cached, start: part.start,
@@ -122,7 +126,7 @@ export function createIncrementalLayout() {
         append(entry);
         const holder = document.createElement("div");
         holder.append(...children);
-        if (performance.now() - slice >= 12) {
+        if (!full && performance.now() - slice >= 12) {
           await new Promise<void>(resolve => setTimeout(resolve, 0));
           slice = performance.now();
         }
