@@ -23,9 +23,15 @@ async function check(page, capture) {
   const source = "$" + examples[0] + "$";
   const snapshot = () => editor.evaluate(root => root.editor.getJSON());
   await page.keyboard.insertText(source.slice(0, -1));
+  await editor.evaluate(root => {
+    window.smartUpdateCount = 0;
+    const editor = root.editor;
+    editor.on("update", () => window.smartUpdateCount++);
+  });
   await page.keyboard.press("$");
   const field = editor.locator("math-field").first();
   await field.waitFor();
+  assert.equal(await page.evaluate(() => window.smartUpdateCount), 1);
   assert.equal(await editor.evaluate(root => document.activeElement === root), true);
   assert.deepEqual((await snapshot()).content[0].content.map(node => node.text ?? node.attrs.latex), [before, examples[0]]);
   const mod = await page.evaluate(() => /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? "Meta" : "Control");
@@ -180,6 +186,14 @@ async function edgeCases(page) {
   }
 
   await documentContexts(page, editor);
+  await blank();
+  await paragraph().click();
+  await page.keyboard.insertText("$");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.insertText("x");
+  await page.keyboard.press("$");
+  assert.equal(await paragraph().textContent(), "x$");
+  assert.equal(await editor.locator("math-field").count(), 0);
   await blank();
   await paragraph().click();
   await page.keyboard.insertText("$" + "x".repeat(2050));

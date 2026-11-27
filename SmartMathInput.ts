@@ -99,7 +99,9 @@ function finish(view: EditorView, input: Transaction, matches: Match[], caret?: 
   }
   if (!trial.docChanged) return false;
 
-  view.dispatch(input);
+  // Keep the literal input in ProseMirror history without publishing a
+  // temporary draft to React or the autosave queue before conversion.
+  view.dispatch(input.setMeta("preventUpdate", true));
   const transformation = closeHistory(view.state.tr);
   for (const step of trial.steps) transformation.step(step);
   const pos = target ?? trial.mapping.map(raw.selection.head);
