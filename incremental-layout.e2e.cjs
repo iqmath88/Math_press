@@ -35,7 +35,7 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
         editor.commands.insertContentAt(position, "تعديل فريد ");
       });
       await projection.locator('[data-print-page="2"]').filter({ hasText: "تعديل فريد" }).waitFor();
-      assert.equal(await page.locator("[data-rebuilt]").getAttribute("data-rebuilt"), "1");
+      await page.locator('[data-rebuilt="1"]').waitFor();
       assert.equal(await projection.evaluate(root => [...root.children].filter((sheet, index) =>
         sheet === window.originalSheets[index]).length), 199);
       const ranges = JSON.parse(await page.locator("[data-ranges]").getAttribute("data-ranges"));
@@ -47,7 +47,7 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
         });
       });
       await projection.locator('[data-print-page="1"]').filter({ hasText: "تعديل بنيوي قبل الفاصل" }).waitFor();
-      assert.equal(await page.locator("[data-rebuilt]").getAttribute("data-rebuilt"), "1");
+      await page.locator('[data-rebuilt="1"]').waitFor();
       const moved = JSON.parse(await page.locator("[data-ranges]").getAttribute("data-ranges"));
       assert.deepEqual(moved[1].start, { block: 3, offset: 0 });
       assert.equal(await projection.evaluate(root => root.children[2] === window.originalSheets[2]), true);
@@ -96,8 +96,9 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
         await page.screenshot({ path: join(process.env.MATHPRESS_QA_OUTPUT, `incremental-${engine.name()}-${name}.png`) });
       }
       if (mode === "direct") await direct.check();
-      else {
+      else if (mode === "hybrid") {
         await setDoc(fixtures(3));
+        await page.locator('[data-pages="3"]').waitFor();
         await page.getByRole("button", { name: "معاينة الصفحة 3" }).click();
         await page.getByRole("button", { name: "تحرير من بداية الصفحة 3" }).click();
         await page.waitForFunction(() => {
@@ -112,6 +113,7 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
           return document.activeElement === root && root.editor.state.selection.from === pos;
         }, position);
       }
+      if (mode === "continuous") await page.getByLabel("عرض الصفحات الحية").uncheck();
       const review = " النص العربي بعد الحقل";
       const focusRoot = () => page.waitForFunction(() => {
         const root = document.querySelector(".live-lab-source .tiptap");

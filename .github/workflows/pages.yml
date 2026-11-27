@@ -5,6 +5,9 @@ on:
   pull_request:
     branches: [main, 'feature/v0.6.0-math-authoring-studio', 'feature/v0.6.0-educational-authoring', 'feature/v0.6.0-professional-studio', 'feature/v0.7.0-page-layout-engine', 'feature/v0.7.0-live-page-layout', 'feature/v0.7.0-incremental-page-engine']
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ (github.head_ref || github.ref_name) == 'feature/v0.7.0-architecture-recovery' }}
 permissions:
   contents: read
 jobs:
@@ -183,7 +186,7 @@ jobs:
       fail-fast: false
       matrix:
         engine: [chromium, webkit]
-        scenario: [direct-first, direct-second, hybrid-first]
+        scenario: [direct-first, direct-second, hybrid-first, continuous-first]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
