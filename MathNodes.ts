@@ -313,13 +313,22 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           }
         }, capture);
 
-        mf.addEventListener("input", () => {
-          if (draftFocus || mf.value === current.attrs.latex) return;
+        const trackDraft = () => {
+          if (draftFocus) return;
           draftFocus = new AbortController();
           document.addEventListener("focusin", event => {
             if (!keepDraft(event.target)) settleDraft(true);
           }, { signal: draftFocus.signal });
+        };
+        mf.addEventListener("input", () => {
+          if (mf.value !== current.attrs.latex) trackDraft();
         }, options);
+        mf.addEventListener("compositionstart", trackDraft, capture);
+        mf.addEventListener("keydown", ev => {
+          // Some virtual-keyboard paths update the value before announcing input.
+          const printable = ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey && !ev.altKey;
+          if (printable || ev.key === "Backspace" || ev.key === "Delete") trackDraft();
+        }, capture);
         mf.addEventListener("focusout", event => {
           if (draftFocus && event.relatedTarget && !keepDraft(event.relatedTarget)) settleDraft(true);
         }, options);
