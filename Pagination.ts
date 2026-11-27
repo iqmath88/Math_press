@@ -3,6 +3,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { EditorView } from "@tiptap/pm/view";
 import type { Node as PMNode } from "@tiptap/pm/model";
+import { rangesAtBlockStarts, type PageRange } from "./pageLayoutModel";
 import { computeBreaks, type PageItem, type PaginationResult } from "./paginate";
 
 declare module "@tiptap/core" {
@@ -46,6 +47,7 @@ function buildBreak(
   const mt = layout.marginTopMm * PX_PER_MM;
   const root = el("div", last ? "pg-break pg-last" : "pg-break");
   root.contentEditable = "false";
+  if (!last) root.dataset.editorPageStart = String(page + 1);
   const f = el("div", "pg-filler");
   f.style.setProperty("--f", `${filler}px`);
   root.appendChild(f);
@@ -118,7 +120,9 @@ export const Pagination = Extension.create({
         showPageNumbers: true
       } as PageLayout,
       pages: 1,
-      pageStarts: [] as number[],
+      pageStarts: [0] as number[],
+      editRanges: [] as PageRange[],
+      printRanges: [] as (PageRange | null)[],
       onPages: null as ((pages: number) => void) | null
     };
   },
@@ -143,8 +147,10 @@ export const Pagination = Extension.create({
       const zoom = Number(getComputedStyle(view.dom).getPropertyValue("--editor-zoom")) || 1;
       const items: PageItem[] = [];
       const positions: number[] = [];
-      doc.forEach((node, offset) => {
-        const dom = view.nodeDOM(offset);
+      const rendered = [...view.dom.children].filter(el => !el.matches(".pg-break,.ProseMirror-gapcursor"));
+      const directChildren = rendered.length === doc.childCount;
+      doc.forEach((node, offset, index) => {
+        const dom = directChildren ? rendered[index] : view.nodeDOM(offset);
         const isBreak = node.type.name === "pageBreak";
         positions.push(offset);
         if (!(dom instanceof HTMLElement)) {
@@ -177,7 +183,8 @@ export const Pagination = Extension.create({
       ]);
       const current = paginationKey.getState(view.state);
       ext.storage.pages = result.pages;
-      ext.storage.pageStarts = result.breaks.map(b => positions[b.index]);
+      ext.storage.editRanges = rangesAtBlockStarts([0, ...result.breaks.map(b => b.index)], doc.childCount);
+      ext.storage.pageStarts = [0, ...result.breaks.map(b => positions[b.index])];
       if (current && current.sig === sig) return;
       view.dispatch(view.state.tr.setMeta(paginationKey, { result, positions, sig, footer, layout }).setMeta("addToHistory", false));
       ext.storage.onPages?.(result.pages);
@@ -224,12 +231,11 @@ export const Pagination = Extension.create({
             if (!ro || observedDoc === editorView.state.doc) return;
             observedDoc = editorView.state.doc;
             const next = new Set<HTMLElement>();
-            observedDoc.forEach((_node, offset) => {
-              const dom = editorView.nodeDOM(offset);
-              if (!(dom instanceof HTMLElement)) return;
+            for (const dom of editorView.dom.children) {
+              if (!(dom instanceof HTMLElement) || dom.matches(".pg-break,.ProseMirror-gapcursor")) continue;
               next.add(dom);
               if (!observedBlocks.has(dom)) ro.observe(dom);
-            });
+            }
             for (const dom of observedBlocks) if (!next.has(dom)) ro.unobserve(dom);
             observedBlocks = next;
           };

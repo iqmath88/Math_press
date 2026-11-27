@@ -1,3 +1,4 @@
+import { pageAt } from "./pageLayoutModel";
 import { describe, expect, it } from "vitest";
 import { computeBreaks } from "./paginate";
 
@@ -59,4 +60,11 @@ describe("computeBreaks", () => {
     expect(computeBreaks([], 1000).pages).toBe(1);
     expect(computeBreaks(items(10, 10), 0).breaks).toEqual([]);
   });
+});
+
+it("resolves the page containing a source offset at exact boundaries", () => {
+  expect(pageAt([0, 17, 38], 16, (a, b) => a - b)).toBe(1);
+  expect(pageAt([0, 17, 38], 17, (a, b) => a - b)).toBe(2);
+  expect(pageAt([0, 17, 38], 100, (a, b) => a - b)).toBe(3);
+  expect(pageAt([], 0, (a, b) => a - b)).toBe(1);
 });

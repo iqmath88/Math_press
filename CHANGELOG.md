@@ -1,5 +1,11 @@
 # سجل تغييرات MathPress
 
+## v0.7.0-alpha.1
+
+- Track editor and print page ranges against the same source tree.
+- Add explicit page anchors, lazy geometry thumbnails and backgrounds beyond 60 rendered pages.
+- Cache word counts for unchanged editor blocks and verify the upgrade marker in IndexedDB before changing versions.
+
 ## v0.6.0 — MathPress Studio
 
 - Consolidate Studio, direct MathLive authoring, aligned solutions, structured exams, the refreshed workspace and A4 print improvements.

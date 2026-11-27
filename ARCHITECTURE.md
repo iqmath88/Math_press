@@ -34,3 +34,11 @@ MathLive داخل NodeView يدوي (بلا React). الخطوط تُضمَّن 
 ## العمل المتبقي
 
 يتطلب الإصدار المستقر تقسيم الفقرات والقوائم والجداول الطويلة داخل الكتلة، واستمرار الترقيم وتكرار رؤوس الجداول، والتحقق من أثر ذلك على المؤشر والتراجع. يحتاج الاسترداد بعد توقف التطبيق ومراجعة TipTap واختبار الأجهزة الفعلية إلى تحقق إضافي.
+
+## Page layout after v0.6.0
+
+TipTap remains the single document and selection. Editor pages use measured top-level blocks and non-document widgets with explicit page starts. `pageLayoutModel.ts` supplies source addresses and range utilities. The print renderer fragments a cloned tree, recording source ranges independently of the editing widgets. Split paragraphs report boundary offsets. Tables and lists currently report their containing block. No page data is written into MathDoc or history.
+
+The editor layout remains estimated when a block spans multiple pages. A block measured taller than a page contributes to the estimate without creating a safe cursor boundary inside that block. Print can split text by line boundaries, list items and eligible table row groups. Editing widgets cannot safely split live tables, atom node views or MathLive content merely by copying those positions. A future prototype should prove stable mapping for touch selection, IME composition, table spans and undo before switching editing to an intra-block layout.
+
+The page navigator uses explicit editor addresses and lightweight geometry thumbnails, updated only for visible thumbnails. A shared image URL paints physical editor pages without serializing one image layer per page. The existing print background pipeline is unchanged. The editor caches measurements and word counts for unchanged top-level nodes. JSON snapshots still follow TipTap updates so asynchronous saves, backup exports and tab closure retain their current guarantees.

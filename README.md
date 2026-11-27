@@ -85,3 +85,9 @@ npm run build
 - استيراد ألوان المعادلات من Word (الأحمر/الكحلي…) كـ `\textcolor`.
 - خلفية الصفحة: تُستخرج صورة الرأس (الإطار/الورق الرسمي) تلقائيًا عند استيراد Word، أو تُرفع من «إعدادات الصفحة»؛ تتكرر في كل صفحة وتُطبع.
 - ترقيم الصفحات يُطفأ تلقائيًا عند وجود خلفية مستوردة (يمكن تشغيله من الإعدادات).
+
+## MathPress Studio and page layout
+
+The v0.6.0 production release includes MathLive equation editing, aligned solutions, structured exams and A4 print preview. MathDoc 3 remains readable and protected educational documents may use MathDoc 4. Back up the original before upgrading or using an older reader.
+
+The v0.7.0 development branch adds editor page addresses, lazy layout thumbnails and background painting beyond 60 rendered pages. The print preview remains the reference for exact page boundaries inside long blocks. See [architecture](ARCHITECTURE.md) for these limits.

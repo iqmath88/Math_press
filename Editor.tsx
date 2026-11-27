@@ -1,7 +1,10 @@
+import PageThumbnail from "./PageThumbnail";
+import { pageAt } from "./pageLayoutModel";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
+import { Selection } from "@tiptap/pm/state";
 import type { MathfieldElement } from "mathlive";
 import type { MathPressDocument } from "./types";
 import { buildExtensions } from "./extensions";
@@ -62,7 +65,6 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   const [graph, setGraph] = useState<{ pos: number | null; spec: GraphSpec | null } | null>(null);
   const previewRef = useRef<MathfieldElement | null>(null);
 
-  const [pageLabels, setPageLabels] = useState<string[]>([]);
   const [properties, setProperties] = useState(false);
   const [showMargins, setShowMargins] = useState(false);
   const printOrigin = useRef<{ block: Element | null; offset: number; x: number; y: number; stageX: number; stageY: number } | null>(null);
@@ -186,15 +188,24 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
 
   useEffect(() => {
     if (!editor) return;
+    const words = new WeakMap<object, number>();
     const refreshWords = () => {
-      const content = editor.state.doc;
-      const text = content.textBetween(0, content.content.size, " ");
-      setWordCount(text.match(/[\p{L}\p{N}][\p{L}\p{N}\p{M}]*/gu)?.length ?? 0);
+      let total = 0;
+      editor.state.doc.forEach(node => {
+        let count = words.get(node);
+        if (count === undefined) {
+          const text = node.textBetween(0, node.content.size, " ");
+          count = text.match(/[\p{L}\p{N}][\p{L}\p{N}\p{M}]*/gu)?.length ?? 0;
+          words.set(node, count);
+        }
+        total += count;
+      });
+      setWordCount(total);
     };
     const refreshPage = () => {
       const { from } = editor.state.selection;
       const starts = editor.storage.pagination.pageStarts as number[];
-      setCurrentPage(1 + starts.filter(pos => pos <= from).length);
+      setCurrentPage(pageAt(starts, from, (start, cursor) => start - cursor));
     };
     editor.on("update", refreshWords);
     editor.on("transaction", refreshPage);
@@ -221,24 +232,6 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
     viewport.addEventListener("resize", keepActiveVisible);
     return () => viewport.removeEventListener("resize", keepActiveVisible);
   }, [editor]);
-
-  useEffect(() => {
-    if (!showPages || !editor || printOptions) return;
-    const timer = window.setTimeout(() => {
-      const labels: string[] = [];
-      const source = editor.view.dom;
-      const breaks = [...source.querySelectorAll(".pg-header")].map(marker => marker.getBoundingClientRect().top);
-      let page = 0;
-      for (const block of source.children) {
-        if (block.matches(".pg-break, .ProseMirror-gapcursor") || !block.textContent?.trim()) continue;
-        const top = block.getBoundingClientRect().top;
-        while (page < breaks.length && top >= breaks[page]) page++;
-        if (!labels[page]) labels[page] = block.textContent.trim().slice(0, 54);
-      }
-      setPageLabels(labels);
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [editor, showPages, pageCount, doc.content, printOptions, zoom]);
 
   if (!editor) return null;
 
@@ -309,16 +302,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   if (doc.background && printOptions?.backgrounds && !printOptions.economical) {
     Object.assign(paperStyle, { "--print-background": `url("${doc.background}")` });
   } else if (doc.background && !printOptions) {
-    // طبقة لكل صفحة؛ المسافة بين الصفحات على الشاشة 26px وتُصفَّر عند الطباعة (--gap)
-    const n = Math.max(1, Math.min(pageCount, 60));
-    const url = `url("${doc.background}")`;
-    const pos = Array.from({ length: n }, (_, k) => `0 calc(${k} * (var(--ph) + var(--gap)))`).join(",");
-    Object.assign(paperStyle, {
-      backgroundImage: Array(n).fill(url).join(","),
-      backgroundSize: "var(--pw) var(--ph)",
-      backgroundRepeat: "no-repeat",
-      backgroundPosition: pos
-    });
+    Object.assign(paperStyle, { "--editor-page-background": `url("${doc.background}")` });
   }
 
   const openPrint = () => {
@@ -334,7 +318,15 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   };
 
   const goToPage = (page: number) => {
-    const target = page === 1 ? paperRef.current : paperRef.current?.querySelectorAll(".pg-header")[page - 2];
+    const marker = paperRef.current?.querySelector(`[data-editor-page-start="${page}"] .pg-header`);
+    const start = (editor.storage.pagination.pageStarts as number[])[page - 1];
+    const block = start === undefined ? null : editor.view.nodeDOM(start);
+    const target = page === 1 ? paperRef.current : marker ?? (block instanceof Element ? block : null);
+    if (start !== undefined) {
+      const { state, dispatch } = editor.view;
+      const selection = Selection.near(state.doc.resolve(start), 1);
+      dispatch(state.tr.setSelection(selection).setMeta("addToHistory", false));
+    }
     target?.scrollIntoView({ block: "start", inline: "nearest" });
   };
   const toggleFullscreen = async () => {
@@ -424,7 +416,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
             aria-label={`صفحة ${index + 1}`} aria-current={currentPage === index + 1 ? "page" : undefined}
             onClick={() => goToPage(index + 1)}>
             <span className="studio-page-number">{index + 1}</span>
-            <span className="studio-page-caption" aria-hidden="true">{pageLabels[index]}</span>
+            <PageThumbnail paper={paperRef} page={index + 1} revision={doc.content} />
           </button>)}
         </nav>}
         {properties && !focusMode && !printOptions && <aside className="studio-properties no-print" aria-label="خصائص المستند" onKeyDown={event => {
