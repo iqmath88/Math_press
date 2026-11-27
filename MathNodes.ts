@@ -15,6 +15,14 @@ declare module "@tiptap/core" {
 export const EDIT_MATH_EVENT = "mathpress:edit-math";
 const RETURN_TO_TEXT = "mathpress:return-to-text";
 
+// MathLive's programmatic focus can defer focusing its shadow keyboard sink
+// while the editor still owns focus. Native focus delegates into the shadow
+// root first, so a later MathLive callback cannot mistake the editor for the
+// element that originally received focus.
+function focusMathfield(field: MathfieldElement) {
+  HTMLElement.prototype.focus.call(field, { preventScroll: true });
+}
+
 export function returnFromMath(field: MathfieldElement) {
   field.dispatchEvent(new Event(RETURN_TO_TEXT));
 }
@@ -119,7 +127,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           }
           attempts++;
           timer = setTimeout(focusField, 50);
-          field.focus();
+          focusMathfield(field);
         };
         // Once MathLive accepts focus, a retry must never reclaim it after Escape or history.
         field.addEventListener("focus", stop, { once: true });
@@ -196,7 +204,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         let arrowTimer: ReturnType<typeof setTimeout> | undefined;
         controls.addEventListener("mousedown", ev => ev.preventDefault(), options);
         mf.addEventListener("pointerdown", () => {
-          if (document.activeElement !== mf && editor.isEditable && !dom.closest("[inert]")) mf.focus();
+          if (document.activeElement !== mf && editor.isEditable && !dom.closest("[inert]")) focusMathfield(mf);
         }, capture);
         const focusOtherSide = (backward: boolean) => {
           if (!dom.parentElement?.hasAttribute("data-solution-relation")) return false;
@@ -206,7 +214,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           const other = sibling?.matches(".math-inline") && sibling.querySelector<MathfieldElement>("math-field");
           if (!other) return false;
           other.position = backward ? other.lastOffset : 0;
-          other.focus();
+          focusMathfield(other);
           return true;
         };
         let horizontalArrow: string | undefined;
@@ -268,7 +276,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         if (focusNext.delete(editor)) {
           focusFrame = requestAnimationFrame(() => {
             if (!dom.isConnected || !editor.view.hasFocus() || dom.closest("[inert]")) return;
-            mf.focus();
+            focusMathfield(mf);
             if (current.attrs.latex.includes("\\placeholder")) {
               mf.position = 0;
               mf.executeCommand("moveToNextPlaceholder");
