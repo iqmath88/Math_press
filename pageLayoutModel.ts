@@ -1,6 +1,7 @@
 /** A source address refers to the unchanged editor tree, even when rendering splits a block. */
 export type PageSource = { block: number; offset: number };
 
+/** End is exclusive. Block-level ranges may overlap when a table or list continues on another page. */
 export type PageRange = { start: PageSource; end: PageSource };
 
 export function comparePageSource(a: PageSource, b: PageSource): number {

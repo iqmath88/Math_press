@@ -165,7 +165,8 @@ export function paginateForPrint(
       // for modest remainders, while bounding work for very long paragraphs.
       const mark = (end: number) => {
         fragment.dataset.sourceStart = String(start);
-        fragment.dataset.sourceEnd = String(end);
+        if (end < last) fragment.dataset.sourceEnd = String(end);
+        else fragment.removeAttribute("data-source-end");
         if (offsets && selectedOffset !== undefined && selectedOffset >= offsets[start] &&
           (selectedOffset < offsets[end] || end === last)) fragment.setAttribute("data-studio-print-anchor", "");
       };
@@ -396,7 +397,7 @@ export function paginateForPrint(
   }
   isolateGraphIds(target);
   const address = (element: HTMLElement, end: boolean): PageSource => ({
-    block: Number(element.dataset.pageSource),
+    block: Number(element.dataset.pageSource) + (end && element.dataset.sourceEnd === undefined ? 1 : 0),
     offset: Number(end ? element.dataset.sourceEnd ?? 0 : element.dataset.sourceStart ?? 0)
   });
   const ranges: (PageRange | null)[] = sheets.map((sheet, index) => {
