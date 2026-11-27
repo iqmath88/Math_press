@@ -1,5 +1,12 @@
 # سجل تغييرات MathPress
 
+## v0.6.1-beta.1
+
+- Convert completed LaTeX delimiters during typing and paste using the existing MathLive nodes.
+- Keep the written source as a separate undo step and preserve the editor focus after conversion.
+- Recover from late MathLive focus after returning to text.
+- Add an editor preference and delimiter hint. Real iPad verification is pending.
+
 ## v0.6.0 — MathPress Studio
 
 - Consolidate Studio, direct MathLive authoring, aligned solutions, structured exams, the refreshed workspace and A4 print improvements.
