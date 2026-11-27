@@ -30,11 +30,12 @@ const { randomUUID } = require("node:crypto");
     await page.goto(url);
     await page.locator(".pg-last").waitFor({ timeout: 90000 });
     await page.getByRole("tab", { name: "رياضيات", exact: true }).click();
-    await page.getByRole("button", { name: "قوالب الرياضيات" }).click();
     await page.getByRole("button", { name: "المفضلة: كسر" }).click();
     await page.getByLabel("مجموعة القوالب الرياضية").selectOption("favorite");
-    await page.getByRole("button", { name: "كسر", exact: true }).click();
+    await page.getByRole("button", { name: "كسر", exact: true }).waitFor();
+    await page.getByRole("button", { name: "إدراج معادلة من مصدر LaTeX", exact: true }).click();
     const dialog = page.getByRole("dialog");
+    await dialog.getByRole("textbox", { name: "مصدر LaTeX" }).fill(String.raw`\frac{a}{b}`);
     assert.equal(
       await dialog.getByRole("textbox", { name: "مصدر LaTeX" }).inputValue(),
       String.raw`\frac{a}{b}`,

@@ -1,5 +1,38 @@
 # سجل تغييرات MathPress
 
+## v0.6.0 — MathPress Studio
+
+- Consolidate Studio, direct MathLive authoring, aligned solutions, structured exams, the refreshed workspace and A4 print improvements.
+- Preserve educational metadata in MathDoc 4 and refuse imports that would discard protected values.
+- Validate IndexedDB upgrades, offline use, browser compatibility and PDF output before deployment.
+- Older builds may refuse protected MathDoc 4 files. Retain old MathDoc 3 originals and see RC-ACCEPTANCE.md for recovery and rollback.
+
+## v0.6.0-rc.1
+
+- Reject protected MathDoc imports that would lose unsupported content or properties.
+- Cancel MathLive listeners and pending focus callbacks when equation views are removed.
+- Improve dismissible panels and touch controls for release validation.
+
+## v0.6.0-beta.1
+
+- Introduce the Studio workspace, separate light and dark chrome, document properties, and editing-to-print navigation.
+- Insert configurable examination outlines as one undoable edit and navigate questions and branches from the keyboard.
+- Write MathDoc 4 for structured content that older builds would silently flatten. Existing compatible documents retain MathDoc 3.
+
+## v0.6.0-alpha.2
+
+- Add structured solution steps, relation columns, and editable MathLive fields for each side. Tab moves between relation fields; Escape returns to Arabic explanation text.
+- Add examination lists with Arabic branches, numeric subbranches, multiple-choice lists, and marks.
+- Extend the educational template menu with theorem, warning, homework, and reusable custom headings with independent color and optional numbering.
+- MathDoc remains schema 3. Educational metadata uses optional paragraph and list attributes. Readers from earlier releases may discard these attributes when saving.
+- Physical iPad and Windows verification is pending.
+
+## v0.6.0-alpha.1
+
+- أضيف الإدراج المباشر للمعادلات والبنى الرياضية مع الانتقال إلى الخانة الأولى، ولوحة للبحث والرموز الأخيرة والمفضّلة. يحتفظ التطبيق بمحرر مصدر LaTeX.
+- أضيف أمر مستند فارغ مع إبقاء قوالب الإدراج التعليمية.
+- يُلغى طلب التركيز المؤجل بمجرد دخول المعادلة، حتى لا يستعيد MathLive التركيز بعد العودة إلى النص أو أثناء التراجع والإعادة.
+
 ## v0.5.1
 
 - ينتقل التركيز بين الفقرة والمعادلة بحسب اتجاه النص. يعيد `Escape` وزر «العودة إلى النص» المؤشر بعد المعادلة. يظهر زر المصدر خارج سطح النقر والتحرير، وتُوسَّع مساحة اللمس من دون تغيير حجم المعادلة المطبوعة.

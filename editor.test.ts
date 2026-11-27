@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Editor } from "@tiptap/core";
 import { buildExtensions } from "./extensions";
 import { starterContent } from "./document";
+import { changeEducationalItem, educationalList, educationalParagraph, insertEducationalItem, insertSolutionRelation, restartEducationalNumbering } from "./educationalLists";
 
 let editor: Editor | null = null;
 let host: HTMLElement;
@@ -260,4 +261,46 @@ describe("graphs, columns and page layout", () => {
     expect(ed.getJSON().content!.length).toBe(5);
     expect(ed.storage.pagination.pages).toBe(3);
   });
+});
+
+describe("educational authoring", () => {
+  it("round-trips a six-step solution and its aligned MathLive fields", () => {
+    const steps = educationalList("solution", 6);
+    const ed = make({ type: "doc", content: [steps] });
+    ed.commands.setTextSelection(3);
+    insertSolutionRelation(ed, "≈");
+    expect(ed.getHTML()).toContain('data-solution-relation="≈"');
+    expect(ed.getHTML().match(/data-math-inline/g)).toHaveLength(2);
+    ed.commands.setContent(ed.getHTML());
+    expect(ed.getJSON().content?.[0].content).toHaveLength(6);
+    expect(ed.getJSON().content?.[0].content?.[0].content?.[1].attrs?.solutionRelation).toBe("≈");
+  });
+
+  it("inserts, moves, deletes and undoes exam items without losing nested branches", () => {
+    const exam = educationalList("exam", 4);
+    for (const [index, question] of exam.content!.entries()) {
+      question.content = [educationalParagraph("question", `Q${index + 1}`), educationalList("branches", 3)];
+    }
+    const ed = make({ type: "doc", content: [exam] });
+    ed.commands.setTextSelection(4);
+    expect(insertEducationalItem(ed)).toBe(true);
+    changeEducationalItem(ed, "up");
+    changeEducationalItem(ed, "delete");
+    expect(ed.state.doc.firstChild?.childCount).toBe(4);
+    expect(ed.state.doc.firstChild?.firstChild?.lastChild?.childCount).toBe(3);
+    expect(ed.commands.undo()).toBe(true);
+    expect(ed.state.doc.firstChild?.childCount).toBe(5);
+  });
+
+  it("restarts numbering at the selected question without changing neighboring questions", () => {
+    const exam = educationalList("exam", 3);
+    exam.attrs!.start = 5;
+    const ed = make({ type: "doc", content: [exam] });
+    const first = ed.state.doc.firstChild!.firstChild!;
+    ed.commands.setTextSelection(3 + first.nodeSize);
+    restartEducationalNumbering(ed);
+    expect(ed.getJSON().content?.slice(0, 2).map(node => [node.attrs?.start, node.content?.length]))
+      .toEqual([[5, 1], [1, 2]]);
+  });
+
 });

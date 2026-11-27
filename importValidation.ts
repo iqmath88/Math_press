@@ -8,7 +8,18 @@ const cssColor = /^(?:#[a-f\d]{3,8}|rgba?\([\d.,%\s]+\)|hsla?\([\d.,%\s]+\)|[a-z
 
 let schema: ReturnType<typeof getSchema> | undefined;
 
-export function validateImportedContent(input: unknown): JSONContent | null {
+// Compare supplied values only: defaults added by the editor are harmless.
+export function preservesSuppliedContent(original: unknown, normalized: unknown): boolean {
+  if (original === normalized) return true;
+  if (Array.isArray(original)) return Array.isArray(normalized) && original.length === normalized.length &&
+    original.every((value, index) => preservesSuppliedContent(value, normalized[index]));
+  if (!original || !normalized || typeof original !== "object" || typeof normalized !== "object") return false;
+  const result = normalized as Record<string, unknown>;
+  return Object.entries(original).every(([key, value]) =>
+    Object.hasOwn(result, key) && preservesSuppliedContent(value, result[key]));
+}
+
+export function validateImportedContent(input: unknown, preserve = false): JSONContent | null {
   let remainingNodes = 450_000;
   let remainingText = MAX_IMPORT_BYTES;
 
@@ -55,6 +66,7 @@ export function validateImportedContent(input: unknown): JSONContent | null {
     schema ??= getSchema(buildExtensions());
     const document = schema.nodeFromJSON(raw);
     document.check();
-    return document.toJSON();
+    const output = document.toJSON();
+    return preserve && !preservesSuppliedContent(input, output) ? null : output;
   } catch { return null; }
 }

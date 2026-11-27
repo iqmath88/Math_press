@@ -100,3 +100,11 @@ describe("document editing engine", () => {
     ], 100).pages).toBe(2);
   });
 });
+
+it("rejects lossy protected MathDoc normalization without affecting legacy imports", () => {
+  const content = { type: "doc", content: [{ type: "paragraph", attrs: { futureLayout: "hidden" } }] };
+  expect(validateImportedContent(content)).not.toBeNull();
+  expect(validateImportedContent(content, true)).toBeNull();
+  expect(content.content[0].attrs.futureLayout).toBe("hidden");
+  expect(validateImportedContent({ type: "doc", content: [{ type: "paragraph" }] }, true)).not.toBeNull();
+});

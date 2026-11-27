@@ -22,7 +22,8 @@ async function importDoc(page, content) {
     })),
   });
   await page.waitForFunction(() =>
-    document.querySelector(".document-title-input")?.value === "Stability fixture");
+    document.querySelector(".document-title-input")?.value === "Stability fixture" &&
+    !!document.querySelector(".editor-source .mp-editor")?.editor);
 }
 
 async function checkFocus(page, touch) {
@@ -30,6 +31,14 @@ async function checkFocus(page, touch) {
     text("قبل "), math(String.raw`\frac{a}{b}`), math(String.raw`\sqrt{x}`),
     math(String.raw`\begin{bmatrix}a&b\\c&d\end{bmatrix}`), text(" بعد"),
   ], {dir})));
+  await page.locator('.editor-source p[dir="ltr"] math-field').last().waitFor();
+  if (mode === "history") await page.evaluate(() => {
+    const editor = document.querySelector(".editor-source .mp-editor").editor;
+    editor.on("transaction", ({ transaction }) => {
+      if (transaction.docChanged) window.recordHistoryKey({ change: transaction.steps.map(step => step.toJSON()),
+        stored: editor.state.doc.textContent, undo: editor.can().undo() });
+    });
+  });
   for (const dir of ["rtl", "ltr"]) {
     const row = page.locator(`.editor-source p[dir="${dir}"]`);
     const field = row.locator("math-field").first();
@@ -42,7 +51,7 @@ async function checkFocus(page, touch) {
     } else {
       await page.keyboard.press("Escape");
     }
-    assert.ok(await page.locator(".editor-source .mp-editor").evaluate(node => node === document.activeElement));
+    await page.locator(".editor-source .mp-editor:focus").waitFor({timeout:4000});
     await page.keyboard.insertText(" نص تالٍ ");
     assert.equal(await field.evaluate(node => node.value), original);
     const editOrder = await row.evaluate(node => [...node.childNodes].flatMap(child => {
@@ -70,16 +79,25 @@ async function checkFocus(page, touch) {
     await focus(last);
     await last.evaluate(node => {node.position=node.lastOffset;});
     await page.keyboard.press("ArrowRight");
-    assert.ok(await page.locator(".editor-source .mp-editor").evaluate(node => node === document.activeElement));
+    await page.locator(".editor-source .mp-editor:focus").waitFor({timeout:4000});
     await page.keyboard.press("ArrowLeft");
     await row.locator("math-field:focus").waitFor({timeout: 4000});
     assert.ok(await last.evaluate(node => node === document.activeElement));
     await page.keyboard.press("Escape");
   }
-  await page.keyboard.press("Control+z");
-  assert.doesNotMatch(await page.locator('.editor-source p[dir="ltr"]').textContent(), /نص تالٍ/);
-  await page.keyboard.press("Control+Shift+z");
-  assert.match(await page.locator('.editor-source p[dir="ltr"]').textContent(), /نص تالٍ/);
+  await page.waitForFunction(() => {
+    const source = document.querySelector(".editor-source .mp-editor");
+    return source === document.activeElement && source.editor.can().undo();
+  });
+  const historyShortcut = await page.evaluate(() => /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? "Meta" : "Control");
+  const hasEdit = expected => page.waitForFunction(value => {
+    const row = document.querySelector('.editor-source p[dir="ltr"]');
+    return !!row && row.textContent.includes("نص تالٍ") === value;
+  }, expected, {timeout:4000});
+  await page.keyboard.press(historyShortcut + "+z");
+  await hasEdit(false);
+  await page.keyboard.press(historyShortcut + "+Shift+z");
+  await hasEdit(true);
 }
 
 async function checkPrint(page) {
@@ -123,21 +141,44 @@ async function checkPrint(page) {
   const browser = await engine.launch(engine === chromium && process.env.MATHPRESS_CHROMIUM
     ? {executablePath:process.env.MATHPRESS_CHROMIUM} : {});
   try {
-    if (mode !== "math") {
+    if (mode !== "math" && mode !== "history") {
       const page = await browser.newPage({viewport:{width:1440,height:1000}});
       await page.goto(url);
       await checkPrint(page);
       await page.close();
     }
     if (mode !== "print") {
-      for (const options of [
-        {viewport:{width:1440,height:1000}}, devices["iPad (gen 7)"], devices["iPad (gen 7) landscape"],
-      ]) {
-        const page = await browser.newPage(options);
-        await page.goto(url);
-        await checkFocus(page, !!options.hasTouch);
-        await page.close();
+      const rounds = mode === "history" ? 30 : 1;
+      const failures = [];
+      for (let round = 1; round <= rounds; round++) {
+        const viewports = [
+          {viewport:{width:1440,height:1000}}, devices["iPad (gen 7)"], devices["iPad (gen 7) landscape"],
+        ];
+        for (const options of mode === "history" ? [viewports[(round - 1) % viewports.length]] : viewports) {
+          const page = await browser.newPage(options);
+          const trace = [];
+          if (mode === "history") {
+            await page.exposeFunction("recordHistoryKey", event => trace.push(event));
+            await page.addInitScript(() => document.addEventListener("keydown", event => {
+              if (event.key !== "Escape" && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z")) return;
+              const editor = document.querySelector(".mp-editor")?.editor;
+              window.recordHistoryKey({ key: event.key, target: event.target.tagName,
+                active: document.activeElement?.tagName, platform: navigator.platform, undo: editor?.can().undo(),
+                position: editor?.state.selection.from });
+            }, true));
+          }
+          try {
+            await page.goto(url);
+            await checkFocus(page, !!options.hasTouch);
+          } catch (error) {
+            if (mode !== "history") throw error;
+            failures.push({ round, viewport: options.viewport, error: String(error), trace });
+            console.log("History failure", JSON.stringify(failures.at(-1)));
+          } finally { await page.close(); }
+        }
+        if (mode === "history") console.log(`History round ${round}/${rounds}`);
       }
+      assert.equal(failures.length, 0, `${failures.length} history scenarios failed across ${rounds} rounds`);
     }
     console.log(`${engine.name()} ${browser.version()} stability ${mode || "print and focus (desktop and both iPad orientations)"} passed`);
   } finally { await browser.close(); }

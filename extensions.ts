@@ -21,6 +21,7 @@ import { Pagination } from "./Pagination";
 import { DocumentSearch } from "./DocumentSearch";
 import { ParagraphFormatAttributes } from "./ParagraphFormat";
 import { EducationalStyleAttributes } from "./educationalStyles";
+import { EducationalLists } from "./educationalLists";
 import { GraphNode } from "./GraphNode";
 
 declare module "@tiptap/core" {
@@ -219,6 +220,7 @@ export function buildExtensions() {
     TrailingParagraph,
     DocumentSearch,
     EducationalStyleAttributes,
+    EducationalLists,
     ParagraphFormatAttributes,
     // extend() ينشئ نسخة جديدة؛ فيملك كل محرر تخزينه الخاص (إعدادات الصفحة وعدد الصفحات) ولا تتسرب بين المستندات.
     Pagination.extend({})

@@ -1,9 +1,10 @@
 import type { MathPressDocument } from "./types";
-import { parseDocument } from "./document";
+import { parseDocument, protectEducationalDocument } from "./document";
 
 const DB_NAME = "mathpress-local";
 const STORE = "documents";
 const checkedForMigration = new Set<string>();
+const protectedIds = new Set<string>();
 const BACKUP_FORMAT = "mathpress-migration-backup";
 const backupKey = (id: string) => `\u0000mathpress-backup:${id}`;
 
@@ -28,13 +29,14 @@ function openDb(): Promise<IDBDatabase> {
 }
 
 export async function saveDocument(doc: MathPressDocument): Promise<void> {
+  const protectedDoc = protectedIds.has(doc.id) ? { ...doc, schemaVersion: 4 } : protectEducationalDocument(doc);
   const db = await openDb();
   try {
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE, "readwrite");
       const store = tx.objectStore(STORE);
-      const write = () => store.put({ ...doc, updatedAt: new Date().toISOString() });
-      if (checkedForMigration.has(doc.id)) write();
+      const write = () => store.put({ ...protectedDoc, updatedAt: new Date().toISOString() });
+      if (checkedForMigration.has(doc.id) && (protectedDoc.schemaVersion === doc.schemaVersion || protectedIds.has(doc.id))) write();
       else {
         const existing = store.get(doc.id);
         existing.onsuccess = () => {
@@ -45,11 +47,21 @@ export async function saveDocument(doc: MathPressDocument): Promise<void> {
             };
             // Back up and replace atomically so a quota failure leaves the original intact.
             store.put(backup);
+          } else if (previous?.format === "mathpress" && previous.schemaVersion === 3 &&
+            protectedDoc.schemaVersion === 4 && protectEducationalDocument(previous).schemaVersion === 4) {
+            const prior = store.get(backupKey(doc.id));
+            prior.onsuccess = () => {
+              if (!prior.result) store.put({ id: backupKey(doc.id), format: BACKUP_FORMAT, documentId: doc.id, original: previous });
+            };
           }
           write();
         };
       }
-      tx.oncomplete = () => { checkedForMigration.add(doc.id); resolve(); };
+      tx.oncomplete = () => {
+        checkedForMigration.add(doc.id);
+        if (protectedDoc.schemaVersion === 4) protectedIds.add(doc.id);
+        resolve();
+      };
       tx.onerror = () => reject(tx.error ?? new Error("تعذر حفظ المستند"));
       tx.onabort = () => reject(tx.error ?? new Error("تم إلغاء الحفظ"));
     });

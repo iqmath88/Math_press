@@ -24,6 +24,10 @@ export type EducationalStyle = {
   direction: "rtl" | "ltr";
   keepWithNext: boolean;
   breakBefore: boolean;
+  templateTitle?: string;
+  templateTitleColor?: string;
+  templateTitleBold?: boolean;
+  templateNumbered?: boolean;
 };
 
 const plain: Omit<EducationalStyle, "id" | "name"> = {
@@ -80,7 +84,12 @@ export function readEducationalStyles(raw: unknown): EducationalStyle[] {
       before: bounded("before", 0, 80, base.before), after: bounded("after", 0, 80, base.after),
       align: styleAlignments.includes(value.align) ? value.align : base.align,
       direction: value.direction === "ltr" ? "ltr" : "rtl",
-      keepWithNext: value.keepWithNext === true, breakBefore: value.breakBefore === true
+      keepWithNext: value.keepWithNext === true, breakBefore: value.breakBefore === true,
+      ...(typeof value.templateTitle === "string" ? { templateTitle: value.templateTitle.trim().slice(0, 80) } : {}),
+      ...(typeof value.templateTitleColor === "string" && COLOR.test(value.templateTitleColor)
+        ? { templateTitleColor: value.templateTitleColor } : {}),
+      ...(typeof value.templateTitleBold === "boolean" ? { templateTitleBold: value.templateTitleBold } : {}),
+      ...(typeof value.templateNumbered === "boolean" ? { templateNumbered: value.templateNumbered } : {})
     });
   }
   return [...styles.values()];
@@ -99,6 +108,8 @@ export function educationalStyleDeclarations(style: EducationalStyle) {
     padding-block-start:${style.padding + style.before}px;padding-block-end:${style.padding + style.after}px;
     line-height:${style.lineHeight};text-align:${style.align};direction:${style.direction};
     --educational-math-color:${style.mathColor};--educational-math-scale:${style.mathScale / 100}em;
+    --template-title-color:${style.templateTitleColor ?? style.color};
+    --template-title-weight:${style.templateTitleBold === false ? 400 : 700};
     --keep-with-next:${Number(style.keepWithNext)};--break-before:${Number(style.breakBefore)};`;
 }
 
@@ -121,7 +132,7 @@ export function updateParagraphAttributes(editor: Editor, attrs: Record<string, 
   editor.commands.focus();
 }
 
-const educationalSequences = ["question", "example", "exercise"];
+const educationalSequences = ["question", "example", "exercise", "template"];
 
 export const EducationalStyleAttributes = Extension.create({
   name: "educationalStyle",
@@ -129,6 +140,11 @@ export const EducationalStyleAttributes = Extension.create({
     return [{
       types: ["paragraph", "heading"],
       attributes: {
+        templateHeading: {
+          default: false,
+          parseHTML: element => element.hasAttribute("data-template-heading"),
+          renderHTML: attrs => attrs.templateHeading === true ? { "data-template-heading": "" } : {}
+        },
         educationalSequence: {
           default: null,
           parseHTML: element => {

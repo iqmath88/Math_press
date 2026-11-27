@@ -937,7 +937,8 @@ button.primary:hover:not(:disabled),
 .mp-editor {
   counter-reset: educational-question var(--numbering-start, 0)
     educational-example var(--numbering-start, 0)
-    educational-exercise var(--numbering-start, 0);
+    educational-exercise var(--numbering-start, 0)
+    educational-template var(--numbering-start, 0);
 }
 [data-educational-sequence="question"] { counter-increment: educational-question; }
 [data-educational-sequence="example"] { counter-increment: educational-example; }
@@ -986,4 +987,216 @@ button.primary:hover:not(:disabled),
   .preview-paper .editor-source { display: none; }
   .print-sheet + .print-sheet { break-before: page; }
   .print-pages .math-node math-field { border: 1px solid transparent !important; }
+}
+
+
+.math-tools { flex: 1; min-width: 0; }
+.math-tools .rb-line { flex-wrap: wrap; }
+.math-tools input[type="search"] { width: min(220px, 100%); }
+.math-tools .math-templates { max-height: 124px; overflow: auto; }
+.math-template button:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.math-template button:first-child [dir="ltr"] { font-size: 1.15em; }
+.editor-source math-field:focus-within {
+  --caret-color: #134ca7;
+  --selection-background-color: #bcd8fa;
+  --placeholder-color: #285f9d;
+}
+@media (pointer: coarse) {
+  .math-tools button, .math-tools input, .math-tools select { min-height: 44px; }
+}
+
+@counter-style mathpress-arabic-letters {
+  system: alphabetic;
+  symbols: "أ" "ب" "ج" "د" "هـ" "و" "ز" "ح" "ط" "ي" "ك" "ل" "م" "ن" "س" "ع" "ف" "ص" "ق" "ر" "ش" "ت" "ث" "خ" "ذ" "ض" "ظ" "غ";
+  suffix: ". ";
+}
+
+ol[data-educational-list] { direction: rtl; padding-inline-start: 2rem; }
+ol[data-educational-list="branches"], ol[data-educational-list="choices"],
+ol[data-list-numbering="arabic"] { list-style-type: mathpress-arabic-letters; }
+ol[data-list-numbering="decimal"] { list-style-type: decimal; }
+ol[data-list-numbering="none"] { list-style-type: none; }
+ol[data-educational-list] > li[data-points]::before {
+  content: "(" attr(data-points) " درجة)";
+  float: inline-end;
+  margin-inline: 0.5em;
+  font-weight: 600;
+}
+p[data-solution-relation]:has(> .math-inline:nth-of-type(2)):not(:has(> .math-inline:nth-of-type(3))) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2em minmax(0, 1fr);
+  align-items: baseline;
+  direction: ltr;
+}
+p[data-solution-relation]:has(> .math-inline:nth-of-type(2)):not(:has(> .math-inline:nth-of-type(3))) > .math-inline:nth-of-type(1) {
+  grid-area: 1 / 1;
+  justify-self: end;
+  max-width: 100%;
+}
+p[data-solution-relation]:has(> .math-inline:nth-of-type(2)):not(:has(> .math-inline:nth-of-type(3))) > .math-inline:nth-of-type(2) {
+  grid-area: 1 / 3;
+  justify-self: start;
+  max-width: 100%;
+}
+p[data-solution-relation]::after {
+  content: attr(data-solution-relation);
+  grid-area: 1 / 2;
+  justify-self: center;
+}
+
+ol[data-educational-list] > li.educational-continuation { list-style: none; }
+
+.mp-editor [data-educational-style][data-template-heading] {
+  color: var(--template-title-color);
+  font-weight: var(--template-title-weight);
+  --keep-with-next: 1;
+}
+[data-educational-sequence="template"] { counter-increment: educational-template; }
+[data-educational-sequence="template"]::before { content: counter(educational-template) " · "; }
+
+/* Studio chrome is separate from the paper and print palette. */
+@media screen {
+  .app-shell {
+    --studio-bg: #e9ecef;
+    --studio-glass: rgb(250 251 252 / 94%);
+    --studio-control: #fff;
+    --studio-text: #233146;
+    --studio-muted: #526377;
+    --studio-hover: #ebf2f6;
+    --studio-rule: #ccd6df;
+    background: var(--studio-bg);
+  }
+  .app-shell[data-theme="dark"] {
+    --studio-bg: #1d2530;
+    --studio-glass: rgb(38 48 61 / 96%);
+    --studio-control: #303c4b;
+    --studio-text: #f2f5f9;
+    --studio-muted: #bfccda;
+    --studio-hover: #3b4a5d;
+    --studio-rule: #526275;
+  }
+  .app-shell :is(.topbar, .rb-strip, .rb-panel, .statusbar, .document-view-status, .studio-properties,
+    .page-navigation, .library-panel, .modal, .print-preview-tools, .focus-controls) {
+    background: var(--studio-glass);
+    color: var(--studio-text);
+    border-color: var(--studio-rule);
+  }
+  .app-shell :is(.topbar, .rb-strip, .studio-properties) { backdrop-filter: blur(10px); }
+  .app-shell .topbar {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) auto max-content;
+    gap: clamp(6px, 2vw, 22px);
+    padding: 10px clamp(8px, 2vw, 24px);
+  }
+  .app-shell .document-title-input {
+    width: min(100%, 34rem);
+    min-width: 0;
+    justify-self: center;
+    background: var(--studio-control);
+    border: 1px solid var(--studio-rule);
+    color: var(--studio-text);
+    border-radius: 8px;
+    padding: 6px 12px;
+  }
+  .app-shell :is(.topbar, .ribbon, .studio-properties, .page-navigation, .modal, .library-panel,
+    .print-preview-tools, .focus-controls) :is(button, select, input, textarea, .file-btn):not(.primary, .primary-action) {
+    color: var(--studio-text);
+    background: var(--studio-control);
+    border-color: var(--studio-rule);
+  }
+  .app-shell :is(.ribbon, .studio-properties, .page-navigation) button:hover:not(:disabled, .primary) {
+    background: var(--studio-hover);
+  }
+  .app-shell .rb-tab[aria-selected="true"] { box-shadow: inset 0 -2px var(--accent); }
+  .app-shell :is(.save-status, .ribbon .muted, .statusbar) { color: var(--studio-muted); }
+  .app-shell [data-theme] .paper, .app-shell[data-theme="dark"] .paper { color: #161616; }
+  .studio-theme { display: grid; place-items: center; min-height: 36px; }
+  .studio-properties {
+    position: sticky;
+    inset-block-start: 8px;
+    align-self: flex-start;
+    width: 224px;
+    min-width: 180px;
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid;
+    border-radius: 12px;
+  }
+  .studio-properties p { margin: 0; }
+  .studio-margins::after {
+    content: "";
+    position: absolute;
+    inset: var(--pt) var(--pr) var(--pb) var(--pl);
+    border: 1px dashed #8095a8;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .app-shell .version { color: var(--studio-muted); border-color: var(--studio-rule); }
+  .page-navigation button { min-inline-size: 72px; min-block-size: 50px; }
+  .exam-outline { display: flex; align-items: center; gap: 6px; }
+  .exam-outline input { inline-size: 4em; }
+}
+
+@media screen and (max-width: 1000px) {
+  .studio-properties { position: absolute; inset-inline-end: 6px; z-index: 5; box-shadow: 0 4px 14px #0002; }
+  .app-shell .brand strong { font-size: clamp(12px, 2vw, 19px); }
+}
+@media screen and (max-width: 520px) {
+  .app-shell .topbar { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .app-shell .topbar .brand { grid-column: 1; grid-row: 1; }
+  .app-shell .topbar .document-title-input { grid-column: 1 / -1; grid-row: 2; }
+  .app-shell .topbar .save-status { font-size: 10px; }
+}
+@media screen and (pointer: coarse) {
+  .app-shell :is(.rb-quick, .studio-properties, .page-navigation, .topbar) button { min-block-size: 44px; }
+}
+@media screen {
+  .app-shell { --stage: var(--studio-bg); }
+  .studio-properties { direction: rtl; }
+  .page-navigation button {
+    background-image: linear-gradient(var(--studio-rule), var(--studio-rule));
+    background-size: 45% 1px;
+    background-position: center 25%;
+    background-repeat: no-repeat;
+  }
+}
+@media screen and (min-width: 1120px) {
+  .page-stage:has(.studio-properties) { padding-left: max(248px, 19%); }
+  .studio-properties { position: absolute; left: 12px; top: 12px; }
+}
+@media screen {
+  .page-navigation button {
+    display: grid;
+    align-content: start;
+    justify-items: start;
+    gap: 2px;
+    width: 84px;
+    min-height: 72px;
+    text-align: start;
+    border-radius: 4px;
+  }
+  .studio-page-number { font-weight: 700; font-size: 11px; }
+  .studio-page-caption { font-size: 9px; line-height: 1.35; overflow: hidden; max-height: 3em; }
+}
+@media screen {
+  .print-preview-tools { position: sticky; inset-block-start: 0; z-index: 10; }
+}
+
+@media screen {
+  .app-shell :is(.modal, .print-preview-tools, .studio-properties, .library-panel) .muted {
+    color: var(--studio-muted);
+  }
+  .app-shell :is(button, select, input, textarea):focus-visible {
+    outline: 2px solid var(--studio-focus, #17668d);
+    outline-offset: 2px;
+  }
+  .app-shell[data-theme="dark"] { --studio-focus: #9bcfee; }
+  .studio-properties { max-inline-size: calc(100% - 12px); max-block-size: 70dvh; overflow: auto; }
+  .app-shell .modal { max-block-size: calc(100dvh - 24px); overflow: auto; }
+}
+@media screen and (pointer: coarse) {
+  .app-shell :is(.rb-tabs, .rb-panel, .studio-properties, .modal-actions) :is(button, select) {
+    min-block-size: 44px;
+  }
 }

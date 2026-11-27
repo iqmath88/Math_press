@@ -1,9 +1,9 @@
 name: MathPress build and Pages
 on:
   push:
-    branches: [main, 'fix/pages-build', 'feature/v0.5.0-editing-engine']
+    branches: [main, 'fix/pages-build', 'feature/v0.5.0-editing-engine', 'feature/v0.6.0-math-authoring-studio', 'feature/v0.6.0-educational-authoring', 'feature/v0.6.0-professional-studio', 'release/v0.6.0-rc.1', 'release/v0.6.0']
   pull_request:
-    branches: [main]
+    branches: [main, 'feature/v0.6.0-math-authoring-studio', 'feature/v0.6.0-educational-authoring', 'feature/v0.6.0-professional-studio']
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,6 +31,8 @@ jobs:
           npx playwright-core install --with-deps chromium webkit
           sudo apt-get install -y poppler-utils
       - name: Test editing and PDF publishing
+        env:
+          MATHPRESS_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           npm run preview -- --host 127.0.0.1 --port 4174 --strictPort &
           preview=$!
@@ -41,11 +43,23 @@ jobs:
           done
           mkdir -p "$RUNNER_TEMP/print-compatibility"
           export MATHPRESS_QA_OUTPUT="$RUNNER_TEMP/print-compatibility"
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-math-authoring-studio" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-educational-authoring" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then
+            node stability.e2e.cjs webkit history
+          fi
           npm run test:e2e
           node printCompatibility.e2e.cjs chromium
           node printCompatibility.e2e.cjs webkit
           node stability.e2e.cjs chromium
           node stability.e2e.cjs webkit
+          node authoring.e2e.cjs chromium
+          node authoring.e2e.cjs webkit
+          node educational.e2e.cjs chromium
+          node educational.e2e.cjs webkit
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then
+            node studio.e2e.cjs chromium
+            node studio.e2e.cjs webkit
+            if [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then node rc.e2e.cjs; fi
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -53,6 +67,8 @@ jobs:
           path: ${{ runner.temp }}/print-compatibility/
           if-no-files-found: ignore
       - name: Test offline upgrade and IndexedDB preservation
+        env:
+          MATHPRESS_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           baseline=$(mktemp -d)
           git fetch --no-tags --depth=1 origin f8cc43cc3c39042d1d1388310efcb9348a87a582
@@ -66,6 +82,41 @@ jobs:
           npm --prefix "$previous" ci
           npm --prefix "$previous" run build
           MATHPRESS_BASELINE_VERSION=0.5.0 MATHPRESS_BASELINE_DIST="$previous/dist" node pwaUpgrade.e2e.cjs
+          stable=$(mktemp -d)
+          git fetch --no-tags --depth=1 origin 4cb4c4cab38bab2faf8ba3111032e0a97da0a3d6
+          git archive FETCH_HEAD | tar -x -C "$stable"
+          npm --prefix "$stable" ci
+          npm --prefix "$stable" run build
+          MATHPRESS_BASELINE_VERSION=0.5.1 MATHPRESS_BASELINE_DIST="$stable/dist" node pwaUpgrade.e2e.cjs
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-educational-authoring" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then
+            alpha=$(mktemp -d)
+            git fetch --no-tags --depth=1 origin 2588ba3f71dbb5fe7bf20201912843949d51f238
+            git archive FETCH_HEAD | tar -x -C "$alpha"
+            npm --prefix "$alpha" ci
+            npm --prefix "$alpha" run build
+            MATHPRESS_BASELINE_VERSION=0.6.0-alpha.1 MATHPRESS_BASELINE_DIST="$alpha/dist" node pwaUpgrade.e2e.cjs
+          fi
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then
+            previous_alpha=$(mktemp -d)
+            git fetch --no-tags --depth=1 origin 8174bcc67cf859e322f2a07880ab815643dcaba4
+            git archive FETCH_HEAD | tar -x -C "$previous_alpha"
+            npm --prefix "$previous_alpha" ci
+            npm --prefix "$previous_alpha" run build
+            MATHPRESS_BASELINE_VERSION=0.6.0-alpha.2 MATHPRESS_BASELINE_DIST="$previous_alpha/dist" node pwaUpgrade.e2e.cjs
+          fi
+          if [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then
+            beta=$(mktemp -d)
+            git fetch --no-tags --depth=1 origin 3f7a24133120dfd959d31379cf3c817435362b80
+            git archive FETCH_HEAD | tar -x -C "$beta"
+            npm --prefix "$beta" ci
+            npm --prefix "$beta" run build
+            MATHPRESS_BASELINE_VERSION=0.6.0-beta.1 MATHPRESS_BASELINE_DIST="$beta/dist" node pwaUpgrade.e2e.cjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: (github.head_ref || github.ref_name) == 'feature/v0.6.0-educational-authoring' || (github.head_ref || github.ref_name) == 'feature/v0.6.0-professional-studio' || (github.head_ref || github.ref_name) == 'release/v0.6.0-rc.1'
+        with:
+          name: preview-build
+          path: dist
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:

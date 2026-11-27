@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JSONContent } from "@tiptap/core";
-import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw } from "lucide-react";
+import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw, Moon, Sun } from "lucide-react";
 import type { EducationalStyle } from "./educationalStyles";
 import type { MathPressDocument } from "./types";
-import { createDocument, parseDocument } from "./document";
+import { createDocument, parseDocument, protectEducationalDocument } from "./document";
 import { deleteDocument, loadLibrary, saveDocument } from "./storage";
 import DocumentEditor from "./Editor";
 import PageSettingsDialog from "./PageSettingsDialog";
-import { MAX_IMPORT_BYTES, validateImportedContent } from "./importValidation";
+import { MAX_IMPORT_BYTES, preservesSuppliedContent, validateImportedContent } from "./importValidation";
 import type { ImportResult } from "./docxImport";
 
 const VERSION = import.meta.env.VITE_APP_VERSION;
@@ -37,8 +37,13 @@ export default function App() {
   const queue = useRef({ snapshot: null as MathPressDocument | null, tail: Promise.resolve() });
   const [saveState, setSaveState] = useState<SaveState>("saving");
   const [notice, setNotice] = useState(`مرحبًا بك في MathPress v${VERSION}`);
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem("mathpress-studio-theme") === "dark"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("mathpress-studio-theme", dark ? "dark" : "light"); } catch { /* unavailable */ }
+  }, [dark]);
   const [showLibrary, setShowLibrary] = useState(false);
-  const [pages, setPages] = useState(1);
   const [showPageSettings, setShowPageSettings] = useState(false);
   const [importing, setImporting] = useState(false);
   const [report, setReport] = useState<{ title: string; result: ImportResult } | null>(null);
@@ -60,14 +65,17 @@ export default function App() {
       try {
         await saveDocument(snapshot);
         if (latest.current === snapshot) setSaveState("saved");
-        void refreshLibrary();
       } catch {
         if (state.snapshot === snapshot) state.snapshot = null;
         if (latest.current === snapshot) setSaveState("error");
         setNotice(`تعذر حفظ «${snapshot.title}» محليًا. صدّر نسخة احتياطية قبل إغلاقه.`);
       }
     });
-  }, [refreshLibrary]);
+  }, []);
+
+  useEffect(() => {
+    if (showLibrary) void refreshLibrary();
+  }, [showLibrary, refreshLibrary, saveState]);
 
   useEffect(() => {
     setSaveState("saving");
@@ -102,10 +110,9 @@ export default function App() {
     setDoc(old => ({ ...old, educationalStyles }));
   }, []);
   const onNumberStart = useCallback((numberingStart: number) => setDoc(old => ({ ...old, numberingStart })), []);
-  const onPageCount = useCallback((n: number) => setPages(n), []);
 
   const exportMathDoc = () => {
-    const blob = new Blob([JSON.stringify({ ...doc, updatedAt: new Date().toISOString() }, null, 2)], { type: "application/json;charset=utf-8" });
+    const blob = new Blob([JSON.stringify({ ...protectEducationalDocument(doc), updatedAt: new Date().toISOString() }, null, 2)], { type: "application/json;charset=utf-8" });
     downloadBlob(blob, `${safeName(doc.title)}.mathdoc`);
     setNotice("تم تجهيز نسخة المستند القابلة للتحرير.");
   };
@@ -114,8 +121,15 @@ export default function App() {
     if (!file) return;
     try {
       if (file.size > MAX_IMPORT_BYTES) throw new Error("ملف المستند أكبر من 32 ميغابايت.");
-      const parsed = parseDocument(JSON.parse(await file.text()));
+      const raw = JSON.parse(await file.text());
+      if (raw?.format === "mathpress" && Number.isInteger(raw.schemaVersion) && raw.schemaVersion > 4)
+        throw new Error("يتطلب هذا المستند إصدارًا أحدث من MathPress. لم يُستبدل المستند الحالي.");
+      const parsed = parseDocument(raw);
+      const protectedFormat = parsed?.schemaVersion === 4;
       const content = parsed && validateImportedContent(parsed.content);
+      if (protectedFormat && (!content || !preservesSuppliedContent(raw, { ...parsed, content }))) {
+        throw new Error("يتضمن ملف MathDoc 4 محتوى أو خصائص غير مدعومة. احتُفظ بالمستند المفتوح وبالملف الأصلي.");
+      }
       if (!parsed || !content) throw new Error("صيغة المستند غير معروفة أو غير مكتملة.");
       // Opening a backup must not overwrite the current local editing copy.
       replaceDocument({ ...parsed, id: crypto.randomUUID(), content });
@@ -166,12 +180,15 @@ export default function App() {
   }[saveState]), [saveState]);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-theme={dark ? "dark" : "light"}>
       <header className="topbar no-print">
         <div className="brand">
           <div className="brand-mark"><Sigma size={24} /></div>
-          <div><strong>MathPress <small className="version" dir="ltr">v{VERSION}</small></strong><span>محرر الرياضيات الاحترافي</span></div>
+          <div><strong>MathPress Studio <small className="version" dir="ltr">v{VERSION}</small></strong></div>
         </div>
+        <input className="document-title-input" value={doc.title} onChange={e => setDoc(old => ({ ...old, title: e.target.value }))} aria-label="عنوان المستند" placeholder="عنوان المستند" />
+        <button type="button" className="studio-theme" aria-label="الوضع الداكن" aria-pressed={dark}
+          onClick={() => setDark(value => !value)}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
         <div className={`save-status ${saveState}`} aria-live="polite">{status.icon}<span>{status.label}</span></div>
       </header>
 
@@ -195,14 +212,14 @@ export default function App() {
       </section>}
 
       <main className="editor-area">
-        <div className="document-meta no-print">
-          <input className="document-title-input" value={doc.title} onChange={e => setDoc(old => ({ ...old, title: e.target.value }))} aria-label="عنوان المستند" placeholder="عنوان المستند" />
-          <div className="page-chip">A4 {doc.page.orientation === "landscape" ? "أفقي" : "عمودي"} · {pages} {pages === 1 ? "صفحة" : "صفحات"}</div>
-        </div>
         <DocumentEditor
-          key={editorRevision} doc={doc} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onPageCount={onPageCount} onNotice={setNotice}
+          key={editorRevision} doc={doc} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onNotice={setNotice}
           actions={{
             onNew: () => { replaceDocument(createDocument()); setNotice("تم إنشاء مستند جديد."); },
+            onNewBlank: () => {
+              replaceDocument({ ...createDocument("مستند فارغ"), content: { type: "doc", content: [{ type: "paragraph" }] } });
+              setNotice("تم إنشاء مستند فارغ.");
+            },
             onLibrary: () => setShowLibrary(v => !v),
             onExport: exportMathDoc,
             onOpenFile: f => { void openMathDoc(f); },
