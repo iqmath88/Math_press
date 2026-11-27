@@ -6,7 +6,7 @@ on:
     branches: [main, 'feature/v0.6.0-math-authoring-studio', 'feature/v0.6.0-educational-authoring', 'feature/v0.6.0-professional-studio', 'feature/v0.7.0-page-layout-engine', 'feature/v0.7.0-live-page-layout', 'feature/v0.7.0-incremental-page-engine']
   workflow_dispatch:
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ (github.head_ref || github.ref_name) == 'feature/v0.7.0-architecture-recovery' && github.ref || github.run_id }}
   cancel-in-progress: ${{ (github.head_ref || github.ref_name) == 'feature/v0.7.0-architecture-recovery' }}
 permissions:
   contents: read

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import type { Node as PMNode } from "@tiptap/pm/model";
 import { buildExtensions } from "./extensions";
 import { createDocument, parseDocument } from "./document";
 import { educationalStyleDeclarations, resolveEducationalStyles } from "./educationalStyles";
@@ -78,6 +79,7 @@ export default function LiveLayoutLab() {
   const [thumbnails, setThumbnails] = useState<readonly (readonly string[])[]>([]);
   const thumbnailCache = useRef(new WeakMap<Element, readonly string[]>());
   const [overflow, setOverflow] = useState(false);
+  const projectedDoc = useRef<PMNode | null>(null);
   const projection = useRef<HTMLDivElement>(null);
   const extensions = useMemo(() => buildExtensions().filter(ext => ext.name !== "pagination"), []);
   const editor = useEditor({ extensions, content: doc.content });
@@ -88,6 +90,7 @@ export default function LiveLayoutLab() {
   const style = {
     "--pw": `${width}mm`, "--ph": `${height}mm`, "--pt": `${margins.top}mm`,
     "--pb": `${margins.bottom}mm`, "--pl": `${margins.left}mm`, "--pr": `${margins.right}mm`,
+    "--lab-paper-ratio": landscape ? "297 / 210" : "210 / 297",
     "--editor-zoom": zoom, "--numbering-start": (doc.numberingStart ?? 1) - 1,
     "--print-background": doc.background ? `url("${doc.background}")` : "none"
   } as CSSProperties;
@@ -121,8 +124,10 @@ export default function LiveLayoutLab() {
         const target = projection.current;
         if (signal.aborted || !target || editor.isDestroyed) return;
         target.inert = true;
-        const result = await paginate(editor.state.doc, source, target, options, signal, invalidateAll, invalidated);
+        const sourceDoc = editor.state.doc;
+        const result = await paginate(sourceDoc, source, target, options, signal, invalidateAll, invalidated);
         if (!result || signal.aborted) return;
+        projectedDoc.current = sourceDoc;
         invalidateAll = false;
         invalidated.clear();
         setRanges(result.ranges);
@@ -201,8 +206,13 @@ export default function LiveLayoutLab() {
   const returnToPage = () => {
     const range = ranges[viewedPage - 1];
     if (!editor || !range) return;
+    if (editor.state.doc !== projectedDoc.current) {
+      setNotice("المعاينة قيد التحديث. أعد اختيار موضع التحرير بعد اكتمالها.");
+      return;
+    }
     const position = sourcePosition(editor, range.start);
     if (position === null) return;
+    setNotice("");
     editor.commands.focus(position, { scrollIntoView: true });
   };
 
