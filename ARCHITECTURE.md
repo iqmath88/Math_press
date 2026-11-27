@@ -42,3 +42,11 @@ TipTap remains the single document and selection. Editor pages use measured top-
 The editor layout remains estimated when a block spans multiple pages. A block measured taller than a page contributes to the estimate without creating a safe cursor boundary inside that block. Print can split text by line boundaries, list items and eligible table row groups. Editing widgets cannot safely split live tables, atom node views or MathLive content merely by copying those positions. A future prototype should prove stable mapping for touch selection, IME composition, table spans and undo before switching editing to an intra-block layout.
 
 The page navigator uses explicit editor addresses and lightweight geometry thumbnails, updated only for visible thumbnails. A shared image URL paints physical editor pages without serializing one image layer per page. The existing print background pipeline is unchanged. The editor caches measurements and word counts for unchanged top-level nodes. JSON snapshots still follow TipTap updates so asynchronous saves, backup exports and tab closure retain their current guarantees.
+
+## Alpha.2 live-layout lab
+
+Load `/#live-layout-lab` directly. It is a lazy entry outside Studio's persistent editor. The laboratory mounts one TipTap state with the existing MathLive, graph, table and educational extensions. It accepts a disposable MathDoc as an in-memory source. The visible paginated output is inert DOM derived from that source, uses the alpha.1 range model and the production print fragmenter, and never writes to the source, history, autosave or IndexedDB. The checkbox unmounts the projection and cancels its scheduled work.
+
+Typing still occurs in one continuous source. The prototype does not map a caret inside a paragraph, table, or MathLive host onto multiple editable page fragments. That architectural gate remains closed. Browser fragmentation or a source-to-fragment selection map should be tested with actual iPad selection, IME, node views and table spans before changing the daily editor.
+
+The projection debounces edits and observes source bounds and late graph insertion. Each pass rebuilds the read-only pages. It intentionally exposes pagination time and source ranges for profiling. Incremental fragment invalidation and viewport-limited rendering are prerequisites for using it on long documents during editing.
