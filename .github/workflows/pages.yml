@@ -1,7 +1,7 @@
 name: MathPress build and Pages
 on:
   push:
-    branches: [main, 'fix/pages-build', 'feature/v0.5.0-editing-engine', 'feature/v0.6.0-math-authoring-studio', 'feature/v0.6.0-educational-authoring', 'feature/v0.6.0-professional-studio', 'release/v0.6.0-rc.1', 'release/v0.6.0']
+    branches: [main, 'fix/pages-build', 'feature/v0.5.0-editing-engine', 'feature/v0.6.0-math-authoring-studio', 'feature/v0.6.0-educational-authoring', 'feature/v0.6.0-professional-studio', 'release/v0.6.0-rc.1', 'release/v0.6.0', 'feature/v0.6.1-smart-math-input']
   pull_request:
     branches: [main, 'feature/v0.6.0-math-authoring-studio', 'feature/v0.6.0-educational-authoring', 'feature/v0.6.0-professional-studio']
   workflow_dispatch:
@@ -43,7 +43,8 @@ jobs:
           done
           mkdir -p "$RUNNER_TEMP/print-compatibility"
           export MATHPRESS_QA_OUTPUT="$RUNNER_TEMP/print-compatibility"
-          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-math-authoring-studio" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-educational-authoring" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then
+          trap 'echo "::error::Failed command: $BASH_COMMAND"' ERR
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-math-authoring-studio" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-educational-authoring" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 || "$MATHPRESS_BRANCH" == feature/v0.6.1-smart-math-input ]]; then
             node stability.e2e.cjs webkit history
           fi
           npm run test:e2e
@@ -55,10 +56,10 @@ jobs:
           node authoring.e2e.cjs webkit
           node educational.e2e.cjs chromium
           node educational.e2e.cjs webkit
-          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 || "$MATHPRESS_BRANCH" == feature/v0.6.1-smart-math-input ]]; then
             node studio.e2e.cjs chromium
             node studio.e2e.cjs webkit
-            if [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then node rc.e2e.cjs; fi
+            if [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 || "$MATHPRESS_BRANCH" == feature/v0.6.1-smart-math-input ]]; then node rc.e2e.cjs; fi
           fi
       - uses: actions/upload-artifact@v4
         if: always()
@@ -88,7 +89,7 @@ jobs:
           npm --prefix "$stable" ci
           npm --prefix "$stable" run build
           MATHPRESS_BASELINE_VERSION=0.5.1 MATHPRESS_BASELINE_DIST="$stable/dist" node pwaUpgrade.e2e.cjs
-          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-educational-authoring" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-educational-authoring" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 || "$MATHPRESS_BRANCH" == feature/v0.6.1-smart-math-input ]]; then
             alpha=$(mktemp -d)
             git fetch --no-tags --depth=1 origin 2588ba3f71dbb5fe7bf20201912843949d51f238
             git archive FETCH_HEAD | tar -x -C "$alpha"
@@ -96,7 +97,7 @@ jobs:
             npm --prefix "$alpha" run build
             MATHPRESS_BASELINE_VERSION=0.6.0-alpha.1 MATHPRESS_BASELINE_DIST="$alpha/dist" node pwaUpgrade.e2e.cjs
           fi
-          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then
+          if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 || "$MATHPRESS_BRANCH" == feature/v0.6.1-smart-math-input ]]; then
             previous_alpha=$(mktemp -d)
             git fetch --no-tags --depth=1 origin 8174bcc67cf859e322f2a07880ab815643dcaba4
             git archive FETCH_HEAD | tar -x -C "$previous_alpha"
@@ -104,7 +105,7 @@ jobs:
             npm --prefix "$previous_alpha" run build
             MATHPRESS_BASELINE_VERSION=0.6.0-alpha.2 MATHPRESS_BASELINE_DIST="$previous_alpha/dist" node pwaUpgrade.e2e.cjs
           fi
-          if [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 ]]; then
+          if [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 || "$MATHPRESS_BRANCH" == feature/v0.6.1-smart-math-input ]]; then
             beta=$(mktemp -d)
             git fetch --no-tags --depth=1 origin 3f7a24133120dfd959d31379cf3c817435362b80
             git archive FETCH_HEAD | tar -x -C "$beta"
@@ -112,8 +113,16 @@ jobs:
             npm --prefix "$beta" run build
             MATHPRESS_BASELINE_VERSION=0.6.0-beta.1 MATHPRESS_BASELINE_DIST="$beta/dist" node pwaUpgrade.e2e.cjs
           fi
+          if [[ "$MATHPRESS_BRANCH" == feature/v0.6.1-smart-math-input ]]; then
+            stable=$(mktemp -d)
+            git fetch --no-tags --depth=1 origin 9f978463d9a4b7cf2d76f848bc7ee6ca4313c872
+            git archive FETCH_HEAD | tar -x -C "$stable"
+            npm --prefix "$stable" ci
+            npm --prefix "$stable" run build
+            MATHPRESS_BASELINE_VERSION=0.6.0 MATHPRESS_BASELINE_DIST="$stable/dist" node pwaUpgrade.e2e.cjs
+          fi
       - uses: actions/upload-artifact@v4
-        if: (github.head_ref || github.ref_name) == 'feature/v0.6.0-educational-authoring' || (github.head_ref || github.ref_name) == 'feature/v0.6.0-professional-studio' || (github.head_ref || github.ref_name) == 'release/v0.6.0-rc.1'
+        if: (github.head_ref || github.ref_name) == 'feature/v0.6.0-educational-authoring' || (github.head_ref || github.ref_name) == 'feature/v0.6.0-professional-studio' || (github.head_ref || github.ref_name) == 'release/v0.6.0-rc.1' || (github.head_ref || github.ref_name) == 'feature/v0.6.1-smart-math-input'
         with:
           name: preview-build
           path: dist
@@ -121,6 +130,43 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
           path: dist
+  smart-math:
+    if: (github.head_ref || github.ref_name) == 'feature/v0.6.1-smart-math-input'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
+        session: [first, second]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright-core install --with-deps ${{ matrix.engine }}
+      - name: Repeated editing tests
+        env:
+          ENGINE: ${{ matrix.engine }}
+          MATHPRESS_QA_OUTPUT: ${{ runner.temp }}/smart-math
+          MATHPRESS_VIDEO: ${{ matrix.engine == 'chromium' && matrix.session == 'first' && '1' || '0' }}
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4174 --strictPort &
+          preview=$!
+          trap 'kill "$preview" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/ >/dev/null; then break; fi
+            sleep 1
+          done
+          mkdir -p "$MATHPRESS_QA_OUTPUT"
+          node smart-math.e2e.cjs "$ENGINE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smart-math-${{ matrix.engine }}-${{ matrix.session }}
+          path: ${{ runner.temp }}/smart-math
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build

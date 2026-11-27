@@ -1,5 +1,23 @@
 # سجل تغييرات MathPress
 
+## v0.6.1-rc.2
+
+- Edit existing equations visually in place with MathLive, with explicit acceptance and cancellation.
+- Commit an accepted equation as one history operation and preserve draft isolation in print and saved documents.
+- Keep the optional advanced LaTeX source editor.
+
+## v0.6.1-rc.1
+
+- Skip delimiter searches for complete currency input and reuse unchanged block serialization and word counts.
+- Extend the browser tests to headings, lists, tables, educational content and malformed input.
+
+## v0.6.1-beta.1
+
+- Convert completed LaTeX delimiters during typing and paste using the existing MathLive nodes.
+- Keep the written source as a separate undo step and preserve the editor focus after conversion.
+- Recover from late MathLive focus after returning to text.
+- Add an editor preference and delimiter hint. Real iPad verification is pending.
+
 ## v0.6.0 — MathPress Studio
 
 - Consolidate Studio, direct MathLive authoring, aligned solutions, structured exams, the refreshed workspace and A4 print improvements.

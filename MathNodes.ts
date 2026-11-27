@@ -1,4 +1,5 @@
 import { Node, mergeAttributes, type Editor } from "@tiptap/core";
+import { closeHistory } from "@tiptap/pm/history";
 import { TextSelection } from "@tiptap/pm/state";
 import type { MathfieldElement } from "mathlive";
 
@@ -13,6 +14,16 @@ declare module "@tiptap/core" {
 
 export const EDIT_MATH_EVENT = "mathpress:edit-math";
 const RETURN_TO_TEXT = "mathpress:return-to-text";
+const textHandoff = new WeakMap<Editor, MathfieldElement>();
+
+// MathLive's programmatic focus can defer focusing its shadow keyboard sink
+// while the editor still owns focus. Native focus delegates into the shadow
+// root first, so a later MathLive callback cannot mistake the editor for the
+// element that originally received focus.
+function focusMathfield(editor: Editor, field: MathfieldElement) {
+  textHandoff.delete(editor);
+  HTMLElement.prototype.focus.call(field, { preventScroll: true });
+}
 
 export function returnFromMath(field: MathfieldElement) {
   field.dispatchEvent(new Event(RETURN_TO_TEXT));
@@ -118,14 +129,18 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           }
           attempts++;
           timer = setTimeout(focusField, 50);
-          field.focus();
+          focusMathfield(this.editor, field);
         };
         // Once MathLive accepts focus, a retry must never reclaim it after Escape or history.
         field.addEventListener("focus", stop, { once: true });
         focusField();
         return true;
       };
-      return { ArrowLeft: () => enter(false), ArrowRight: () => enter(true) };
+      const allowTab = () => {
+        textHandoff.delete(this.editor);
+        return false;
+      };
+      return { ArrowLeft: () => enter(false), ArrowRight: () => enter(true), Tab: allowTab, "Shift-Tab": allowTab };
     },
 
     addNodeView() {
@@ -141,16 +156,22 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         const editButton = document.createElement("button");
         editButton.type = "button";
         editButton.className = "math-edit no-print";
-        editButton.setAttribute("aria-label", "تعديل المعادلة");
+        editButton.setAttribute("aria-label", "تعديل المعادلة — مصدر LaTeX");
+        editButton.title = "تحرير مصدر LaTeX";
         editButton.textContent = "ƒ";
         const controls = document.createElement("span");
         controls.className = "math-controls no-print";
         const exitButton = document.createElement("button");
         exitButton.type = "button";
-        exitButton.textContent = "العودة إلى النص";
-        controls.append(editButton, exitButton);
+        exitButton.textContent = "اعتماد والعودة إلى النص";
+        const cancelButton = document.createElement("button");
+        cancelButton.type = "button";
+        cancelButton.textContent = "إلغاء تعديل المعادلة";
+        cancelButton.className = "math-cancel";
+        controls.append(editButton, exitButton, cancelButton);
         dom.append(mf, controls);
         const updateFormat = () => {
+          dom.dataset.latex = current.attrs.latex;
           const { color, size, align } = mathFormat(current.attrs);
           dom.style.setProperty("--math-color", color ?? "");
           dom.style.setProperty("--math-size", size ? `${size}pt` : "");
@@ -163,14 +184,45 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           return typeof p === "number" ? p : null;
         };
 
+        // MathLive owns the draft while this field is being edited. The document
+        // changes once on acceptance; cancel restores the committed node value.
+        let draftFocus: AbortController | undefined;
+        const clearDraftFocus = () => {
+          draftFocus?.abort();
+          draftFocus = undefined;
+        };
+        const keepDraft = (target: EventTarget | null) =>
+          target instanceof Element && (dom.contains(target) || !!target.closest(".math-tools"));
+        const settleDraft = (accept: boolean) => {
+          // MathLive may normalize source on navigation without any input event.
+          // Treat only an actual visual draft as an edit in the document history.
+          const hasDraft = !!draftFocus;
+          clearDraftFocus();
+          const pos = nodePos();
+          if (editor.isDestroyed || pos === null || dom.closest("[inert]")) return;
+          const latex = current.attrs.latex as string;
+          if (mf.value === latex) return;
+          if (!accept || !hasDraft) {
+            mf.value = latex;
+            return;
+          }
+          const { view } = editor;
+          view.dispatch(closeHistory(view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, latex: mf.value })));
+          view.dispatch(closeHistory(view.state.tr).setMeta("addToHistory", false));
+        };
+
         const openSource = () => {
           if (!editor.isEditable || dom.closest("[inert]")) return;
+          settleDraft(true);
           const pos = nodePos();
           if (pos !== null) editor.view.dom.dispatchEvent(new CustomEvent(EDIT_MATH_EVENT, { detail: { pos } }));
         };
-        const returnToText = (before = false, leaveRelation = false) => {
+        let focusFrame = 0;
+        const returnToText = (before = false, leaveRelation = false, accept = true) => {
           const pos = nodePos();
           if (pos === null || editor.isDestroyed || dom.closest("[inert]")) return false;
+          cancelAnimationFrame(focusFrame);
+          settleDraft(accept);
           const { view } = editor;
           const doc = view.state.doc;
           const resolved = doc.resolve(pos);
@@ -180,19 +232,37 @@ function createMathNode(name: "mathInline" | "mathBlock") {
             const next = doc.nodeAt(end);
             if (next?.type.name === "paragraph" && !next.attrs.solutionRelation) boundary = end + 1;
           }
-          const selection = TextSelection.near(doc.resolve(boundary), before ? -1 : 1);
-          view.dispatch(view.state.tr.setSelection(selection).setMeta("addToHistory", false).scrollIntoView());
+          const direction = before ? -1 : 1;
+          const $boundary = doc.resolve(boundary);
+          const selection = TextSelection.findFrom($boundary, direction, true)
+            ?? TextSelection.near($boundary, direction);
+          // Changing editing surfaces ends the MathLive history group. Otherwise
+          // immediately adjacent prose can be undone together with the equation.
+          view.dispatch(closeHistory(view.state.tr.setSelection(selection).setMeta("addToHistory", false)).scrollIntoView());
+          textHandoff.set(editor, mf);
           view.focus();
           return true;
         };
         const listeners = new AbortController();
         const options = { signal: listeners.signal };
         const capture = { ...options, capture: true };
-        let focusFrame = 0;
         let arrowTimer: ReturnType<typeof setTimeout> | undefined;
         controls.addEventListener("mousedown", ev => ev.preventDefault(), options);
         mf.addEventListener("pointerdown", () => {
-          if (document.activeElement !== mf && editor.isEditable && !dom.closest("[inert]")) mf.focus();
+          if (!editor.isEditable || dom.closest("[inert]")) return;
+          if (document.activeElement === mf) textHandoff.delete(editor);
+          else focusMathfield(editor, mf);
+        }, capture);
+        mf.addEventListener("focusin", event => {
+          if (textHandoff.get(editor) !== mf || event.relatedTarget !== editor.view.dom) return;
+          // Undo can move the text selection while the same handoff is active.
+          // Keep that current selection if MathLive tries to reclaim focus.
+          const state = editor.view.state;
+          queueMicrotask(() => {
+            if (editor.isDestroyed || textHandoff.get(editor) !== mf || document.activeElement !== mf ||
+              state.doc !== editor.state.doc || !state.selection.eq(editor.state.selection)) return;
+            editor.view.focus();
+          });
         }, capture);
         const focusOtherSide = (backward: boolean) => {
           if (!dom.parentElement?.hasAttribute("data-solution-relation")) return false;
@@ -201,19 +271,34 @@ function createMathNode(name: "mathInline" | "mathBlock") {
             sibling = backward ? sibling.previousElementSibling : sibling.nextElementSibling;
           const other = sibling?.matches(".math-inline") && sibling.querySelector<MathfieldElement>("math-field");
           if (!other) return false;
+          settleDraft(true);
           other.position = backward ? other.lastOffset : 0;
-          other.focus();
+          focusMathfield(editor, other);
           return true;
+        };
+        const beforeInlineMath = (key: string) => {
+          const rtl = inline && dom.parentElement && getComputedStyle(dom.parentElement).direction === "rtl";
+          return (key === "ArrowLeft") !== !!rtl;
         };
         let horizontalArrow: string | undefined;
         editButton.addEventListener("click", openSource, options);
         exitButton.addEventListener("click", () => returnToText(false, true), options);
+        cancelButton.addEventListener("click", () => returnToText(false, true, false), options);
         mf.addEventListener(RETURN_TO_TEXT, () => returnToText(false, true), options);
         mf.addEventListener("keydown", ev => {
           horizontalArrow = !ev.shiftKey && (ev.key === "ArrowLeft" || ev.key === "ArrowRight") ? ev.key : undefined;
           clearTimeout(arrowTimer);
           if (horizontalArrow) arrowTimer = setTimeout(() => { horizontalArrow = undefined; }, 0);
           if (ev.isComposing) return;
+          if (horizontalArrow && !ev.altKey && !ev.ctrlKey && !ev.metaKey && mf.selectionIsCollapsed &&
+            mf.position === (horizontalArrow === "ArrowLeft" ? 0 : mf.lastOffset)) {
+            const before = beforeInlineMath(horizontalArrow);
+            if (focusOtherSide(before) || returnToText(before)) {
+              ev.preventDefault();
+              ev.stopImmediatePropagation();
+              return;
+            }
+          }
           if (ev.key === "Tab" && !ev.altKey && !ev.ctrlKey && !ev.metaKey &&
             mf.position === (ev.shiftKey ? 0 : mf.lastOffset) && focusOtherSide(ev.shiftKey)) {
             ev.preventDefault();
@@ -228,34 +313,41 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           }
         }, capture);
 
+        const trackDraft = () => {
+          if (draftFocus) return;
+          draftFocus = new AbortController();
+          document.addEventListener("focusin", event => {
+            if (!keepDraft(event.target)) settleDraft(true);
+          }, { signal: draftFocus.signal });
+        };
         mf.addEventListener("input", () => {
-          const pos = nodePos();
-          if (pos === null) return;
-          const latex = mf.value;
-          if (latex === current.attrs.latex) return;
-          editor.view.dispatch(
-            editor.view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, latex })
-          );
+          if (mf.value !== current.attrs.latex) trackDraft();
+        }, options);
+        mf.addEventListener("compositionstart", trackDraft, capture);
+        mf.addEventListener("keydown", ev => {
+          // Some virtual-keyboard paths update the value before announcing input.
+          const printable = ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey && !ev.altKey;
+          if (printable || ev.key === "Backspace" || ev.key === "Delete") trackDraft();
+        }, capture);
+        mf.addEventListener("focusout", event => {
+          if (draftFocus && event.relatedTarget && !keepDraft(event.relatedTarget)) settleDraft(true);
         }, options);
 
         mf.addEventListener("keydown", ev => {
-          const key = (ev as KeyboardEvent).key;
-          if ((key === "Backspace" || key === "Delete") && mf.value === "") {
-            ev.preventDefault();
-            const pos = nodePos();
-            if (pos !== null) {
-              editor.chain().focus().deleteRange({ from: pos, to: pos + current.nodeSize }).run();
-            }
-          }
+          if ((ev.key !== "Backspace" && ev.key !== "Delete") || ev.isComposing ||
+            current.attrs.latex !== "" || mf.value !== "") return;
+          const pos = nodePos();
+          if (pos === null) return;
+          ev.preventDefault();
+          editor.chain().focus().deleteRange({ from: pos, to: pos + current.nodeSize }).run();
         }, options);
 
         // عند الخروج من الحقل بالأسهم يعود المؤشر إلى النص قبل المعادلة أو بعدها.
         mf.addEventListener("move-out", ev => {
           const dir = (ev as CustomEvent<{ direction?: string }>).detail?.direction;
           if (!dir) return;
-          const rtl = inline && dom.parentElement && getComputedStyle(dom.parentElement).direction === "rtl";
           const before = horizontalArrow
-            ? (horizontalArrow === "ArrowLeft") !== !!rtl
+            ? beforeInlineMath(horizontalArrow)
             : dir === "backward" || dir === "upward";
           if (((dir === "forward" || dir === "backward") && focusOtherSide(before)) ||
             returnToText(before)) ev.preventDefault();
@@ -264,7 +356,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         if (focusNext.delete(editor)) {
           focusFrame = requestAnimationFrame(() => {
             if (!dom.isConnected || !editor.view.hasFocus() || dom.closest("[inert]")) return;
-            mf.focus();
+            focusMathfield(editor, mf);
             if (current.attrs.latex.includes("\\placeholder")) {
               mf.position = 0;
               mf.executeCommand("moveToNextPlaceholder");
@@ -276,15 +368,20 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           dom,
           update: updated => {
             if (updated.type !== current.type) return false;
+            const changed = updated.attrs.latex !== current.attrs.latex;
             current = updated;
             updateFormat();
-            const latex = updated.attrs.latex as string;
-            if (mf.value !== latex) mf.value = latex;
+            if (changed) {
+              clearDraftFocus();
+              if (mf.value !== updated.attrs.latex) mf.value = updated.attrs.latex;
+            }
             return true;
           },
           stopEvent: () => true,
           ignoreMutation: () => true,
           destroy: () => {
+            if (textHandoff.get(editor) === mf) textHandoff.delete(editor);
+            clearDraftFocus();
             listeners.abort();
             cancelAnimationFrame(focusFrame);
             clearTimeout(arrowTimer);

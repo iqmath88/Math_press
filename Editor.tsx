@@ -4,6 +4,8 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import type { MathfieldElement } from "mathlive";
 import type { MathPressDocument } from "./types";
+import { createEditorSnapshot } from "./editorSnapshot";
+import { SmartMathInput } from "./SmartMathInput";
 import { buildExtensions } from "./extensions";
 import { EDIT_GRAPH_EVENT, type EditGraphDetail } from "./GraphNode";
 import { sanitizeSpec, type GraphSpec } from "./graphSpec";
@@ -34,7 +36,18 @@ type ZoomMode = number | "width" | "page";
 export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart, onNotice, actions }: Props) {
   const m = doc.page.marginsMm;
   const landscape = doc.page.orientation === "landscape";
-  const extensions = useMemo(() => buildExtensions(), []);
+  const [smartMath, setSmartMath] = useState(() => {
+    try { return localStorage.getItem("mathpress-smart-math") !== "off"; }
+    catch { return true; }
+  });
+  const smartMathRef = useRef(smartMath);
+  const extensions = useMemo(() => [...buildExtensions(), SmartMathInput.configure({ enabled: () => smartMathRef.current })], []);
+  const toggleSmartMath = (enabled: boolean) => {
+    smartMathRef.current = enabled;
+    setSmartMath(enabled);
+    try { localStorage.setItem("mathpress-smart-math", enabled ? "on" : "off"); }
+    catch { /* This session keeps the selected setting. */ }
+  };
   const [pageCount, setPageCount] = useState(1);
   const [printOptions, setPrintOptions] = useState<PrintOptions | null>(null);
   const [zoomMode, setZoomMode] = useState<ZoomMode>(1);
@@ -43,6 +56,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   const [showPages, setShowPages] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [wordCount, setWordCount] = useState(0);
+  const snapshotOf = useMemo(createEditorSnapshot, []);
   const stageRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLElement>(null);
   const zoom = printOptions ? 1 : typeof zoomMode === "number" ? zoomMode : fitZoom;
@@ -81,7 +95,11 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       },
       attributes: { dir: "rtl", lang: "ar", spellcheck: "true", class: "mp-editor", "aria-label": "محتوى المستند" }
     },
-    onUpdate: ({ editor: ed }) => onChange(ed.getJSON())
+    onUpdate: ({ editor: ed }) => {
+      const snapshot = snapshotOf(ed.state.doc);
+      setWordCount(snapshot.words);
+      onChange(snapshot.content);
+    }
   });
 
   useEffect(() => {
@@ -186,22 +204,16 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
 
   useEffect(() => {
     if (!editor) return;
-    const refreshWords = () => {
-      const content = editor.state.doc;
-      const text = content.textBetween(0, content.content.size, " ");
-      setWordCount(text.match(/[\p{L}\p{N}][\p{L}\p{N}\p{M}]*/gu)?.length ?? 0);
-    };
     const refreshPage = () => {
       const { from } = editor.state.selection;
       const starts = editor.storage.pagination.pageStarts as number[];
       setCurrentPage(1 + starts.filter(pos => pos <= from).length);
     };
-    editor.on("update", refreshWords);
     editor.on("transaction", refreshPage);
-    refreshWords();
+    setWordCount(snapshotOf(editor.state.doc).words);
     refreshPage();
-    return () => { editor.off("update", refreshWords); editor.off("transaction", refreshPage); };
-  }, [editor]);
+    return () => { editor.off("transaction", refreshPage); };
+  }, [editor, snapshotOf]);
 
   useEffect(() => {
     const source = paperRef.current?.querySelector<HTMLElement>(".editor-source");
@@ -431,6 +443,8 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
           if (event.key === "Escape") { setProperties(false); editor.commands.focus(); }
         }}>
           <div className="panel-heading"><strong>خصائص المستند</strong><button type="button" onClick={() => setProperties(false)}>إغلاق</button></div>
+          <label><input type="checkbox" checked={smartMath} onChange={e => toggleSmartMath(e.target.checked)} /> التحويل التلقائي للمعادلات</label>
+          <p>اكتب <bdi>$…$</bdi> لمعادلة سطرية أو <bdi>$$…$$</bdi> لمعادلة مستقلة.</p>
           <p>A4 · {landscape ? "أفقي" : "عمودي"}</p>
           <label><input type="checkbox" checked={showMargins} onChange={e => setShowMargins(e.target.checked)} /> حدود مساحة الكتابة</label>
           <button type="button" onClick={actions.onPageSettings}>إعدادات الهوامش والصفحة</button>

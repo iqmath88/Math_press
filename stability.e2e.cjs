@@ -182,4 +182,9 @@ async function checkPrint(page) {
     }
     console.log(`${engine.name()} ${browser.version()} stability ${mode || "print and focus (desktop and both iPad orientations)"} passed`);
   } finally { await browser.close(); }
-})().catch(error => {console.error(error);process.exitCode=1;});
+})().catch(error => {
+  console.error(error);
+  if (process.env.GITHUB_ACTIONS)
+    console.log("::error title=Editing stability " + engine.name() + "::" + String(error.stack).replaceAll("%", "%25").replaceAll("\n", "%0A"));
+  process.exitCode = 1;
+});

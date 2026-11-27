@@ -46,7 +46,7 @@ const { randomUUID } = require("node:crypto");
       .filter({ has: page.locator("math-field") })
       .first();
     await newMath.hover();
-    await newMath.getByRole("button", { name: "تعديل المعادلة" }).click();
+    await newMath.getByRole("button", { name: "تعديل المعادلة — مصدر LaTeX", exact: true }).click();
     await dialog
       .getByRole("textbox", { name: "مصدر LaTeX" })
       .fill(String.raw`\sqrt{a^2+b^2}`);
