@@ -10,7 +10,7 @@ describe("smart math delimiters", () => {
   });
 
   it.each([
-    "$", "$$", "$$$$", "$x", "$$x$", "$x$$", "$50 and $60", "$50,000.00$", "$10.50",
+    "$", "$$", "$$$$", "$x", "$$x$", "$x$$", "$50 and $60", "$50,000.00$", "$٥٠٬٠٠٠٫٥٠$", "$10.50",
     String.raw`\$x\$`, "$x\ny$", "$x\uFFFCy$", String.raw`$\frac{x$`
   ])("keeps %s as literal text", value => {
     expect(delimitedMath(value)).toEqual([]);

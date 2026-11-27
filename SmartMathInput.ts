@@ -40,8 +40,8 @@ export function delimitedMath(text: string): Match[] {
     else if (opening?.width === width) {
       const latex = text.slice(opening.at + width, at);
       // Amounts and prose between two unrelated dollar signs stay literal.
-      const currency = /^[\s\d\p{Sc}.,]+$/u.test(latex) ||
-        /^\s*\d[\d.,]*\s+[\p{L}\s,.]+$/u.test(latex);
+      const currency = /^[\s\p{Nd}\p{Sc}.,٫٬]+$/u.test(latex) ||
+        /^\s*\p{Nd}[\p{Nd}.,٫٬]*\s+[\p{L}\s,.]+$/u.test(latex);
       if (latex.trim() && latex.length <= MAX_FORMULA_LENGTH && !currency && completeLatex(latex)) {
         matches.push({ from: opening.at, to: end, latex: latex.trim(), block: width === 2 });
         opening = undefined;

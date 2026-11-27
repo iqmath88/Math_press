@@ -118,6 +118,18 @@ async function edgeCases(page) {
   await page.keyboard.press(mod + "+Shift+z");
   await editor.locator("math-field").nth(2).waitFor();
 
+  if (engine === chromium) {
+    await blank();
+    await paragraph().click();
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.imeSetComposition", {text:"$x$", selectionStart:3, selectionEnd:3});
+    await editor.getByText("$x$", {exact:true}).waitFor();
+    assert.equal(await editor.locator("math-field").count(), 0);
+    await cdp.send("Input.insertText", {text:"$x$"});
+    await cdp.detach();
+    assert.equal(await editor.locator("math-field").count(), 0);
+  }
+
   await page.getByRole("button", {name:"خصائص المستند", exact:true}).click();
   const preference = page.getByRole("checkbox", {name:"التحويل التلقائي للمعادلات"});
   await preference.uncheck();
