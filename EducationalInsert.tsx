@@ -95,7 +95,8 @@ export default function EducationalInsert({ editor, styles, numberStart, onNumbe
           <button type="button" disabled={!bounded(questions, 1, 50) || !bounded(branches, 0, 12)}
             onClick={() => {
               const exam = createExamOutline(Number(questions), Number(branches));
-              const at = context ? context.listPosition + context.list.nodeSize : editor.state.selection.from;
+              const { $from, from } = editor.state.selection;
+              const at = context && $from.depth > 0 ? $from.after(1) : from;
               editor.chain().focus().insertContentAt(at, exam).run();
               setOutline(false);
             }}>إدراج الهيكل</button>

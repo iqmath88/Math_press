@@ -65,7 +65,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   const [pageLabels, setPageLabels] = useState<string[]>([]);
   const [properties, setProperties] = useState(false);
   const [showMargins, setShowMargins] = useState(false);
-  const printOrigin = useRef<{ block: Element | null; offset: number; x: number; y: number } | null>(null);
+  const printOrigin = useRef<{ block: Element | null; offset: number; x: number; y: number; stageX: number; stageY: number } | null>(null);
 
   const editor = useEditor({
     extensions,
@@ -324,7 +324,11 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   const openPrint = () => {
     const { $from } = editor.state.selection;
     const block = $from.depth > 0 ? editor.view.nodeDOM($from.before($from.depth)) : null;
-    printOrigin.current = { block: block instanceof Element ? block : null, offset: $from.parentOffset, x: window.scrollX, y: window.scrollY };
+    printOrigin.current = {
+      block: block instanceof Element ? block : null, offset: $from.parentOffset,
+      x: window.scrollX, y: window.scrollY,
+      stageX: stageRef.current?.scrollLeft ?? 0, stageY: stageRef.current?.scrollTop ?? 0
+    };
     setShowSearch(false);
     setPrintOptions({ backgrounds: true, numbers: doc.showPageNumbers, economical: false });
   };
@@ -353,7 +357,10 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
           requestAnimationFrame(() => {
             if (editor.isDestroyed) return;
             editor.commands.focus(undefined, { scrollIntoView: false });
-            if (origin) window.scrollTo(origin.x, origin.y);
+            if (origin) {
+              stageRef.current?.scrollTo(origin.stageX, origin.stageY);
+              window.scrollTo(origin.x, origin.y);
+            }
           });
         }} onPrint={actions.onPrint} />}
       {!printOptions && focusMode && <div className="focus-controls no-print">
