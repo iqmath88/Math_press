@@ -179,6 +179,11 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
             !document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
           const afterUndo = await source.evaluate(root => root.editor.state.doc.lastChild?.lastChild?.attrs.latex);
           assert.equal(afterUndo, "x=2+1", "Undoing prose must preserve the committed equation.");
+          stage = "late MathLive focus after undo";
+          const undoSelection = await source.evaluate(root => root.editor.state.selection.toJSON());
+          await atom.evaluate(field => HTMLElement.prototype.focus.call(field));
+          await focusRoot();
+          assert.deepEqual(await source.evaluate(root => root.editor.state.selection.toJSON()), undoSelection);
           stage = "redo";
           await page.keyboard.press(keyboard.modifier + "+Shift+z");
           await page.waitForFunction(text =>
