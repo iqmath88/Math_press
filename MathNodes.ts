@@ -237,6 +237,10 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           focusMathfield(editor, other);
           return true;
         };
+        const beforeInlineMath = (key: string) => {
+          const rtl = inline && dom.parentElement && getComputedStyle(dom.parentElement).direction === "rtl";
+          return (key === "ArrowLeft") !== !!rtl;
+        };
         let horizontalArrow: string | undefined;
         editButton.addEventListener("click", openSource, options);
         exitButton.addEventListener("click", () => returnToText(false, true), options);
@@ -246,6 +250,15 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           clearTimeout(arrowTimer);
           if (horizontalArrow) arrowTimer = setTimeout(() => { horizontalArrow = undefined; }, 0);
           if (ev.isComposing) return;
+          if (horizontalArrow && !ev.altKey && !ev.ctrlKey && !ev.metaKey && mf.selectionIsCollapsed &&
+            mf.position === (horizontalArrow === "ArrowLeft" ? 0 : mf.lastOffset)) {
+            const before = beforeInlineMath(horizontalArrow);
+            if (focusOtherSide(before) || returnToText(before)) {
+              ev.preventDefault();
+              ev.stopImmediatePropagation();
+              return;
+            }
+          }
           if (ev.key === "Tab" && !ev.altKey && !ev.ctrlKey && !ev.metaKey &&
             mf.position === (ev.shiftKey ? 0 : mf.lastOffset) && focusOtherSide(ev.shiftKey)) {
             ev.preventDefault();
@@ -285,9 +298,8 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         mf.addEventListener("move-out", ev => {
           const dir = (ev as CustomEvent<{ direction?: string }>).detail?.direction;
           if (!dir) return;
-          const rtl = inline && dom.parentElement && getComputedStyle(dom.parentElement).direction === "rtl";
           const before = horizontalArrow
-            ? (horizontalArrow === "ArrowLeft") !== !!rtl
+            ? beforeInlineMath(horizontalArrow)
             : dir === "backward" || dir === "upward";
           if (((dir === "forward" || dir === "backward") && focusOtherSide(before)) ||
             returnToText(before)) ev.preventDefault();
