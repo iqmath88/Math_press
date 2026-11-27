@@ -126,7 +126,15 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
           const editor = root.editor;
           editor.commands.setTextSelection({ from: 1, to: editor.state.doc.content.size - 1 });
         });
-        assert.ok(await source.evaluate(root => !root.editor.state.selection.empty));
+        await page.waitForFunction(() => {
+          const root = document.querySelector(".live-lab-source .tiptap");
+          const native = document.getSelection();
+          const view = root.editor.view;
+          const { from, to } = view.state.selection;
+          if (!native || native.isCollapsed || !root.contains(native.anchorNode) || !root.contains(native.focusNode)) return false;
+          return view.posAtDOM(native.anchorNode, native.anchorOffset) === from &&
+            view.posAtDOM(native.focusNode, native.focusOffset) === to;
+        });
         await page.keyboard.press("Backspace");
         await page.waitForFunction(() => document.querySelector(".live-lab-source .tiptap").editor.state.doc.textContent.trim() === "");
       }
