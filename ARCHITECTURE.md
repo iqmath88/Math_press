@@ -56,3 +56,12 @@ The projection debounces edits and observes source bounds and late graph inserti
 The lab partitions the single TipTap tree at explicit page breaks. It reuses a segment when its node identities, DOM identities and layout inputs agree. It rebases retained source addresses when a structural edit moves a segment. Its page DOM remains in place; an edit rebuilds only changed segments and commits after cancellation checks. New edits abort earlier generations. A full rebuild yields between segments. Font, paper and margin changes invalidate all segments. Late image and graph updates invalidate the relevant source block. Ambiguous empty segments and continuous long content fall back to the existing fragmenter.
 
 The direct-layout checkbox is a second isolated experiment. It changes CSS fragmentation of the existing editor DOM using browser columns. There is still one source and one ProseMirror selection. Column rendering and print geometry have different fragmentation rules. Long continuous paragraphs, editable table spans, hardware IME and touch selection require separate validation before integration. The lab retains page DOM rather than virtualizing it.
+
+### alpha.4 isolated comparison
+
+The lab compares the same TipTap document in CSS columns and in a continuous
+editor with a separate inert A4 projection. The projection shares print
+pagination, seeds segment reuse from the ranges of a full pass, and never
+moves editable nodes. Navigation links back to source positions. Split tables
+and lists expose block-level addresses, and the editor itself flows continuously.
+The production editor does not mount this lab in the normal document route.

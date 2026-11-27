@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { buildExtensions } from "./extensions";
 import { createDocument, parseDocument } from "./document";
 import { educationalStyleDeclarations, resolveEducationalStyles } from "./educationalStyles";
@@ -7,7 +7,7 @@ import { MAX_IMPORT_BYTES, preservesSuppliedContent, validateImportedContent } f
 import { createIncrementalLayout } from "./incrementalLayout";
 import { loadJXG } from "./graph";
 import type { MathPressDocument } from "./types";
-import type { PageRange } from "./pageLayoutModel";
+import { comparePageSource, type PageRange, type PageSource } from "./pageLayoutModel";
 import "./live-lab.css";
 
 const demo = () => {
@@ -24,6 +24,46 @@ const demo = () => {
   return doc;
 };
 
+// Paragraph fragments use Unicode character offsets. Tables, lists and
+// other compound blocks currently expose block-level addresses only.
+function sourcePosition(editor: Editor, address: PageSource) {
+  const doc = editor.state.doc;
+  if (address.block >= doc.childCount) return null;
+  let position = 0;
+  for (let index = 0; index < address.block; index++) position += doc.child(index).nodeSize;
+  const node = doc.child(address.block);
+  if (!node.isTextblock) return position;
+  let remaining = address.offset;
+  let offset = 0;
+  node.forEach(child => {
+    if (!remaining) return;
+    if (child.isText) {
+      for (const character of child.text ?? "") {
+        if (!remaining) break;
+        remaining--;
+        offset += character.length;
+      }
+    } else {
+      remaining--;
+      offset += child.nodeSize;
+    }
+  });
+  return position + 1 + offset;
+}
+
+function currentPreviewPage(editor: Editor, ranges: (PageRange | null)[]) {
+  const cursor = editor.state.selection.$head;
+  const block = cursor.index(0);
+  const node = cursor.depth === 1 ? cursor.parent : null;
+  const offset = node?.isTextblock
+    ? Array.from(node.textBetween(0, cursor.parentOffset, "", "\uFFFC")).length
+    : 0;
+  const address = { block, offset };
+  const page = ranges.findIndex(range => range &&
+    comparePageSource(range.start, address) <= 0 && comparePageSource(address, range.end) < 0);
+  return page >= 0 ? page + 1 : null;
+}
+
 export default function LiveLayoutLab() {
   const [doc, setDoc] = useState(demo);
   const [live, setLive] = useState(true);
@@ -33,6 +73,10 @@ export default function LiveLayoutLab() {
   const [layoutMs, setLayoutMs] = useState(0);
   const [rebuilt, setRebuilt] = useState(0);
   const [direct, setDirect] = useState(false);
+  const [currentPage, setCurrentPage] = useState<number | null>(null);
+  const [viewedPage, setViewedPage] = useState(1);
+  const [thumbnails, setThumbnails] = useState<readonly (readonly string[])[]>([]);
+  const thumbnailCache = useRef(new WeakMap<Element, readonly string[]>());
   const [overflow, setOverflow] = useState(false);
   const projection = useRef<HTMLDivElement>(null);
   const extensions = useMemo(() => buildExtensions().filter(ext => ext.name !== "pagination"), []);
@@ -50,6 +94,14 @@ export default function LiveLayoutLab() {
   const educational = useMemo(() => resolveEducationalStyles(doc.educationalStyles).map(s =>
     `.live-lab [data-educational-style="${s.id}"] { ${educationalStyleDeclarations(s)} }`
   ).join("\n"), [doc.educationalStyles]);
+
+  useEffect(() => {
+    if (!editor || !live || direct) return;
+    const update = () => setCurrentPage(currentPreviewPage(editor, ranges));
+    update();
+    editor.on("selectionUpdate", update);
+    return () => { editor.off("selectionUpdate", update); };
+  }, [editor, ranges, live, direct]);
 
   useEffect(() => {
     if (!editor || !live || direct) return;
@@ -74,6 +126,15 @@ export default function LiveLayoutLab() {
         invalidateAll = false;
         invalidated.clear();
         setRanges(result.ranges);
+        setViewedPage(page => Math.min(page, result.ranges.length));
+        setThumbnails([...target.children].map(sheet => {
+          const existing = thumbnailCache.current.get(sheet);
+          if (existing) return existing;
+          const blocks = [...(sheet.querySelector(".print-sheet-content")?.children ?? [])].slice(0, 10)
+            .map(block => block.matches("table,.tableWrapper,.graph-node,.math-block,img") ? "figure" : "text");
+          thumbnailCache.current.set(sheet, blocks);
+          return blocks;
+        }));
         setOverflow(result.overflow);
         setRebuilt(result.rebuilt);
         setLayoutMs(result.elapsed);
@@ -137,6 +198,14 @@ export default function LiveLayoutLab() {
     }
   };
 
+  const returnToPage = () => {
+    const range = ranges[viewedPage - 1];
+    if (!editor || !range) return;
+    const position = sourcePosition(editor, range.start);
+    if (position === null) return;
+    editor.commands.focus(position, { scrollIntoView: true });
+  };
+
   return <main className="live-lab" dir="rtl">
     <style>{educational}{`@page { size: A4 ${orientation}; margin: 0 }`}</style>
     <header className="live-lab-tools no-print">
@@ -168,7 +237,7 @@ export default function LiveLayoutLab() {
       <button type="button" disabled={!live || direct || !ranges.length} onClick={() => window.print()}>طباعة / PDF</button>
       {notice && <span role="alert">{notice}</span>}
     </header>
-    <p className="live-lab-note no-print">التحرير في المصدر. تتحدث المعاينة تلقائيًا. تغييرات المختبر مؤقتة.</p>
+    <p className="live-lab-note no-print">التحرير في مصدر متصل. حدود المعاينة مأخوذة من محرك الطباعة. يشير التنقل في الجداول والقوائم الممتدة إلى بداية الكتلة. تغييرات المختبر مؤقتة.</p>
     <div className="live-lab-columns" style={style}>
       <section aria-label="المصدر القابل للتحرير" className="live-lab-source no-print">
         <div className={`paper${direct ? " live-lab-direct" : ""}`}><EditorContent editor={editor} /></div>
@@ -178,9 +247,20 @@ export default function LiveLayoutLab() {
           <output data-rebuilt={rebuilt} data-pages={ranges.length} data-layout-ms={layoutMs} data-ranges={JSON.stringify(ranges)}>
             {ranges.length} صفحة{overflow ? " · توجد كتلة تتجاوز المساحة" : ""}
           </output>
-          {ranges.map((_, index) => <button type="button" key={index} onClick={() =>
-            projection.current?.querySelector(`[data-print-page="${index + 1}"]`)?.scrollIntoView({ block: "start" })
-          }>{index + 1}</button>)}
+          {currentPage && <span className="live-lab-current">المؤشر في صفحة المعاينة {currentPage}</span>}
+          <button type="button" onClick={() => editor?.commands.focus()}>متابعة التحرير عند المؤشر</button>
+          <button type="button" disabled={!ranges[viewedPage - 1]} onClick={returnToPage}>تحرير من بداية الصفحة {viewedPage}</button>
+          {ranges.map((_, index) => <button type="button" key={index}
+            className="live-lab-thumbnail" aria-label={`معاينة الصفحة ${index + 1}`}
+            aria-current={viewedPage === index + 1 ? "page" : undefined} onClick={() => {
+              setViewedPage(index + 1);
+              projection.current?.querySelector(`[data-print-page="${index + 1}"]`)?.scrollIntoView({ block: "start" });
+            }}>
+            <span className="live-lab-thumbnail-sheet" aria-hidden="true">
+              {thumbnails[index]?.map((kind, block) => <i className={kind} key={block} />)}
+            </span>
+            {index + 1}
+          </button>)}
         </nav>
         <article className="paper" id="print-document"><div className="mp-editor print-pages" ref={projection} /></article>
       </section>}

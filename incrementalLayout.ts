@@ -40,6 +40,29 @@ function segments(doc: PMNode, source: HTMLElement): Segment[] {
   return result;
 }
 
+// A full render can seed reuse only where the shared print engine actually
+// respected the explicit boundaries. A missing/straddling range stays uncached.
+function seedCache(parts: Segment[], sheets: HTMLElement[], ranges: (PageRange | null)[]) {
+  const cache = new Map<number, Cached>();
+  let page = 0;
+  for (const part of parts) {
+    const first = page;
+    if (ranges[first]?.start.block !== part.start || ranges[first]?.start.offset !== 0) return new Map<number, Cached>();
+    const end = part.start + part.blocks.length;
+    while (page < ranges.length) {
+      const range = ranges[page];
+      if (!range) return new Map<number, Cached>();
+      if (range.start.block >= end) break;
+      if (range.end.block > end || (range.end.block === end && range.end.offset !== 0)) return new Map<number, Cached>();
+      page++;
+    }
+    const segmentSheets = sheets.slice(first, page);
+    cache.set(part.start, { ...part, sheets: segmentSheets, ranges: ranges.slice(first, page),
+      overflow: segmentSheets.some(sheet => sheet.classList.contains("print-sheet-overflow")) });
+  }
+  return page === sheets.length ? cache : new Map<number, Cached>();
+}
+
 export function createIncrementalLayout() {
   let cache = new Map<number, Cached>();
   let previousOptions: Options | undefined;
@@ -53,7 +76,7 @@ export function createIncrementalLayout() {
     stage.className = "mp-editor print-pages live-lab-stage";
     stage.inert = true;
     target.after(stage);
-    const next = new Map<number, Cached>();
+    let next = new Map<number, Cached>();
     const byFirstBlock = reuse ? new Map([...cache.values()].map(part => [part.blocks[0], part])) : new Map<HTMLElement, Cached>();
     const shifts: { sheets: HTMLElement[]; delta: number }[] = [];
     const sheets: HTMLElement[] = [];
@@ -61,13 +84,14 @@ export function createIncrementalLayout() {
     let overflow = false;
     let rebuilt = 0;
     let slice = performance.now();
+    const full = !reuse || !parts.length || !cache.size;
     const append = (part: Cached) => {
       sheets.push(...part.sheets);
       ranges.push(...part.ranges);
       overflow ||= part.overflow;
     };
     try {
-      for (const part of parts.length ? parts : [null]) {
+      for (const part of full ? [null] : parts) {
         if (signal.aborted) return;
         if (part) {
           const cached = byFirstBlock.get(part.blocks[0]);
@@ -122,6 +146,7 @@ export function createIncrementalLayout() {
           if (label.textContent !== text) label.textContent = text;
         }
       });
+      if (full) next = seedCache(parts, sheets, ranges);
       cache = next;
       previousOptions = options;
       previousCount = sheets.length;

@@ -3,6 +3,8 @@ const { writeFileSync } = require("node:fs");
 const { join } = require("node:path");
 const { chromium, webkit, devices } = require("playwright-core");
 const engine = process.argv[2] === "webkit" ? webkit : chromium;
+const mode = process.env.MATHPRESS_LAYOUT_MODE || "direct";
+const session = process.env.MATHPRESS_LAYOUT_SESSION || "first";
 const fixtures = (size) => Array.from({ length: size }, (_, i) => [
   ...(i ? [{ type: "pageBreak" }] : []),
   { type: "paragraph", content: [{ type: "text", text: `صفحة ${i + 1} · تطبيق رياضي ` },
@@ -93,7 +95,23 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
           JSON.stringify({ pages: 200, rebuilt: 1, reused: 199, ranges }, null, 2));
         await page.screenshot({ path: join(process.env.MATHPRESS_QA_OUTPUT, `incremental-${engine.name()}-${name}.png`) });
       }
-      await direct.check();
+      if (mode === "direct") await direct.check();
+      else {
+        await setDoc(fixtures(3));
+        await page.getByRole("button", { name: "معاينة الصفحة 3" }).click();
+        await page.getByRole("button", { name: "تحرير من بداية الصفحة 3" }).click();
+        await page.waitForFunction(() => {
+          const root = document.querySelector(".live-lab-source .tiptap");
+          return document.activeElement === root && root.editor.state.selection.$head.index(0) === 4;
+        });
+        const position = await source.evaluate(root => root.editor.state.selection.from);
+        await page.getByRole("button", { name: "معاينة الصفحة 1" }).click();
+        await page.getByRole("button", { name: "متابعة التحرير عند المؤشر" }).click();
+        await page.waitForFunction(pos => {
+          const root = document.querySelector(".live-lab-source .tiptap");
+          return document.activeElement === root && root.editor.state.selection.from === pos;
+        }, position);
+      }
       const review = " النص العربي بعد الحقل";
       const focusRoot = () => page.waitForFunction(() => {
         const root = document.querySelector(".live-lab-source .tiptap");
@@ -156,20 +174,38 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
           await page.waitForFunction(() => document.querySelector(".live-lab-source .tiptap").editor.state.doc.textContent.trim() === "");
           record.passed++;
         } catch (error) {
-          record.failures.push({ round: round + 1, stage, message: error.message.split("\n")[0] });
+          const diagnostic = await source.evaluate(root => {
+            const { state } = root.editor;
+            const active = document.activeElement;
+            const selection = getSelection();
+            const stack = state.plugins.find(plugin => plugin.spec.key?.key.startsWith("history$"))?.getState(state);
+            return {
+              active: active === root ? "editor" : active?.localName,
+              nativeInEditor: root.contains(selection?.anchorNode),
+              from: state.selection.from, to: state.selection.to,
+              lastText: state.doc.lastChild?.textContent.slice(-80),
+              latex: state.doc.lastChild?.lastChild?.attrs.latex,
+              undoDepth: stack?.done.eventCount, redoDepth: stack?.undone.eventCount
+            };
+          }).catch(() => null);
+          record.failures.push({ diagnostic, round: round + 1, stage, message: error.message.split("\n")[0] });
         }
       }
       await page.close();
     }
     if (process.env.MATHPRESS_QA_OUTPUT)
-      writeFileSync(join(process.env.MATHPRESS_QA_OUTPUT, `direct-gate-${engine.name()}.json`), JSON.stringify(results, null, 2));
-    console.log(engine.name(), JSON.stringify(results));
+      writeFileSync(join(process.env.MATHPRESS_QA_OUTPUT, `${mode}-${session}-gate-${engine.name()}.json`), JSON.stringify(results, null, 2));
+    const summary = Object.fromEntries(Object.entries(results).map(([name, entry]) => [
+      name, { attempted: entry.attempted, passed: entry.passed,
+        failures: entry.failures.map(({ round, stage }) => ({ round, stage })) }
+    ]));
+    console.log(mode, session, engine.name(), JSON.stringify(summary));
     const failures = Object.values(results).reduce((sum, result) => sum + result.failures.length, 0);
-    assert.equal(failures, 0, "Direct-column acceptance gate: " + JSON.stringify(results));
+    assert.equal(failures, 0, mode + " " + session + " acceptance gate: " + JSON.stringify(summary));
   } finally { await browser.close(); }
 })().catch(error => {
   console.error(error);
   if (process.env.GITHUB_ACTIONS)
-    console.log("::error title=Incremental layout " + engine.name() + "::" + String(error.stack).replaceAll("%", "%25").replaceAll("\n", "%0A"));
+    console.log("::error title=Incremental layout " + mode + " " + session + " " + engine.name() + "::" + String(error.stack).replaceAll("%", "%25").replaceAll("\n", "%0A"));
   process.exitCode = 1;
 });
