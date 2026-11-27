@@ -2,7 +2,7 @@
 
 ## v0.6.0-alpha.2
 
-- Add structured solution steps, relation columns, and editable MathLive fields for each side.
+- Add structured solution steps, relation columns, and editable MathLive fields for each side. Tab moves between relation fields; Escape returns to Arabic explanation text.
 - Add examination lists with Arabic branches, numeric subbranches, multiple-choice lists, and marks.
 - Extend the educational template menu with theorem, warning, homework, and reusable custom headings with independent color and optional numbering.
 - MathDoc remains schema 3. Educational metadata uses optional paragraph and list attributes. Readers from earlier releases may discard these attributes when saving.

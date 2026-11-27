@@ -168,12 +168,19 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           const pos = nodePos();
           if (pos !== null) editor.view.dom.dispatchEvent(new CustomEvent(EDIT_MATH_EVENT, { detail: { pos } }));
         };
-        const returnToText = (before = false) => {
+        const returnToText = (before = false, leaveRelation = false) => {
           const pos = nodePos();
           if (pos === null || editor.isDestroyed || dom.closest("[inert]")) return false;
           const { view } = editor;
-          const boundary = pos + (before ? 0 : current.nodeSize);
-          const selection = TextSelection.near(view.state.doc.resolve(boundary), before ? -1 : 1);
+          const doc = view.state.doc;
+          const resolved = doc.resolve(pos);
+          let boundary = pos + (before ? 0 : current.nodeSize);
+          if (leaveRelation && resolved.parent.attrs.solutionRelation) {
+            const end = resolved.after();
+            const next = doc.nodeAt(end);
+            if (next?.type.name === "paragraph" && !next.attrs.solutionRelation) boundary = end + 1;
+          }
+          const selection = TextSelection.near(doc.resolve(boundary), before ? -1 : 1);
           view.dispatch(view.state.tr.setSelection(selection).setMeta("addToHistory", false).scrollIntoView());
           view.focus();
           return true;
@@ -182,15 +189,30 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         mf.addEventListener("pointerdown", () => {
           if (document.activeElement !== mf && editor.isEditable && !dom.closest("[inert]")) mf.focus();
         }, true);
+        const focusOtherSide = (backward: boolean) => {
+          if (!dom.parentElement?.hasAttribute("data-solution-relation")) return false;
+          let sibling = backward ? dom.previousElementSibling : dom.nextElementSibling;
+          if (sibling?.classList.contains("ProseMirror-separator"))
+            sibling = backward ? sibling.previousElementSibling : sibling.nextElementSibling;
+          const other = sibling?.matches(".math-inline") && sibling.querySelector<MathfieldElement>("math-field");
+          if (!other) return false;
+          other.position = backward ? other.lastOffset : 0;
+          other.focus();
+          return true;
+        };
         let horizontalArrow: string | undefined;
         editButton.addEventListener("click", openSource);
-        exitButton.addEventListener("click", () => returnToText());
-        mf.addEventListener(RETURN_TO_TEXT, () => returnToText());
+        exitButton.addEventListener("click", () => returnToText(false, true));
+        mf.addEventListener(RETURN_TO_TEXT, () => returnToText(false, true));
         mf.addEventListener("keydown", ev => {
           horizontalArrow = !ev.shiftKey && (ev.key === "ArrowLeft" || ev.key === "ArrowRight") ? ev.key : undefined;
           if (horizontalArrow) setTimeout(() => { horizontalArrow = undefined; }, 0);
           if (ev.isComposing) return;
-          if (ev.key === "Escape" && returnToText()) {
+          if (ev.key === "Tab" && !ev.altKey && !ev.ctrlKey && !ev.metaKey &&
+            mf.position === (ev.shiftKey ? 0 : mf.lastOffset) && focusOtherSide(ev.shiftKey)) {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
+          } else if (ev.key === "Escape" && returnToText(false, true)) {
             ev.preventDefault();
             ev.stopImmediatePropagation();
           } else if (ev.altKey && ev.key === "Enter") {
@@ -229,7 +251,8 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           const before = horizontalArrow
             ? (horizontalArrow === "ArrowLeft") !== !!rtl
             : dir === "backward" || dir === "upward";
-          if (returnToText(before)) ev.preventDefault();
+          if (((dir === "forward" || dir === "backward") && focusOtherSide(before)) ||
+            returnToText(before)) ev.preventDefault();
         });
 
         if (focusNext.delete(editor)) {

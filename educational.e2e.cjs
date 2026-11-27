@@ -117,8 +117,17 @@ async function verifyCommands(page) {
   await fields.first().click();
   await source.locator("math-field:focus").waitFor({ timeout: 5000 });
   await page.keyboard.type("x");
+  await page.keyboard.press("Tab");
+  await source.locator("math-field:focus").and(fields.nth(1)).waitFor({ timeout: 5000 });
+  await page.keyboard.type("2");
+  await fields.nth(1).evaluate(field => { field.position = 0; });
+  await page.keyboard.press("Shift+Tab");
+  await source.locator("math-field:focus").and(fields.first()).waitFor({ timeout: 5000 });
   await page.keyboard.press("Escape");
+  await page.keyboard.insertText("ثم نراجع النتيجة");
   assert.equal(await fields.first().evaluate(field => field.value), "x");
+  assert.equal(await fields.nth(1).evaluate(field => field.value), "2");
+  await solution.locator("p:not([data-solution-relation])").filter({ hasText: "ثم نراجع النتيجة" }).waitFor();
 
   await button("مستند فارغ").click();
   await page.getByRole("tab", { name: "أنماط", exact: true }).click();

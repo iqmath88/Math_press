@@ -38,8 +38,11 @@ export const EducationalLists = Extension.create({
     return {
       Enter: () => {
         const { selection } = this.editor.state;
-        if (!selection.empty || !educationalItem(this.editor, "solution") ||
+        const step = educationalItem(this.editor, "solution");
+        if (!selection.empty || !step ||
           selection.$from.parentOffset !== selection.$from.parent.content.size) return false;
+        if (step.current.childCount === 1 && !step.current.firstChild?.content.size)
+          return this.editor.commands.liftListItem("listItem");
         return insertEducationalItem(this.editor, "solution");
       }
     };
@@ -140,7 +143,8 @@ export function insertSolutionRelation(editor: Editor, relation: string) {
       content: [field, field]
     });
     const at = context.position + 1 + context.current.content.size;
-    tr.insert(at, row);
+    const explanation = schema.nodeFromJSON(educationalParagraph("solution"));
+    tr.insert(at, [row, explanation]);
     tr.setSelection(TextSelection.create(tr.doc, at + 1));
   }
   editor.view.dispatch(closeHistory(tr).scrollIntoView());
