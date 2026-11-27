@@ -109,6 +109,10 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
         await atom.click();
         await atom.press("End");
         await page.keyboard.type("+1");
+        await page.waitForFunction(() => {
+          const doc = document.querySelector(".live-lab-source .tiptap").editor.state.doc;
+          return doc.lastChild?.lastChild?.attrs.latex === "x=2+1";
+        });
         await page.keyboard.press("Escape");
         await focusRoot();
         await page.keyboard.insertText(review);
