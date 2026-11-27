@@ -1,5 +1,11 @@
 # سجل تغييرات MathPress
 
+## v0.6.1-rc.2
+
+- Edit existing equations visually in place with MathLive, with explicit acceptance and cancellation.
+- Commit an accepted equation as one history operation and preserve draft isolation in print and saved documents.
+- Keep the optional advanced LaTeX source editor.
+
 ## v0.6.1-rc.1
 
 - Skip delimiter searches for complete currency input and reuse unchanged block serialization and word counts.

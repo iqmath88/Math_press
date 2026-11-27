@@ -48,9 +48,23 @@ async function check(page, capture) {
   const latexIs = value => page.waitForFunction(expected =>
     document.querySelector(".editor-source .tiptap").editor.state.doc.firstChild.content.content.some(
       node => node.type.name === "mathInline" && node.attrs.latex === expected), value);
+  await field.locator("..").getByRole("button", {name:"إلغاء تعديل المعادلة",exact:true}).click();
+  await latexIs(examples[0]);
+  assert.equal(await field.evaluate(node => node.value), examples[0]);
+  await field.click();
+  await editor.locator("math-field:focus").waitFor();
+  await page.keyboard.press("End");
+  await page.keyboard.type("+1");
   const newLatex = examples[0] + "+1";
+  await page.waitForFunction(value => document.querySelector(".editor-source math-field")?.value === value, newLatex);
+  await latexIs(examples[0]);
+  await field.locator("..").getByRole("button", {name:"اعتماد والعودة إلى النص",exact:true}).click();
   await latexIs(newLatex);
-  await page.keyboard.press("Escape");
+  await page.keyboard.press(mod + "+z");
+  await latexIs(examples[0]);
+  assert.equal(await editor.locator("math-field").count(), 1);
+  await page.keyboard.press(mod + "+Shift+z");
+  await latexIs(newLatex);
   await page.waitForFunction(() => {
     const root = document.querySelector(".editor-source .tiptap");
     const sel = getSelection();
@@ -139,6 +153,78 @@ async function documentContexts(page, editor) {
   assert.equal(await editor.locator("math-field").count(), 12);
 }
 
+async function visualTools(page, editor, blank, paste) {
+  for (const origin of ["typed","paste","manual"]) {
+    for (const block of [false,true]) {
+      await blank();
+      await editor.locator("p").first().click();
+      await page.getByRole("button", {name:"لوحة الرياضيات",exact:true}).click();
+      const tools = page.getByRole("region", {name:"لوحة التأليف الرياضي"});
+      await tools.waitFor();
+      const raw = "x+1";
+      const delimiter = block ? "$$" : "$";
+      if (origin === "typed") {
+        await page.keyboard.insertText(delimiter + raw + delimiter.slice(0,-1));
+        await page.keyboard.press("$");
+      } else if (origin === "paste") {
+        await paste(delimiter + raw + delimiter);
+      } else {
+        const insert = block ? tools.getByRole("button", {name:"معادلة مستقلة",exact:true})
+          : page.getByRole("button", {name:"معادلة سطرية",exact:true});
+        await insert.click();
+        await editor.locator("math-field:focus").waitFor();
+        await page.keyboard.type(raw);
+        await page.keyboard.press("Escape");
+      }
+      const node = editor.locator(block ? ".math-block" : ".math-inline");
+      const field = node.locator("math-field");
+      await field.click();
+      await editor.locator("math-field:focus").waitFor();
+      assert.equal(await field.evaluate(el => el.value), raw);
+      assert.equal(await page.getByRole("textbox",{name:"مصدر LaTeX"}).count(),0);
+      await page.keyboard.press("End");
+      await page.keyboard.type("+9");
+      await node.getByRole("button",{name:"إلغاء تعديل المعادلة",exact:true}).click();
+      assert.equal(await node.getAttribute("data-latex"),raw);
+      assert.equal(await field.evaluate(el => el.value),raw);
+      await field.click();
+      await editor.locator("math-field:focus").waitFor();
+
+
+      for (const [group,label,marker] of [
+        ["structure","كسر","\\frac"],
+        ["structure","أس","^"],
+        ["structure","جذر تربيعي","\\sqrt"],
+        ["calculus","تكامل محدد","\\int"],
+        ["greek","ألفا","\\alpha"]
+      ]) {
+        const menu = tools.getByLabel("مجموعة القوالب الرياضية");
+        if (await menu.inputValue() !== group) await menu.selectOption(group);
+        await field.evaluate(el => { el.position = el.lastOffset; });
+        await tools.getByRole("button",{name:label,exact:true}).click();
+        assert.ok((await field.evaluate(el => el.value)).includes(marker), label);
+      }
+      const draft = await field.evaluate(el => el.value);
+      assert.equal(await node.getAttribute("data-latex"),raw);
+      await node.getByRole("button",{name:"اعتماد والعودة إلى النص",exact:true}).click();
+      assert.equal(await node.getAttribute("data-latex"),draft);
+      await page.keyboard.insertText("نص بعد المعادلة");
+      await page.waitForFunction(() => {
+        const root = document.querySelector(".editor-source .tiptap");
+        const math = root.querySelector("math-field").closest(".math-node");
+        const marker = "نص بعد المعادلة";
+        const { view, state } = root.editor;
+        const pos = view.posAtDOM(math.parentNode, Array.prototype.indexOf.call(math.parentNode.childNodes, math));
+        const equation = state.doc.nodeAt(pos);
+        if (equation?.type.name === "mathInline") return state.doc.nodeAt(pos + equation.nodeSize)?.text === marker;
+        const after = equation && state.doc.nodeAt(pos + equation.nodeSize);
+        return after?.type.name === "paragraph" && after.textContent === marker;
+      });
+      assert.equal(await editor.locator("math-field").count(),1);
+    }
+  }
+}
+
 async function edgeCases(page) {
   await page.goto(base);
   const blank = () => page.getByRole("button", {name:"مستند فارغ", exact:true}).click();
@@ -204,6 +290,7 @@ async function edgeCases(page) {
   assert.equal(await editor.locator("math-field").count(), 0);
   assert.equal(await paragraph().textContent(), "$" + "x".repeat(2050) + "$");
 
+  await visualTools(page, editor, blank, paste);
   await page.getByRole("button", {name:"خصائص المستند", exact:true}).click();
   const preference = page.getByRole("checkbox", {name:"التحويل التلقائي للمعادلات"});
   await preference.uncheck();

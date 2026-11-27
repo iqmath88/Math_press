@@ -913,6 +913,8 @@ button.primary:hover:not(:disabled),
   white-space: nowrap;
   visibility: hidden;
 }
+.math-controls .math-cancel { display: none; }
+.math-node:focus-within .math-cancel { display: inline-block; }
 .math-controls button {
   min-height: 28px;
   padding: 2px 7px;

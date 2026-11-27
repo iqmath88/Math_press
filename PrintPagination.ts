@@ -71,7 +71,7 @@ function printableClone(source: HTMLElement): HTMLElement {
   const clone = source.cloneNode(true) as HTMLElement;
   const originalFields = source.querySelectorAll<MathfieldElement>("math-field");
   clone.querySelectorAll("math-field").forEach((field, index) => {
-    field.textContent = originalFields[index].value;
+    field.textContent = originalFields[index].closest<HTMLElement>(".math-node")?.dataset.latex ?? originalFields[index].value;
     field.setAttribute("read-only", "");
   });
   clone.querySelectorAll(".no-print, .ProseMirror-separator").forEach(node => node.remove());
