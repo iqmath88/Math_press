@@ -1200,3 +1200,21 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
     min-block-size: 44px;
   }
 }
+
+@media screen {
+  .editor-source { isolation: isolate; }
+  .paper:not(.preview-paper) .editor-source::before,
+  .paper:not(.preview-paper) [data-editor-page-start] .pg-header::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: var(--ph);
+    background: var(--editor-page-background, none) center top / 100% 100% no-repeat;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .paper:not(.preview-paper) [data-editor-page-start] .pg-header { position: relative; }
+  .page-thumbnail { inline-size: 55px; block-size: 64px; background: white; border: 1px solid #b1bfcc; }
+  .thumbnail-text { fill: #b6c4d1; }
+  .thumbnail-figure { fill: #7396af; }
+}

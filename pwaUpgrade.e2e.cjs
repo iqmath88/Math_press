@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const { createServer } = require("node:http");
+const { randomUUID } = require("node:crypto");
 const { readFile } = require("node:fs/promises");
 const path = require("node:path");
 const { setTimeout: delay } = require("node:timers/promises");
@@ -97,12 +98,26 @@ async function run() {
     assert.ok(oldCache);
     const documentTitle = "وثيقة محفوظة قبل تحديث التطبيق";
     await page.getByLabel("عنوان المستند").fill(documentTitle);
-    const savedText = "أثر الترقية على محتوى المستند";
+    const savedText = "أثر الترقية " + randomUUID();
     await page.locator(".mp-editor > h1").click();
     await page.keyboard.press("End");
     await page.keyboard.insertText(savedText);
     const savedEquations = await page.locator(".mp-editor math-field").evaluateAll(fields => fields.map(field => field.value));
     await page.getByText("محفوظ محليًا", { exact: true }).waitFor();
+
+    await page.waitForFunction(({ title, token }) => new Promise((resolve, reject) => {
+      const open = indexedDB.open("mathpress-local", 1);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const db = open.result;
+        const tx = db.transaction("documents", "readonly");
+        const docs = tx.objectStore("documents").getAll();
+        docs.onsuccess = () => resolve(docs.result.some(record =>
+          record.title === title && JSON.stringify(record.content).includes(token)));
+        docs.onerror = () => reject(docs.error);
+        tx.oncomplete = () => db.close();
+      };
+    }), { title: documentTitle, token: savedText });
 
     current = candidate;
     await page.reload();

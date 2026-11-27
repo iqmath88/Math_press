@@ -1,3 +1,4 @@
+import { rangeOfPage, type PageRange, type PageSource } from "./pageLayoutModel";
 import type { MathfieldElement } from "mathlive";
 
 type Boundary = { node: Node; offset: number };
@@ -163,6 +164,8 @@ export function paginateForPrint(
       // Most continuations fit on the next sheet. Skip repeated prefix probes
       // for modest remainders, while bounding work for very long paragraphs.
       const mark = (end: number) => {
+        fragment.dataset.sourceStart = String(start);
+        fragment.dataset.sourceEnd = String(end);
         if (offsets && selectedOffset !== undefined && selectedOffset >= offsets[start] &&
           (selectedOffset < offsets[end] || end === last)) fragment.setAttribute("data-studio-print-anchor", "");
       };
@@ -354,6 +357,7 @@ export function paginateForPrint(
     if (body!.childElementCount && (pendingBreak || placement?.getPropertyValue("--break-before").trim() === "1")) newSheet();
     pendingBreak = false;
     const block = printableClone(child);
+    block.dataset.pageSource = String(index);
     if (selectedBlock && child.contains(selectedBlock)) {
       const indexes: number[] = [];
       for (let node = selectedBlock; node !== child; node = node.parentElement!)
@@ -391,5 +395,14 @@ export function paginateForPrint(
     sheet.append(footer);
   }
   isolateGraphIds(target);
-  return { pages: sheets.length, overflow };
+  const address = (element: HTMLElement, end: boolean): PageSource => ({
+    block: Number(element.dataset.pageSource),
+    offset: Number(end ? element.dataset.sourceEnd ?? 0 : element.dataset.sourceStart ?? 0)
+  });
+  const ranges: (PageRange | null)[] = sheets.map((sheet, index) => {
+    sheet.dataset.printPage = String(index + 1);
+    const blocks = sheet.querySelectorAll<HTMLElement>(".print-sheet-content > [data-page-source]");
+    return rangeOfPage([...blocks].map(block => ({ start: address(block, false), end: address(block, true) })));
+  });
+  return { pages: sheets.length, overflow, ranges };
 }

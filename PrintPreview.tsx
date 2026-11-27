@@ -71,6 +71,7 @@ export default function PrintPreview({ paper, editor, options, onChange, usableH
         headerText, footerText: editor.storage.pagination.footerText, selectedBlock, selectedOffset
       });
       setPages(result.pages);
+      editor.storage.pagination.printRanges = result.ranges;
       const warnings = findPrintIssues(element, usableHeightMm);
       if (result.overflow) warnings.push("توجد كتلة يتعذر تقسيمها ضمن مساحة صفحة واحدة.");
       if (resourceResults.some(result => result.status === "rejected")) warnings.push("تعذر تحميل بعض موارد الطباعة.");
