@@ -168,6 +168,31 @@ async function exercise(page, name) {
         await frame.pdf({ path: join(artifacts, "live-layout-mixed.pdf"), preferCSSPageSize: true, printBackground: true });
       }
     } finally { await frame.close(); }
+    if (artifacts && engine === chromium) {
+      const eq = latex => ({ type: "mathInline", attrs: { latex } });
+      const explanation = (text, latex) => ({ type: "paragraph", content: [
+        { type: "text", text }, eq(latex)
+      ] });
+      await setDoc([
+        { type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: "المعادلات التفاضلية · فصل المتغيرات" }] },
+        explanation("أوجد الحل الخاص إذا كان ", String.raw`\frac{dy}{dx}=2x,\quad y(0)=-2`),
+        { type: "orderedList", attrs: { educationalList: "solution" }, content: [
+          { type: "listItem", content: [explanation("نُكامل الطرفين فنحصل على ", "y=x^2+C")] },
+          { type: "listItem", content: [explanation("نعوض بالشرط الابتدائي فنجد ", "C=-2")] },
+          { type: "listItem", content: [explanation("الحل الخاص هو ", "y=x^2-2")] }
+        ] },
+        { type: "graph" },
+        p("تمرين. أعد الحل عندما يكون الشرط الابتدائي y(0)=1.")
+      ]);
+      await pages.locator("h1").filter({ hasText: "المعادلات التفاضلية · فصل المتغيرات" }).waitFor();
+      await pages.locator(".graph-box svg").first().waitFor();
+      writeFileSync(join(artifacts, "sixth-differential.mathdoc"), JSON.stringify({
+        format: "mathpress", schemaVersion: 4, id: randomUUID(), title: "السادس العلمي · المعادلات التفاضلية",
+        page: { size: "A4", orientation: "portrait", marginsMm: { top: 28, bottom: 28, left: 18, right: 18 } },
+        headerText: "السادس العلمي · مختبر الصفحات", footerText: "MathPress Studio", content: (await state()).doc
+      }, null, 2));
+      await page.pdf({ path: join(artifacts, "sixth-differential.pdf"), preferCSSPageSize: true, printBackground: true });
+    }
   }
 }
 
