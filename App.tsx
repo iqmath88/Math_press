@@ -4,6 +4,7 @@ import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw, Moon, Sun } f
 import type { EducationalStyle } from "./educationalStyles";
 import type { MathPressDocument } from "./types";
 import { createDocument, parseDocument, protectEducationalDocument } from "./document";
+import { creativeTemplates, makeTemplate, type SavedCreativeTemplate } from "./creativeDesign";
 import { deleteDocument, loadLibrary, saveDocument } from "./storage";
 import DocumentEditor from "./Editor";
 import PageSettingsDialog from "./PageSettingsDialog";
@@ -44,6 +45,15 @@ export default function App() {
     try { localStorage.setItem("mathpress-studio-theme", dark ? "dark" : "light"); } catch { /* unavailable */ }
   }, [dark]);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [showTemplates,setShowTemplates] = useState(false);
+  const [templateQuery,setTemplateQuery] = useState("");
+  const [savedTemplates,setSavedTemplates] = useState<SavedCreativeTemplate[]>(() => {
+    try {
+      const values: unknown = JSON.parse(localStorage.getItem("mathpress-creative-templates") ?? "[]");
+      return Array.isArray(values) ? values.filter(item => typeof item?.name === "string" &&
+        !!validateImportedContent(item.content,true)) : [];
+    } catch { return []; }
+  });
   const [showPageSettings, setShowPageSettings] = useState(false);
   const [importing, setImporting] = useState(false);
   const [report, setReport] = useState<{ title: string; result: ImportResult } | null>(null);
@@ -189,9 +199,37 @@ export default function App() {
         <input className="document-title-input" value={doc.title} onChange={e => setDoc(old => ({ ...old, title: e.target.value }))} aria-label="عنوان المستند" placeholder="عنوان المستند" />
         <button type="button" className="studio-theme" aria-label="الوضع الداكن" aria-pressed={dark}
           onClick={() => setDark(value => !value)}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
+        <button type="button" aria-expanded={showTemplates} onClick={()=>setShowTemplates(value=>!value)}>القوالب</button>
         <div className={`save-status ${saveState}`} aria-live="polite">{status.icon}<span>{status.label}</span></div>
       </header>
 
+
+      {showTemplates && <section className="creative-gallery library-panel no-print" aria-label="مكتبة القوالب">
+        <div className="panel-heading"><strong>مكتبة القوالب</strong><button type="button" onClick={()=>setShowTemplates(false)}>إغلاق</button></div>
+        <label>البحث <input type="search" value={templateQuery} onChange={event=>setTemplateQuery(event.target.value)}/></label>
+        <div className="creative-gallery-grid">
+          {creativeTemplates.filter(item=>`${item.name} ${item.category}`.includes(templateQuery)).map(item=>
+            <button type="button" key={item.id} onClick={()=>{replaceDocument(makeTemplate(createDocument(),item.id));setShowTemplates(false);}}>
+              <small>{item.category}</small><strong>{item.name}</strong>
+              <span>{item.content.find(node=>node.type==="educationBlock")?.content?.[0]?.content?.[0]?.text}</span>
+            </button>)}
+          {savedTemplates.filter(item=>item.name.includes(templateQuery)).map(item=>
+            <button type="button" key={item.name} onClick={()=>{
+              replaceDocument(protectEducationalDocument({...createDocument(item.name),content:structuredClone(item.content),creativeDesign:item.design}));
+              setShowTemplates(false);
+            }}>{item.name}</button>)}
+        </div>
+        <button type="button" onClick={()=>{
+          const name = window.prompt("اسم القالب",doc.title)?.trim();
+          if (!name) return;
+          const next = [...savedTemplates.filter(item=>item.name!==name),{name,content:doc.content,design:doc.creativeDesign}];
+          try {
+            localStorage.setItem("mathpress-creative-templates",JSON.stringify(next));
+            setSavedTemplates(next);
+            setNotice("تم حفظ القالب على هذا الجهاز.");
+          } catch {setNotice("تعذر حفظ القالب في التخزين المحلي.");}
+        }}>حفظ المستند قالبًا</button>
+      </section>}
 
       {showLibrary && <section className="library-panel no-print">
         <div className="panel-heading"><strong>المستندات المحفوظة على هذا الجهاز</strong><button className="icon-button" onClick={() => setShowLibrary(false)}>إغلاق</button></div>
@@ -213,7 +251,7 @@ export default function App() {
 
       <main className="editor-area">
         <DocumentEditor
-          key={editorRevision} doc={doc} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onNotice={setNotice}
+          key={editorRevision} doc={doc} onDesign={creativeDesign => setDoc(old=>({...old,creativeDesign}))} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onNotice={setNotice}
           actions={{
             onNew: () => { replaceDocument(createDocument()); setNotice("تم إنشاء مستند جديد."); },
             onNewBlank: () => {

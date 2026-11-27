@@ -22,6 +22,7 @@ export type MathPressDocument = {
   /** صورة تُرسم خلف كل صفحة (ورق رسمي، إطار، علامة مائية) كـ data URL، أو null. */
   background: string | null;
   numberingStart?: number;
+  creativeDesign?: string;
   educationalStyles?: EducationalStyle[];
   content: JSONContent;
   updatedAt: string;

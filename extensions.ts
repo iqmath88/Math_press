@@ -16,6 +16,7 @@ import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
+import { CreativeBlock } from "./CreativeBlock";
 import { MathBlock, MathInline } from "./MathNodes";
 import { Pagination } from "./Pagination";
 import { DocumentSearch } from "./DocumentSearch";
@@ -213,6 +214,7 @@ export function buildExtensions() {
     Placeholder.configure({ placeholder: "ابدأ الكتابة هنا…" }),
     MathInline,
     MathBlock,
+    CreativeBlock,
     GraphNode,
     Columns,
     Column,

@@ -4,6 +4,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import type { MathfieldElement } from "mathlive";
 import type { MathPressDocument } from "./types";
+import { blockTypes, designVariables, designs, educationBlock } from "./creativeDesign";
 import { createEditorSnapshot } from "./editorSnapshot";
 import { SmartMathInput } from "./SmartMathInput";
 import { buildExtensions } from "./extensions";
@@ -25,6 +26,7 @@ import {
 type Props = {
   doc: MathPressDocument;
   onChange: (content: JSONContent) => void;
+  onDesign: (design?: string) => void;
   onStyles: (styles: EducationalStyle[]) => void;
   onNumberStart: (numberingStart: number) => void;
   onNotice: (message: string) => void;
@@ -33,7 +35,7 @@ type Props = {
 
 type ZoomMode = number | "width" | "page";
 
-export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart, onNotice, actions }: Props) {
+export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNumberStart, onNotice, actions }: Props) {
   const m = doc.page.marginsMm;
   const landscape = doc.page.orientation === "landscape";
   const [smartMath, setSmartMath] = useState(() => {
@@ -77,6 +79,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   const previewRef = useRef<MathfieldElement | null>(null);
 
   const [pageLabels, setPageLabels] = useState<string[]>([]);
+  const [showCreative, setShowCreative] = useState(false);
   const [properties, setProperties] = useState(false);
   const [showMargins, setShowMargins] = useState(false);
   const printOrigin = useRef<{ block: Element | null; offset: number; x: number; y: number; stageX: number; stageY: number } | null>(null);
@@ -307,7 +310,21 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
     setGraph(null);
   };
 
+  const findBlock = () => {
+    const head = editor.state.selection.$from;
+    for (let depth = head.depth; depth > 0; depth--) {
+      const node = head.node(depth);
+      if (node.type.name === "educationBlock") return {node, pos:head.before(depth)};
+    }
+    return null;
+  };
+  const selected = findBlock();
+  const editBlock = (attrs: Record<string, unknown>) => {
+    const block = findBlock();
+    if (block) editor.view.dispatch(editor.state.tr.setNodeMarkup(block.pos, undefined, {...block.node.attrs,...attrs}));
+  };
   const paperStyle = {
+    ...designVariables(doc.creativeDesign),
     "--editor-zoom": zoom,
     "--numbering-start": (doc.numberingStart ?? 1) - 1,
     "--pt": `${m.top}mm`,
@@ -430,6 +447,50 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       {showParagraphFormat && <ParagraphFormatDialog editor={editor} close={() => setShowParagraphFormat(false)} />}
       {showStyles && <StyleManager key={doc.id} overrides={doc.educationalStyles ?? []}
         onChange={onStyles} onApply={id => applyEducationalStyle(editor, id)} onClose={() => setShowStyles(false)} />}
+      {!focusMode && !printOptions && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
+        <button type="button" onClick={() => setShowCreative(value => !value)} aria-expanded={showCreative}>التصميم والصناديق</button>
+        {showCreative && <>
+          <label>هوية المستند <select value={doc.creativeDesign ?? ""} onChange={event =>
+            onDesign(event.target.value || undefined)}>
+            <option value="">الافتراضية</option>
+            {designs.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
+          </select></label>
+          <label>إدراج صندوق <select aria-label="إدراج صندوق" value="" onChange={event => {
+            const kind = event.target.value;
+            if (kind) editor.chain().focus().insertContent(educationBlock(kind)).run();
+          }}>
+            <option value="">اختر نوعًا</option>
+            {blockTypes.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
+          </select></label>
+          {selected && <fieldset>
+            <legend>خصائص الصندوق</legend>
+            <label>النوع <select value={selected.node.attrs.kind} onChange={event=>editBlock({kind:event.target.value})}>
+              {blockTypes.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
+            </select></label>
+            <label>العنوان <input value={selected.node.attrs.title} onChange={event=>editBlock({title:event.target.value})}/></label>
+            <label>اللون <input type="color" value={selected.node.attrs.accent ?? "#193c6b"} onChange={event=>editBlock({accent:event.target.value})}/></label>
+            <label>الخلفية <input type="color" value={selected.node.attrs.background ?? "#eef4fa"} onChange={event=>editBlock({background:event.target.value})}/></label>
+            <label>الحشوة <input type="number" min={0} max={48} value={selected.node.attrs.padding ?? ""} onChange={event=> {
+              const value = event.target.valueAsNumber;
+              editBlock({padding:Number.isInteger(value) ? Math.max(0,Math.min(48,value)) : null});
+            }}/></label>
+            <label>استدارة الحواف <input type="number" min={0} max={30} value={selected.node.attrs.radius ?? ""} onChange={event=> {
+              const value = event.target.valueAsNumber;
+              editBlock({radius:Number.isInteger(value) ? Math.max(0,Math.min(30,value)) : null});
+            }}/></label>
+            <label><input type="checkbox" checked={selected.node.attrs.hideTitle} onChange={event=>editBlock({hideTitle:event.target.checked})}/> إخفاء العنوان</label>
+            <button type="button" onClick={() => editBlock({title:"",accent:null,background:null,padding:null,radius:null,hideTitle:false})}>استعادة التنسيق</button>
+            <button type="button" onClick={() => {
+              const block = findBlock();
+              if (block) editor.chain().focus().insertContentAt(block.pos + block.node.nodeSize,block.node.toJSON()).run();
+            }}>تكرار الصندوق</button>
+            <button type="button" onClick={() => {
+              const block = findBlock();
+              if (block) editor.chain().focus().deleteRange({from:block.pos,to:block.pos+block.node.nodeSize}).run();
+            }}>حذف الصندوق</button>
+          </fieldset>}
+        </>}
+      </section>}
       <div className={`page-stage${focusMode ? " document-focus" : ""}`} ref={stageRef}>
         {showPages && !focusMode && !printOptions && <nav className="page-navigation no-print" aria-label="التنقل بين الصفحات">
           {Array.from({ length: pageCount }, (_, index) => <button type="button" key={index}
@@ -451,7 +512,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
           <button type="button" onClick={() => setShowParagraphFormat(true)}>خصائص الفقرة</button>
         </aside>}
         <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}`}
-          id="print-document" style={paperStyle}>
+          id="print-document" data-creative-design={doc.creativeDesign} style={paperStyle}>
           <div className={`editor-source${showMargins && !printOptions ? " studio-margins" : ""}`}>
             <div className="paper-header" aria-hidden="true"><span>{doc.headerText}</span></div>
             <EditorContent editor={editor} />

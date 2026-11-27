@@ -339,6 +339,38 @@ export function paginateForPrint(
     }
   };
 
+  const placeCreativeBlock = (block: HTMLElement) => {
+    const content = block.querySelector<HTMLElement>(":scope > .creative-block-content");
+    if (!content || content.children.length < 2) {
+      place(block);
+      return;
+    }
+    body.append(block);
+    if (fits(block)) return;
+    block.remove();
+    const parts = [...content.children];
+    const fresh = () => {
+      const frame = block.cloneNode(false) as HTMLElement;
+      const heading = block.querySelector(":scope > .creative-block-label");
+      if (heading) frame.append(heading.cloneNode(true));
+      const inner = content.cloneNode(false) as HTMLElement;
+      frame.append(inner);
+      return { frame, inner };
+    };
+    let fragment = fresh();
+    for (const part of parts) {
+      fragment.inner.append(part);
+      if (!fragment.frame.parentElement) place(fragment.frame);
+      else if (!fits(fragment.frame)) {
+        part.remove();
+        newSheet();
+        fragment = fresh();
+        fragment.inner.append(part);
+        place(fragment.frame);
+      }
+    }
+  };
+
   target.replaceChildren();
   newSheet();
   const blocks = [...source.children].filter((child): child is HTMLElement =>
@@ -374,7 +406,8 @@ export function paginateForPrint(
       const needed = child.getBoundingClientRect().height + next.getBoundingClientRect().height;
       if (needed <= body!.clientHeight * zoom && body!.lastElementChild!.getBoundingClientRect().bottom + needed > limit) newSheet();
     }
-    if (block.tagName === "P") placeParagraph(block);
+    if (block.matches(".creative-block")) placeCreativeBlock(block);
+    else if (block.tagName === "P") placeParagraph(block);
     else if (block instanceof HTMLTableElement) placeTable(block);
     else if (block instanceof HTMLOListElement || block instanceof HTMLUListElement) placeList(block);
     else place(block);

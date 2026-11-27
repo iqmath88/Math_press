@@ -1,3 +1,4 @@
+import { designs } from "./creativeDesign";
 import type { JSONContent } from "@tiptap/core";
 import type { MathPressDocument, PageSettings } from "./types";
 
@@ -119,6 +120,7 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
     background: typeof d.background === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(d.background) ? d.background : null,
     ...(typeof d.numberingStart === "number" && Number.isInteger(d.numberingStart) && d.numberingStart >= 1 && d.numberingStart <= 9999
       ? { numberingStart: d.numberingStart } : {}),
+    ...(typeof d.creativeDesign === "string" && designs.some(([id])=>id===d.creativeDesign) ? {creativeDesign:d.creativeDesign} : {}),
     ...(d.educationalStyles === undefined ? {} : { educationalStyles: readEducationalStyles(d.educationalStyles) }),
     content: d.content,
     updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : new Date().toISOString()
@@ -129,6 +131,7 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
 /** Older editors reject version 4 before loading content they cannot preserve. */
 export function protectEducationalDocument(doc: MathPressDocument): MathPressDocument {
   if (doc.schemaVersion === 4) return doc;
+  if (doc.creativeDesign) return { ...doc, schemaVersion: 4 };
   if (doc.educationalStyles?.some(style => style.templateTitle || style.templateTitleColor ||
     style.templateTitleBold !== undefined || style.templateNumbered !== undefined)) {
     return { ...doc, schemaVersion: 4 };
@@ -137,7 +140,7 @@ export function protectEducationalDocument(doc: MathPressDocument): MathPressDoc
   while (pending.length) {
     const node = pending.pop()!;
     const attrs = node.attrs;
-    if (attrs?.educationalList || attrs?.listNumbering || attrs?.points != null ||
+    if (node.type === "educationBlock" || attrs?.educationalList || attrs?.listNumbering || attrs?.points != null ||
       attrs?.solutionRelation || attrs?.templateHeading || attrs?.educationalSequence === "template") {
       return { ...doc, schemaVersion: 4 };
     }

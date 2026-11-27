@@ -1,5 +1,11 @@
 # سجل تغييرات MathPress
 
+## v0.7.0-preview.1 — Creative Studio
+
+- Add editable educational blocks, scoped formatting controls and document design presets.
+- Add four editable templates, reusable local templates and a five-page derivatives sample.
+- Protect Creative Studio properties in MathDoc 4 and keep the existing print engine.
+
 ## v0.6.1-rc.2
 
 - Edit existing equations visually in place with MathLive, with explicit acceptance and cancellation.

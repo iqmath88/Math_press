@@ -85,3 +85,9 @@ npm run build
 - استيراد ألوان المعادلات من Word (الأحمر/الكحلي…) كـ `\textcolor`.
 - خلفية الصفحة: تُستخرج صورة الرأس (الإطار/الورق الرسمي) تلقائيًا عند استيراد Word، أو تُرفع من «إعدادات الصفحة»؛ تتكرر في كل صفحة وتُطبع.
 - ترقيم الصفحات يُطفأ تلقائيًا عند وجود خلفية مستوردة (يمكن تشغيله من الإعدادات).
+
+### Creative Studio preview
+
+The preview adds an editable educational block system, document design presets and
+an offline template gallery. See [Creative Studio](CREATIVE-STUDIO.md) for usage,
+MathDoc compatibility and the current acceptance checklist.

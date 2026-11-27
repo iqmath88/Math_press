@@ -1202,3 +1202,53 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
     min-block-size: 44px;
   }
 }
+
+/* Creative Studio uses the editor's existing paper and print surfaces. */
+.paper[data-creative-design] :is(.editor-source,.print-sheet-content) {
+  font-family: var(--creative-font), serif;
+  line-height: var(--creative-leading);
+}
+.paper[data-creative-design] :is(.editor-source,.print-sheet-content) :is(h1,h2,h3) {
+  color: var(--creative-accent);
+  margin-block-end: var(--creative-spacing);
+}
+.creative-block {
+  color: var(--creative-text,#162132);
+  --block-ink: var(--block-accent,var(--creative-accent,#193c6b));
+  background: var(--creative-tint,#eef4fa);
+  border-inline-start: var(--creative-border,3px) solid var(--block-ink);
+  margin-block: var(--creative-spacing,9px);
+  padding: 7px 12px;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.creative-block-label { font-weight: 700; color: var(--block-ink); margin-block-end: 4px; }
+.creative-block-content > :first-child { margin-block-start: 0; }
+.creative-block-content > :last-child { margin-block-end: 0; }
+.creative-block[data-hide-title="true"] > .creative-block-label { display:none; }
+.creative-block:is([data-education-block="law"],[data-education-block="theorem"],[data-education-block="rule"]) {
+  background: white; border: 1px solid var(--block-ink); border-block-start-width: 3px;
+}
+.creative-block:is([data-education-block="chapter"],[data-education-block="lesson"],[data-education-block="subtitle"]) {
+  background: transparent; border:0; border-block-end:2px solid var(--block-ink);
+}
+.creative-block:is([data-education-block="example"],[data-education-block="exercise"],[data-education-block="ministerial-question"]) {
+  border: 1px solid var(--block-ink); padding:0;
+}
+.creative-block:is([data-education-block="example"],[data-education-block="exercise"],[data-education-block="ministerial-question"]) > .creative-block-label {
+  background:var(--block-ink); color:white; padding:4px 12px;
+}
+.creative-block:is([data-education-block="example"],[data-education-block="exercise"],[data-education-block="ministerial-question"]) > .creative-block-content { padding:6px 12px; }
+.creative-block:is([data-education-block="solution"],[data-education-block="proof"]) { background:white; border-inline-start-style:double; }
+.creative-block:is([data-education-block="note"],[data-education-block="warning"],[data-education-block="idea"]) { border-inline-start-style:dashed; }
+.creative-block[data-education-block="warning"] { --block-ink:var(--block-accent,#7d341e); }
+.creative-tools, .creative-tools fieldset { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:6px 12px; }
+.creative-tools label { display:inline-flex; gap:4px; align-items:center; }
+.creative-gallery-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px; margin-block:8px; }
+.creative-gallery-grid button { display:grid; text-align:start; gap:4px; padding:10px; }
+.creative-gallery-grid button span { font-size:.85em; }
+
+.creative-block[data-block-background] { background:var(--block-background); }
+.creative-block { border-radius:var(--block-radius,0); }
+.creative-block[data-block-padding] { padding:var(--block-padding); }
+.creative-block[data-block-padding] > .creative-block-content { padding:0; }
