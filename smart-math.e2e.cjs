@@ -43,6 +43,13 @@ async function check(page, capture) {
 
   await field.click();
   await editor.locator("math-field:focus").waitFor();
+  // A display-only MathLive value change with no input event must stay out of history.
+  await field.evaluate(node => node.setValue("C(h,k)+99", {silenceNotifications:true}));
+  await page.keyboard.press("Escape");
+  assert.equal(await field.evaluate(node => node.value), examples[0]);
+  assert.deepEqual((await snapshot()).content[0].content.map(node => node.text ?? node.attrs.latex), [before, examples[0]]);
+  await field.click();
+  await editor.locator("math-field:focus").waitFor();
   await page.keyboard.press("End");
   await page.keyboard.type("+1");
   const latexIs = value => page.waitForFunction(expected =>

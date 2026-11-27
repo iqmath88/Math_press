@@ -194,12 +194,15 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         const keepDraft = (target: EventTarget | null) =>
           target instanceof Element && (dom.contains(target) || !!target.closest(".math-tools"));
         const settleDraft = (accept: boolean) => {
+          // MathLive may normalize source on navigation without any input event.
+          // Treat only an actual visual draft as an edit in the document history.
+          const hasDraft = !!draftFocus;
           clearDraftFocus();
           const pos = nodePos();
           if (editor.isDestroyed || pos === null || dom.closest("[inert]")) return;
           const latex = current.attrs.latex as string;
           if (mf.value === latex) return;
-          if (!accept) {
+          if (!accept || !hasDraft) {
             mf.value = latex;
             return;
           }
