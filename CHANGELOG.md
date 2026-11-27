@@ -1,5 +1,10 @@
 # سجل تغييرات MathPress
 
+## v0.7.0-alpha.2
+
+- Add an isolated live-layout lab at #live-layout-lab with an editable in-memory source and automatically updated print-derived pages.
+- Keep the Studio editor and MathDoc persistence architecture unchanged pending live-fragment selection and performance validation.
+
 ## v0.7.0-alpha.1
 
 - Track editor and print page ranges against the same source tree.

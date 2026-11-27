@@ -19,7 +19,11 @@ import App from "./App";
 import { loadJXG } from "./graph";
 MathfieldElement.fontsDirectory = null;
 MathfieldElement.soundsDirectory = null;
-createRoot(document.getElementById("root")!).render(<React.StrictMode><App /></React.StrictMode>);
+const LiveLayoutLab = React.lazy(() => import("./LiveLayoutLab"));
+const lab = location.hash === "#live-layout-lab";
+createRoot(document.getElementById("root")!).render(<React.StrictMode>
+  {lab ? <React.Suspense fallback={null}><LiveLayoutLab /></React.Suspense> : <App />}
+</React.StrictMode>);
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
     const worker = new URL(import.meta.env.BASE_URL + "sw.js", document.baseURI);

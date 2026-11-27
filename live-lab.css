@@ -1,0 +1,15 @@
+.live-lab { background: #e9edf2; min-height: 100vh; }
+.live-lab-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px; background: white; }
+.live-lab-note { margin: 8px 20px; }
+.live-lab-columns { display: flex; align-items: flex-start; gap: 16px; padding: 12px; }
+.live-lab-columns > section { flex: 1 1 0; min-width: 0; overflow-x: auto; padding: 6px; }
+.live-lab-source .paper { min-height: var(--ph); }
+.live-lab-pages { display: flex; flex-wrap: wrap; gap: 4px; max-height: 96px; overflow: auto; margin-block-end: 8px; }
+@media screen and (max-width: 860px) {
+  .live-lab-columns { flex-direction: column; }
+  .live-lab-columns > section { width: 100%; }
+}
+@media print {
+  .live-lab-columns, .live-lab-columns > section { display: block; overflow: visible; padding: 0; }
+  .live-lab-columns > .live-lab-source { display: none; }
+}
