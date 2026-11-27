@@ -154,6 +154,7 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
           stage = "MathLive exit";
           await page.keyboard.press("Escape");
           await focusRoot();
+          stage = "Arabic insertion after MathLive";
           await page.keyboard.insertText(review);
           await page.waitForFunction(text =>
             document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
@@ -219,6 +220,17 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
         failures: entry.failures.map(({ round, stage }) => ({ round, stage })) }
     ]));
     console.log(mode, session, engine.name(), JSON.stringify(summary));
+    for (const [viewport, entry] of Object.entries(results)) {
+      const seen = new Set();
+      for (const failure of entry.failures) {
+        if (seen.has(failure.stage)) continue;
+        seen.add(failure.stage);
+        const detail = JSON.stringify({ viewport, ...failure });
+        console.log(process.env.GITHUB_ACTIONS
+          ? "::notice title=Layout diagnostic::" + detail.replaceAll("%", "%25")
+          : detail);
+      }
+    }
     const failures = Object.values(results).reduce((sum, result) => sum + result.failures.length, 0);
     assert.equal(failures, 0, mode + " " + session + " acceptance gate: " + JSON.stringify(summary));
   } finally { await browser.close(); }
