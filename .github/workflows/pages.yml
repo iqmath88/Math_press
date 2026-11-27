@@ -48,7 +48,7 @@ jobs:
             node stability.e2e.cjs webkit history
           fi
           if [[ "$MATHPRESS_BRANCH" == feature/v0.7.0-creative-studio ]]; then
-            node creative.e2e.cjs chromium
+            MATHPRESS_CREATIVE_VIDEO=1 node creative.e2e.cjs chromium
             node creative.e2e.cjs webkit
           fi
           npm run test:e2e

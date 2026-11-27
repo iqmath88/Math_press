@@ -1,6 +1,6 @@
 # Creative Studio preview
 
-Open **القوالب** to choose a lesson, exam, cover or formula sheet. The derivatives
+Open **القوالب** to choose a lesson, conics booklet, exam, cover or formula sheet. The derivatives
 lesson has five manual A4 pages with editable equations and JSXGraph illustrations.
 The gallery can also save the current content and design as a reusable local
 template. Saving a template is separate from exporting a MathDoc backup.

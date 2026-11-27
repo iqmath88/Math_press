@@ -35,6 +35,11 @@ const equation = (latex: string): JSONContent => ({type:"mathBlock",attrs:{latex
 export const educationBlock = (kind: string, content = [paragraph("")]): JSONContent =>
   ({type:"educationBlock",attrs:{kind},content});
 
+const conicGraph = (caption: string, branches: string[], from = "", to = ""): JSONContent => ({
+  type:"graph",attrs:{spec:{xmin:-5,xmax:5,ymin:-5,ymax:5,axes:true,grid:true,equal:true,widthPct:65,caption,
+    items:branches.map((expr,index)=>({id:`conic-${index}`,type:"function",expr,color:"#193c6b",dashed:false,from,to}))}}
+});
+
 export const creativeTemplates: { id: string; name: string; category: string; design: string; content: JSONContent[] }[] = [
   {id:"lesson", name:"تطبيقات التفاضل", category:"ملزمة", design:"academic", content:[
     heading("تطبيقات التفاضل"), educationBlock("definition",[paragraph("النقطة الحرجة تقع في مجال الدالة وتكون المشتقة عندها صفرًا أو غير موجودة.")]),
@@ -59,6 +64,20 @@ export const creativeTemplates: { id: string; name: string; category: string; de
     educationBlock("summary",[paragraph("حدّد المجال أولًا ثم النقاط الحرجة. افحص تغير إشارة المشتقة، وقارن قيم الأطراف إذا كان المجال مغلقًا.")]),
     educationBlock("exercise",[paragraph("أوجد القيمتين العظمى والصغرى المطلقَتين للدالة على الفترة [٠، ٤]."),equation("f(x)=x^2-4x+3")]),
     educationBlock("homework",[paragraph("اكتب مثالًا تكون فيه قيمة قصوى عند طرف الفترة، وفسّر لماذا يجب فحص الطرفين.")])
+  ]},
+  {id:"conics",name:"القطوع المخروطية",category:"ملزمة",design:"classic",content:[
+    heading("القطوع المخروطية"),educationBlock("definition",[paragraph("الدائرة مجموعة نقاط المستوى التي تبعد مسافة ثابتة عن المركز.")]),
+    educationBlock("law",[equation("x^2+y^2=4"),paragraph("المركز عند الأصل ونصف القطر ٢.")]),
+    conicGraph("دائرة نصف قطرها ٢",["sqrt(4-x^2)","-sqrt(4-x^2)"],"-2","2"),
+    {type:"pageBreak"},heading("القطع المكافئ"),
+    educationBlock("example",[equation("x^2=4y"),paragraph("رأس القطع عند الأصل وبؤرته عند (٠، ١).")]),
+    conicGraph("قطع مكافئ مفتوح نحو الأعلى",["x^2/4"]),
+    {type:"pageBreak"},heading("القطع الناقص"),
+    educationBlock("example",[equation("\\frac{x^2}{9}+\\frac{y^2}{4}=1"),paragraph("نصف المحور الأفقي ٣ ونصف المحور الرأسي ٢.")]),
+    conicGraph("قطع ناقص بمحور أكبر أفقي",["2*sqrt(1-x^2/9)","-2*sqrt(1-x^2/9)"],"-3","3"),
+    {type:"pageBreak"},heading("القطع الزائد"),
+    educationBlock("example",[equation("y^2-x^2=1"),paragraph("رأسا القطع عند (٠، ١) و(٠، −١). المستقيمان ص = س وص = −س مقاربان.")]),
+    conicGraph("فرعا قطع زائد بمحور رأسي",["sqrt(1+x^2)","-sqrt(1+x^2)"])
   ]},
   {id:"exam",name:"امتحان رياضيات متعدد الفروع",category:"امتحان",design:"economy",content:[
     heading("ورقة امتحان الرياضيات"), paragraph("المديرية: ______    المدرسة: ______    العام الدراسي: ______"),
