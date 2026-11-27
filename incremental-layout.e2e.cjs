@@ -19,6 +19,10 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
     for (const [name, options] of [["desktop", { viewport: { width: 1440, height: 960 } }], ["ipad", devices["iPad (gen 7)"]]]) {
       const page = await browser.newPage(options);
       await page.goto((process.env.MATHPRESS_QA_URL || "http://127.0.0.1:4174/") + "#live-layout-lab");
+      const keyboard = await page.evaluate(() => ({
+        platform: navigator.platform,
+        modifier: /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? "Meta" : "Control"
+      }));
       const source = page.locator(".live-lab-source .tiptap");
       const projection = page.locator(".live-lab-result .print-pages");
       const setDoc = content => source.evaluate((root, content) =>
@@ -79,10 +83,10 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
         await page.screenshot({ path: join(process.env.MATHPRESS_QA_OUTPUT, "direct-column-01.png") });
       await page.keyboard.insertText(" نهاية النص العربي");
       await source.getByText(/نهاية النص العربي/).waitFor();
-      await page.keyboard.press("Control+z");
+      await page.keyboard.press(keyboard.modifier + "+z");
       await page.waitForFunction(() => !document.querySelector(".live-lab-source .tiptap").textContent.includes("نهاية النص العربي"));
       assert.deepEqual(await snapshot(), before);
-      await page.keyboard.press("Control+Shift+z");
+      await page.keyboard.press(keyboard.modifier + "+Shift+z");
       await source.getByText(/نهاية النص العربي/).waitFor();
       const edited = await snapshot();
       if (process.env.MATHPRESS_QA_OUTPUT && engine === chromium && name === "desktop")
@@ -117,9 +121,14 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
       const review = " النص العربي بعد الحقل";
       const focusRoot = () => page.waitForFunction(() => {
         const root = document.querySelector(".live-lab-source .tiptap");
-        return document.activeElement === root && root.contains(document.getSelection()?.anchorNode);
+        const selection = document.getSelection();
+        const view = root.editor.view;
+        const end = view.state.doc.content.size - 1;
+        return document.activeElement === root && selection?.isCollapsed &&
+          root.contains(selection.anchorNode) && view.state.selection.empty &&
+          view.state.selection.from === end && view.posAtDOM(selection.anchorNode, selection.anchorOffset) === end;
       });
-      const record = { attempted: 0, passed: 0, failures: [] };
+      const record = { keyboard, attempted: 0, passed: 0, failures: [] };
       results[name] = record;
       page.setDefaultTimeout(3500);
       for (let round = 0; round < 30; round++) {
@@ -135,7 +144,8 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
           stage = "MathLive input";
           const atom = source.locator("math-field").first();
           await atom.click();
-          await atom.press("End");
+          await source.locator("math-field:focus").waitFor();
+          await page.keyboard.press("End");
           await page.keyboard.type("+1");
           await page.waitForFunction(() => {
             const doc = document.querySelector(".live-lab-source .tiptap").editor.state.doc;
@@ -149,13 +159,13 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
             document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
           const state = await snapshot();
           stage = "undo";
-          await page.keyboard.press("Control+z");
+          await page.keyboard.press(keyboard.modifier + "+z");
           await page.waitForFunction(text =>
             !document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
           const afterUndo = await source.evaluate(root => root.editor.state.doc.lastChild?.lastChild?.attrs.latex);
           assert.equal(afterUndo, "x=2+1", "Undoing prose must preserve the committed equation.");
           stage = "redo";
-          await page.keyboard.press("Control+Shift+z");
+          await page.keyboard.press(keyboard.modifier + "+Shift+z");
           await page.waitForFunction(text =>
             document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
           assert.deepEqual(await snapshot(), state);
@@ -173,19 +183,24 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
             return view.posAtDOM(native.anchorNode, native.anchorOffset) === from &&
               view.posAtDOM(native.focusNode, native.focusOffset) === to;
           });
+          // The native selection must span the same ranges as the ProseMirror selection.
+          // Capture enough detail to distinguish a collapsed DOM selection from stale state.
           stage = "cross-column deletion";
           await page.keyboard.press("Backspace");
           await page.waitForFunction(() => document.querySelector(".live-lab-source .tiptap").editor.state.doc.textContent.trim() === "");
           record.passed++;
         } catch (error) {
           const diagnostic = await source.evaluate(root => {
-            const { state } = root.editor;
+            const { state, view } = root.editor;
             const active = document.activeElement;
             const selection = getSelection();
-            const stack = state.plugins.find(plugin => plugin.spec.key?.key.startsWith("history$"))?.getState(state);
+            const stack = state.plugins.find(plugin => plugin.key.startsWith("history$"))?.getState(state);
+            const point = (node, offset) => root.contains(node) ? view.posAtDOM(node, offset) : null;
             return {
               active: active === root ? "editor" : active?.localName,
-              nativeInEditor: root.contains(selection?.anchorNode),
+              nativeAnchor: point(selection?.anchorNode, selection?.anchorOffset),
+              nativeFocus: point(selection?.focusNode, selection?.focusOffset),
+              nativeCollapsed: selection?.isCollapsed,
               from: state.selection.from, to: state.selection.to,
               lastText: state.doc.lastChild?.textContent.slice(-80),
               latex: state.doc.lastChild?.lastChild?.attrs.latex,
@@ -200,7 +215,7 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
     if (process.env.MATHPRESS_QA_OUTPUT)
       writeFileSync(join(process.env.MATHPRESS_QA_OUTPUT, `${mode}-${session}-gate-${engine.name()}.json`), JSON.stringify(results, null, 2));
     const summary = Object.fromEntries(Object.entries(results).map(([name, entry]) => [
-      name, { attempted: entry.attempted, passed: entry.passed,
+      name, { keyboard: entry.keyboard, attempted: entry.attempted, passed: entry.passed,
         failures: entry.failures.map(({ round, stage }) => ({ round, stage })) }
     ]));
     console.log(mode, session, engine.name(), JSON.stringify(summary));

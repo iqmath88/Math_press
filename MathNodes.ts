@@ -169,9 +169,11 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           const pos = nodePos();
           if (pos !== null) editor.view.dom.dispatchEvent(new CustomEvent(EDIT_MATH_EVENT, { detail: { pos } }));
         };
+        let focusFrame = 0;
         const returnToText = (before = false, leaveRelation = false) => {
           const pos = nodePos();
           if (pos === null || editor.isDestroyed || dom.closest("[inert]")) return false;
+          cancelAnimationFrame(focusFrame);
           const { view } = editor;
           const doc = view.state.doc;
           const resolved = doc.resolve(pos);
@@ -191,7 +193,6 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         const listeners = new AbortController();
         const options = { signal: listeners.signal };
         const capture = { ...options, capture: true };
-        let focusFrame = 0;
         let arrowTimer: ReturnType<typeof setTimeout> | undefined;
         controls.addEventListener("mousedown", ev => ev.preventDefault(), options);
         mf.addEventListener("pointerdown", () => {
