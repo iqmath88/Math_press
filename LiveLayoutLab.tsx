@@ -4,7 +4,7 @@ import { buildExtensions } from "./extensions";
 import { createDocument, parseDocument } from "./document";
 import { educationalStyleDeclarations, resolveEducationalStyles } from "./educationalStyles";
 import { MAX_IMPORT_BYTES, preservesSuppliedContent, validateImportedContent } from "./importValidation";
-import { paginateForPrint } from "./PrintPagination";
+import { createIncrementalLayout } from "./incrementalLayout";
 import { loadJXG } from "./graph";
 import type { MathPressDocument } from "./types";
 import type { PageRange } from "./pageLayoutModel";
@@ -31,6 +31,8 @@ export default function LiveLayoutLab() {
   const [notice, setNotice] = useState("");
   const [ranges, setRanges] = useState<(PageRange | null)[]>([]);
   const [layoutMs, setLayoutMs] = useState(0);
+  const [rebuilt, setRebuilt] = useState(0);
+  const [direct, setDirect] = useState(false);
   const [overflow, setOverflow] = useState(false);
   const projection = useRef<HTMLDivElement>(null);
   const extensions = useMemo(() => buildExtensions().filter(ext => ext.name !== "pagination"), []);
@@ -50,47 +52,73 @@ export default function LiveLayoutLab() {
   ).join("\n"), [doc.educationalStyles]);
 
   useEffect(() => {
-    if (!editor || !live) return;
+    if (!editor || !live || direct) return;
     const source = editor.view.dom;
     let timer = 0;
-    let disposed = false;
-    const reflow = () => {
-      const target = projection.current;
-      if (disposed || !target || editor.isDestroyed) return;
-      target.inert = true;
-      const started = performance.now();
-      const result = paginateForPrint(source, target, { headerText: doc.headerText, footerText: doc.footerText });
-      target.querySelectorAll(".pg-footer-num").forEach((label, index) => {
-        label.textContent = doc.showPageNumbers ? `صفحة ${index + 1} من ${result.pages}` : "";
-      });
-      setRanges(result.ranges);
-      setOverflow(result.overflow);
-      setLayoutMs(performance.now() - started);
-    };
+    let pending = new AbortController();
+    let invalidateAll = true;
+    const invalidated = new Set<HTMLElement>();
+    const paginate = createIncrementalLayout();
+    const options = { headerText: doc.headerText, footerText: doc.footerText, showPageNumbers: doc.showPageNumbers };
     const schedule = () => {
+      pending.abort();
+      pending = new AbortController();
+      const { signal } = pending;
       clearTimeout(timer);
-      timer = window.setTimeout(reflow, 240);
+      timer = window.setTimeout(async () => {
+        const target = projection.current;
+        if (signal.aborted || !target || editor.isDestroyed) return;
+        target.inert = true;
+        const result = await paginate(editor.state.doc, source, target, options, signal, invalidateAll, invalidated);
+        if (!result || signal.aborted) return;
+        invalidateAll = false;
+        invalidated.clear();
+        setRanges(result.ranges);
+        setOverflow(result.overflow);
+        setRebuilt(result.rebuilt);
+        setLayoutMs(result.elapsed);
+      }, 35);
     };
-    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
-    resize?.observe(source);
-    // Graph SVG can arrive after the editor transaction and without a size change.
+    let active = true;
+    const refresh = () => { if (active) { invalidateAll = true; schedule(); } };
+    const changedResource = (event: Event) => {
+      const element = event.target;
+      if (!(element instanceof HTMLElement) || !element.matches("img")) return;
+      for (let block = element; block.parentElement; block = block.parentElement) {
+        if (block.parentElement === source) { invalidated.add(block); schedule(); break; }
+      }
+    };
+    source.addEventListener("load", changedResource, true);
     const mutations = new MutationObserver(records => {
-      if (records.some(record => (record.target as Element).closest?.(".graph-box") ||
-        [...record.addedNodes].some(node => node instanceof Element && node.matches("svg")))) schedule();
+      for (const record of records) {
+        const element = record.target instanceof Element ? record.target : record.target.parentElement;
+        const graph = element?.closest(".graph-box");
+        if (!graph) continue;
+        for (let block: Element = graph; block.parentElement; block = block.parentElement) {
+          if (block.parentElement === source && block instanceof HTMLElement) {
+            invalidated.add(block);
+            schedule();
+            break;
+          }
+        }
+      }
     });
     mutations.observe(source, { subtree: true, childList: true });
+    document.fonts.addEventListener("loadingdone", refresh);
     editor.on("update", schedule);
-    void document.fonts.ready.then(() => { if (!disposed) schedule(); });
-    if (source.querySelector(".graph-node")) void loadJXG().then(() => { if (!disposed) schedule(); }).catch(() => {});
+    void document.fonts.ready.then(refresh);
+    if (source.querySelector(".graph-node")) void loadJXG().then(refresh).catch(() => {});
     schedule();
     return () => {
-      disposed = true;
+      active = false;
+      pending.abort();
       clearTimeout(timer);
-      resize?.disconnect();
       mutations.disconnect();
+      source.removeEventListener("load", changedResource, true);
+      document.fonts.removeEventListener("loadingdone", refresh);
       editor.off("update", schedule);
     };
-  }, [editor, live, doc.headerText, doc.footerText, doc.showPageNumbers, landscape, margins, zoom, educational]);
+  }, [editor, live, direct, doc.headerText, doc.footerText, doc.showPageNumbers, landscape, margins, zoom, educational]);
 
   const open = async (file: File | undefined) => {
     if (!file || !editor) return;
@@ -122,6 +150,7 @@ export default function LiveLayoutLab() {
       <strong>مختبر الصفحات الحية</strong>
       <span className="version" dir="ltr">v{import.meta.env.VITE_APP_VERSION}</span>
       <label><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)} /> عرض الصفحات الحية</label>
+      <label><input type="checkbox" checked={direct} onChange={e => setDirect(e.target.checked)} /> تحرير مباشر تجريبي بالأعمدة</label>
       <label>ملف MathDoc <input type="file" accept=".mathdoc" onChange={e => {
         void open(e.currentTarget.files?.[0]);
         e.currentTarget.value = "";
@@ -136,17 +165,17 @@ export default function LiveLayoutLab() {
         const mm = Number(e.target.value);
         setDoc(old => ({ ...old, page: { ...old.page, marginsMm: { ...old.page.marginsMm, top: mm, bottom: mm } } }));
       }}>{[...new Set([margins.top, 12, 20, 28])].map(mm => <option key={mm}>{mm}</option>)}</select></label>
-      <button type="button" disabled={!live || !ranges.length} onClick={() => window.print()}>طباعة / PDF</button>
+      <button type="button" disabled={!live || direct || !ranges.length} onClick={() => window.print()}>طباعة / PDF</button>
       {notice && <span role="alert">{notice}</span>}
     </header>
     <p className="live-lab-note no-print">التحرير في المصدر. تتحدث المعاينة تلقائيًا. تغييرات المختبر مؤقتة.</p>
     <div className="live-lab-columns" style={style}>
       <section aria-label="المصدر القابل للتحرير" className="live-lab-source no-print">
-        <div className="paper"><EditorContent editor={editor} /></div>
+        <div className={`paper${direct ? " live-lab-direct" : ""}`}><EditorContent editor={editor} /></div>
       </section>
-      {live && <section aria-label="الصفحات الحية للقراءة" className="live-lab-result">
+      {live && !direct && <section aria-label="الصفحات الحية للقراءة" className="live-lab-result">
         <nav className="live-lab-pages no-print" aria-label="صفحات المعاينة">
-          <output data-pages={ranges.length} data-layout-ms={layoutMs} data-ranges={JSON.stringify(ranges)}>
+          <output data-rebuilt={rebuilt} data-pages={ranges.length} data-layout-ms={layoutMs} data-ranges={JSON.stringify(ranges)}>
             {ranges.length} صفحة{overflow ? " · توجد كتلة تتجاوز المساحة" : ""}
           </output>
           {ranges.map((_, index) => <button type="button" key={index} onClick={() =>

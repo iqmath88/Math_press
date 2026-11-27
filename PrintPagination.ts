@@ -81,7 +81,10 @@ function printableClone(source: HTMLElement): HTMLElement {
 
 export function paginateForPrint(
   source: HTMLElement, target: HTMLElement,
-  { headerText, footerText, selectedBlock, selectedOffset }: { headerText: string; footerText: string; selectedBlock?: Element | null; selectedOffset?: number }
+  { headerText, footerText, selectedBlock, selectedOffset, sourceWindow }: {
+    headerText: string; footerText: string; selectedBlock?: Element | null; selectedOffset?: number;
+    sourceWindow?: { blocks: HTMLElement[]; start: number; final: boolean };
+  }
 ) {
   const sheets: HTMLElement[] = [];
   let body: HTMLElement;
@@ -345,20 +348,20 @@ export function paginateForPrint(
 
   target.replaceChildren();
   newSheet();
-  const blocks = [...source.children].filter((child): child is HTMLElement =>
+  const blocks = sourceWindow?.blocks ?? [...source.children].filter((child): child is HTMLElement =>
     child instanceof HTMLElement && !child.matches(".pg-break, .ProseMirror-gapcursor"));
   for (const [index, child] of blocks.entries()) {
     if (child.matches(".page-break-marker")) {
       pendingBreak = !!body!.childElementCount;
       continue;
     }
-    if (index > 0 && index === blocks.length - 1 && child.tagName === "P"
+    if ((sourceWindow?.final ?? true) && index + (sourceWindow?.start ?? 0) > 0 && index === blocks.length - 1 && child.tagName === "P"
       && child.matches(":has(> .ProseMirror-trailingBreak:only-child)") && !child.textContent?.trim()) continue;
     const placement = child.matches("[data-educational-style], [data-paragraph-format]") ? getComputedStyle(child) : null;
     if (body!.childElementCount && (pendingBreak || placement?.getPropertyValue("--break-before").trim() === "1")) newSheet();
     pendingBreak = false;
     const block = printableClone(child);
-    block.dataset.pageSource = String(index);
+    block.dataset.pageSource = String(index + (sourceWindow?.start ?? 0));
     if (selectedBlock && child.contains(selectedBlock)) {
       const indexes: number[] = [];
       for (let node = selectedBlock; node !== child; node = node.parentElement!)

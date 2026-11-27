@@ -1,5 +1,11 @@
 # سجل تغييرات MathPress
 
+## v0.7.0-alpha.3
+
+- Reuse live-preview pages between explicit breaks and cancel superseded layout work.
+- Add an isolated single-editor CSS-column experiment for direct fragmentation.
+- Keep both experiments outside Studio pending selection, layout and device acceptance.
+
 ## v0.7.0-alpha.2
 
 - Add an isolated live-layout lab at #live-layout-lab with an editable in-memory source and automatically updated print-derived pages.

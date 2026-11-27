@@ -50,3 +50,9 @@ Load `/#live-layout-lab` directly. It is a lazy entry outside Studio's persisten
 Typing still occurs in one continuous source. The prototype does not map a caret inside a paragraph, table, or MathLive host onto multiple editable page fragments. That architectural gate remains closed. Browser fragmentation or a source-to-fragment selection map should be tested with actual iPad selection, IME, node views and table spans before changing the daily editor.
 
 The projection debounces edits and observes source bounds and late graph insertion. Each pass rebuilds the read-only pages. It intentionally exposes pagination time and source ranges for profiling. Incremental fragment invalidation and viewport-limited rendering are prerequisites for using it on long documents during editing.
+
+## Alpha.3 incremental lab
+
+The lab partitions the single TipTap tree at explicit page breaks. It reuses a segment when its source offset, node identities, DOM identities and layout inputs agree. Its page DOM remains in place; an edit rebuilds only changed segments and commits after cancellation checks. New edits abort earlier generations. A full rebuild yields between segments. Font, paper and margin changes invalidate all segments. Late image and graph updates invalidate the relevant source block. Ambiguous empty segments and continuous long content fall back to the existing fragmenter.
+
+The direct-layout checkbox is a second isolated experiment. It changes CSS fragmentation of the existing editor DOM using browser columns. There is still one source and one ProseMirror selection. Column rendering and print geometry have different fragmentation rules. Long continuous paragraphs, editable table spans, hardware IME and touch selection require separate validation before integration. The lab retains page DOM rather than virtualizing it.

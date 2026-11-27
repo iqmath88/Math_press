@@ -13,3 +13,14 @@
   .live-lab-columns, .live-lab-columns > section { display: block; overflow: visible; padding: 0; }
   .live-lab-columns > .live-lab-source { display: none; }
 }
+.live-lab-stage { position: absolute; visibility: hidden; inset: 0 0 auto; pointer-events: none; }
+.live-lab-direct .tiptap {
+  box-sizing: border-box;
+  height: calc(var(--ph) - var(--pt) - var(--pb));
+  column-width: calc(var(--pw) - var(--pl) - var(--pr));
+  column-fill: auto;
+  column-gap: calc(var(--pl) + var(--pr) + 28px);
+  overflow: visible;
+}
+.live-lab-direct :is(.math-block, .graph-node, img) { break-inside: avoid; }
+.live-lab-direct .page-break-marker { break-after: column; }
