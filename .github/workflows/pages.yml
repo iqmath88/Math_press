@@ -50,12 +50,6 @@ jobs:
           if [[ "$MATHPRESS_BRANCH" == feature/v0.7.0-live-page-layout || "$MATHPRESS_BRANCH" == feature/v0.7.0-incremental-page-engine ]]; then
             node live-layout.e2e.cjs chromium
             node live-layout.e2e.cjs webkit
-            if [ "$MATHPRESS_BRANCH" = "feature/v0.7.0-incremental-page-engine" ]; then
-              node incremental-layout.e2e.cjs chromium
-              node incremental-layout.e2e.cjs webkit
-              ffmpeg -y -framerate 1 -pattern_type glob -i "$MATHPRESS_QA_OUTPUT/direct-column-*.png" \
-                -c:v libvpx-vp9 -pix_fmt yuv420p "$MATHPRESS_QA_OUTPUT/direct-column-flow.webm"
-            fi
             ffmpeg -y -framerate 1 -pattern_type glob -i "$MATHPRESS_QA_OUTPUT/live-chromium-desktop-0[1-3]*.png" \
               -c:v libvpx-vp9 -pix_fmt yuv420p "$MATHPRESS_QA_OUTPUT/live-layout-flow.webm"
           fi
@@ -153,6 +147,31 @@ jobs:
         with:
           name: preview-build
           path: dist
+      - name: Check isolated direct-editing acceptance gate
+        if: (github.head_ref || github.ref_name) == 'feature/v0.7.0-incremental-page-engine'
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4174 --strictPort &
+          preview=$!
+          trap 'kill "$preview" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/ >/dev/null; then break; fi
+            sleep 1
+          done
+          export MATHPRESS_QA_OUTPUT="$RUNNER_TEMP/direct-layout"
+          mkdir -p "$MATHPRESS_QA_OUTPUT"
+          status=0
+          node incremental-layout.e2e.cjs chromium || status=1
+          node incremental-layout.e2e.cjs webkit || status=1
+          if [ -f "$MATHPRESS_QA_OUTPUT/direct-column-02.png" ]; then
+            ffmpeg -y -framerate 1 -pattern_type glob -i "$MATHPRESS_QA_OUTPUT/direct-column-*.png" \
+              -c:v libvpx-vp9 -pix_fmt yuv420p "$MATHPRESS_QA_OUTPUT/direct-column-flow.webm"
+          fi
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always() && (github.head_ref || github.ref_name) == 'feature/v0.7.0-incremental-page-engine'
+        with:
+          name: direct-layout
+          path: ${{ runner.temp }}/direct-layout/
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:

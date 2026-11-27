@@ -13,6 +13,7 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
   const browser = await engine.launch(engine === chromium && process.env.MATHPRESS_CHROMIUM
     ? { executablePath: process.env.MATHPRESS_CHROMIUM } : {});
   try {
+    const results = {};
     for (const [name, options] of [["desktop", { viewport: { width: 1440, height: 960 } }], ["ipad", devices["iPad (gen 7)"]]]) {
       const page = await browser.newPage(options);
       await page.goto((process.env.MATHPRESS_QA_URL || "http://127.0.0.1:4174/") + "#live-layout-lab");
@@ -98,53 +99,73 @@ const fixtures = (size) => Array.from({ length: size }, (_, i) => [
         const root = document.querySelector(".live-lab-source .tiptap");
         return document.activeElement === root && root.contains(document.getSelection()?.anchorNode);
       });
+      const record = { attempted: 0, passed: 0, failures: [] };
+      results[name] = record;
+      page.setDefaultTimeout(3500);
       for (let round = 0; round < 30; round++) {
-        await setDoc([
-          { type: "paragraph", content: [{ type: "text", text: "فقرة عربية x=2. ".repeat(190) }] },
-          { type: "pageBreak" },
-          { type: "paragraph", content: [{ type: "text", text: "حول الفاصل " },
-            { type: "mathInline", attrs: { latex: "x=2" } }] }
-        ]);
-        const atom = source.locator("math-field").first();
-        await atom.click();
-        await atom.press("End");
-        await page.keyboard.type("+1");
-        await page.waitForFunction(() => {
-          const doc = document.querySelector(".live-lab-source .tiptap").editor.state.doc;
-          return doc.lastChild?.lastChild?.attrs.latex === "x=2+1";
-        });
-        await page.keyboard.press("Escape");
-        await focusRoot();
-        await page.keyboard.insertText(review);
-        await page.waitForFunction(text =>
-          document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
-        const state = await snapshot();
-        await page.keyboard.press("Control+z");
-        await page.waitForFunction(text =>
-          !document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
-        await page.keyboard.press("Control+Shift+z");
-        await page.waitForFunction(text =>
-          document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
-        assert.deepEqual(await snapshot(), state);
-        await source.evaluate(root => {
-          const editor = root.editor;
-          editor.commands.setTextSelection({ from: 1, to: editor.state.doc.content.size - 1 });
-        });
-        await page.waitForFunction(() => {
-          const root = document.querySelector(".live-lab-source .tiptap");
-          const native = document.getSelection();
-          const view = root.editor.view;
-          const { from, to } = view.state.selection;
-          if (!native || native.isCollapsed || !root.contains(native.anchorNode) || !root.contains(native.focusNode)) return false;
-          return view.posAtDOM(native.anchorNode, native.anchorOffset) === from &&
-            view.posAtDOM(native.focusNode, native.focusOffset) === to;
-        });
-        await page.keyboard.press("Backspace");
-        await page.waitForFunction(() => document.querySelector(".live-lab-source .tiptap").editor.state.doc.textContent.trim() === "");
+        record.attempted++;
+        let stage = "fixture";
+        try {
+          await setDoc([
+            { type: "paragraph", content: [{ type: "text", text: "فقرة عربية x=2. ".repeat(190) }] },
+            { type: "pageBreak" },
+            { type: "paragraph", content: [{ type: "text", text: "حول الفاصل " },
+              { type: "mathInline", attrs: { latex: "x=2" } }] }
+          ]);
+          stage = "MathLive input";
+          const atom = source.locator("math-field").first();
+          await atom.click();
+          await atom.press("End");
+          await page.keyboard.type("+1");
+          await page.waitForFunction(() => {
+            const doc = document.querySelector(".live-lab-source .tiptap").editor.state.doc;
+            return doc.lastChild?.lastChild?.attrs.latex === "x=2+1";
+          });
+          stage = "MathLive exit";
+          await page.keyboard.press("Escape");
+          await focusRoot();
+          await page.keyboard.insertText(review);
+          await page.waitForFunction(text =>
+            document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
+          const state = await snapshot();
+          stage = "undo";
+          await page.keyboard.press("Control+z");
+          await page.waitForFunction(text =>
+            !document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
+          stage = "redo";
+          await page.keyboard.press("Control+Shift+z");
+          await page.waitForFunction(text =>
+            document.querySelector(".live-lab-source .tiptap").editor.state.doc.lastChild?.textContent.includes(text), review);
+          assert.deepEqual(await snapshot(), state);
+          stage = "cross-column selection";
+          await source.evaluate(root => {
+            const editor = root.editor;
+            editor.commands.setTextSelection({ from: 1, to: editor.state.doc.content.size - 1 });
+          });
+          await page.waitForFunction(() => {
+            const root = document.querySelector(".live-lab-source .tiptap");
+            const native = document.getSelection();
+            const view = root.editor.view;
+            const { from, to } = view.state.selection;
+            if (!native || native.isCollapsed || !root.contains(native.anchorNode) || !root.contains(native.focusNode)) return false;
+            return view.posAtDOM(native.anchorNode, native.anchorOffset) === from &&
+              view.posAtDOM(native.focusNode, native.focusOffset) === to;
+          });
+          stage = "cross-column deletion";
+          await page.keyboard.press("Backspace");
+          await page.waitForFunction(() => document.querySelector(".live-lab-source .tiptap").editor.state.doc.textContent.trim() === "");
+          record.passed++;
+        } catch (error) {
+          record.failures.push({ round: round + 1, stage, message: error.message.split("\n")[0] });
+        }
       }
       await page.close();
     }
-    console.log(engine.name() + " verified incremental page reuse and 30 direct-layout rounds per viewport");
+    if (process.env.MATHPRESS_QA_OUTPUT)
+      writeFileSync(join(process.env.MATHPRESS_QA_OUTPUT, `direct-gate-${engine.name()}.json`), JSON.stringify(results, null, 2));
+    console.log(engine.name(), JSON.stringify(results));
+    const failures = Object.values(results).reduce((sum, result) => sum + result.failures.length, 0);
+    assert.equal(failures, 0, "Direct-column acceptance gate: " + JSON.stringify(results));
   } finally { await browser.close(); }
 })().catch(error => {
   console.error(error);
