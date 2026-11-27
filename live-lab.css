@@ -24,3 +24,13 @@
 }
 .live-lab-direct :is(.math-block, .graph-node, img) { break-inside: avoid; }
 .live-lab-direct .page-break-marker { break-after: column; }
+.live-lab-pages { align-items: center; max-height: 160px; }
+.live-lab-current { flex-basis: 100%; }
+.live-lab-thumbnail { min-width: 44px; display: grid; justify-items: center; gap: 2px; }
+.live-lab-thumbnail[aria-current="page"] { outline: 2px solid #155999; outline-offset: -2px; }
+.live-lab-thumbnail-sheet {
+  display: flex; flex-direction: column; gap: 2px; padding: 4px;
+  width: 28px; aspect-ratio: var(--lab-paper-ratio, 210 / 297); background: white; border: 1px solid #64748b;
+}
+.live-lab-thumbnail-sheet i { background: #a0acc0; min-height: 1px; width: 95%; }
+.live-lab-thumbnail-sheet i.figure { background: #4876a5; min-height: 4px; width: 80%; }

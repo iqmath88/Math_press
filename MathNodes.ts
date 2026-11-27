@@ -1,4 +1,5 @@
 import { Node, mergeAttributes, type Editor } from "@tiptap/core";
+import { closeHistory } from "@tiptap/pm/history";
 import { TextSelection } from "@tiptap/pm/state";
 import type { MathfieldElement } from "mathlive";
 
@@ -13,6 +14,16 @@ declare module "@tiptap/core" {
 
 export const EDIT_MATH_EVENT = "mathpress:edit-math";
 const RETURN_TO_TEXT = "mathpress:return-to-text";
+const textHandoff = new WeakMap<Editor, MathfieldElement>();
+
+// MathLive's programmatic focus can defer focusing its shadow keyboard sink
+// while the editor still owns focus. Native focus delegates into the shadow
+// root first, so a later MathLive callback cannot mistake the editor for the
+// element that originally received focus.
+function focusMathfield(editor: Editor, field: MathfieldElement) {
+  textHandoff.delete(editor);
+  HTMLElement.prototype.focus.call(field, { preventScroll: true });
+}
 
 export function returnFromMath(field: MathfieldElement) {
   field.dispatchEvent(new Event(RETURN_TO_TEXT));
@@ -118,14 +129,18 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           }
           attempts++;
           timer = setTimeout(focusField, 50);
-          field.focus();
+          focusMathfield(this.editor, field);
         };
         // Once MathLive accepts focus, a retry must never reclaim it after Escape or history.
         field.addEventListener("focus", stop, { once: true });
         focusField();
         return true;
       };
-      return { ArrowLeft: () => enter(false), ArrowRight: () => enter(true) };
+      const allowTab = () => {
+        textHandoff.delete(this.editor);
+        return false;
+      };
+      return { ArrowLeft: () => enter(false), ArrowRight: () => enter(true), Tab: allowTab, "Shift-Tab": allowTab };
     },
 
     addNodeView() {
@@ -168,9 +183,11 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           const pos = nodePos();
           if (pos !== null) editor.view.dom.dispatchEvent(new CustomEvent(EDIT_MATH_EVENT, { detail: { pos } }));
         };
+        let focusFrame = 0;
         const returnToText = (before = false, leaveRelation = false) => {
           const pos = nodePos();
           if (pos === null || editor.isDestroyed || dom.closest("[inert]")) return false;
+          cancelAnimationFrame(focusFrame);
           const { view } = editor;
           const doc = view.state.doc;
           const resolved = doc.resolve(pos);
@@ -181,18 +198,33 @@ function createMathNode(name: "mathInline" | "mathBlock") {
             if (next?.type.name === "paragraph" && !next.attrs.solutionRelation) boundary = end + 1;
           }
           const selection = TextSelection.near(doc.resolve(boundary), before ? -1 : 1);
-          view.dispatch(view.state.tr.setSelection(selection).setMeta("addToHistory", false).scrollIntoView());
+          // Changing editing surfaces ends the MathLive history group. Otherwise
+          // immediately adjacent prose can be undone together with the equation.
+          view.dispatch(closeHistory(view.state.tr.setSelection(selection).setMeta("addToHistory", false)).scrollIntoView());
+          textHandoff.set(editor, mf);
           view.focus();
           return true;
         };
         const listeners = new AbortController();
         const options = { signal: listeners.signal };
         const capture = { ...options, capture: true };
-        let focusFrame = 0;
         let arrowTimer: ReturnType<typeof setTimeout> | undefined;
         controls.addEventListener("mousedown", ev => ev.preventDefault(), options);
         mf.addEventListener("pointerdown", () => {
-          if (document.activeElement !== mf && editor.isEditable && !dom.closest("[inert]")) mf.focus();
+          if (!editor.isEditable || dom.closest("[inert]")) return;
+          if (document.activeElement === mf) textHandoff.delete(editor);
+          else focusMathfield(editor, mf);
+        }, capture);
+        mf.addEventListener("focusin", event => {
+          if (textHandoff.get(editor) !== mf || event.relatedTarget !== editor.view.dom) return;
+          // Undo can move the text selection while the same handoff is active.
+          // Keep that current selection if MathLive tries to reclaim focus.
+          const state = editor.view.state;
+          queueMicrotask(() => {
+            if (editor.isDestroyed || textHandoff.get(editor) !== mf || document.activeElement !== mf ||
+              state.doc !== editor.state.doc || !state.selection.eq(editor.state.selection)) return;
+            editor.view.focus();
+          });
         }, capture);
         const focusOtherSide = (backward: boolean) => {
           if (!dom.parentElement?.hasAttribute("data-solution-relation")) return false;
@@ -202,8 +234,12 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           const other = sibling?.matches(".math-inline") && sibling.querySelector<MathfieldElement>("math-field");
           if (!other) return false;
           other.position = backward ? other.lastOffset : 0;
-          other.focus();
+          focusMathfield(editor, other);
           return true;
+        };
+        const beforeInlineMath = (key: string) => {
+          const rtl = inline && dom.parentElement && getComputedStyle(dom.parentElement).direction === "rtl";
+          return (key === "ArrowLeft") !== !!rtl;
         };
         let horizontalArrow: string | undefined;
         editButton.addEventListener("click", openSource, options);
@@ -214,6 +250,15 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           clearTimeout(arrowTimer);
           if (horizontalArrow) arrowTimer = setTimeout(() => { horizontalArrow = undefined; }, 0);
           if (ev.isComposing) return;
+          if (horizontalArrow && !ev.altKey && !ev.ctrlKey && !ev.metaKey && mf.selectionIsCollapsed &&
+            mf.position === (horizontalArrow === "ArrowLeft" ? 0 : mf.lastOffset)) {
+            const before = beforeInlineMath(horizontalArrow);
+            if (focusOtherSide(before) || returnToText(before)) {
+              ev.preventDefault();
+              ev.stopImmediatePropagation();
+              return;
+            }
+          }
           if (ev.key === "Tab" && !ev.altKey && !ev.ctrlKey && !ev.metaKey &&
             mf.position === (ev.shiftKey ? 0 : mf.lastOffset) && focusOtherSide(ev.shiftKey)) {
             ev.preventDefault();
@@ -253,9 +298,8 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         mf.addEventListener("move-out", ev => {
           const dir = (ev as CustomEvent<{ direction?: string }>).detail?.direction;
           if (!dir) return;
-          const rtl = inline && dom.parentElement && getComputedStyle(dom.parentElement).direction === "rtl";
           const before = horizontalArrow
-            ? (horizontalArrow === "ArrowLeft") !== !!rtl
+            ? beforeInlineMath(horizontalArrow)
             : dir === "backward" || dir === "upward";
           if (((dir === "forward" || dir === "backward") && focusOtherSide(before)) ||
             returnToText(before)) ev.preventDefault();
@@ -264,7 +308,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
         if (focusNext.delete(editor)) {
           focusFrame = requestAnimationFrame(() => {
             if (!dom.isConnected || !editor.view.hasFocus() || dom.closest("[inert]")) return;
-            mf.focus();
+            focusMathfield(editor, mf);
             if (current.attrs.latex.includes("\\placeholder")) {
               mf.position = 0;
               mf.executeCommand("moveToNextPlaceholder");
@@ -285,6 +329,7 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           stopEvent: () => true,
           ignoreMutation: () => true,
           destroy: () => {
+            if (textHandoff.get(editor) === mf) textHandoff.delete(editor);
             listeners.abort();
             cancelAnimationFrame(focusFrame);
             clearTimeout(arrowTimer);
