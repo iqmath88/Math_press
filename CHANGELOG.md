@@ -130,3 +130,10 @@
 - Added build identification to the application version dialog.
 - Added an isolated PDF feasibility harness and CI samples. Arabic text
   extraction is still an open acceptance gate for independent export.
+
+## 0.8.0-alpha.7 — Print Edition proof and compact toolbar
+
+- Added an isolated vector PDF probe with HarfBuzz shaping and Unicode BiDi.
+- Moved the design tools entry into the quick ribbon and compacted the
+  tablet landscape header.
+- Added lighter editor-only styling for educational boxes.

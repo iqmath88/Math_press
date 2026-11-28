@@ -1,3 +1,4 @@
+import { Palette } from "lucide-react";
 import {createWatermarkLayer,watermarkOnPage} from "./watermark";
 import DocumentIdentity from "./DocumentIdentity";
 import { Fragment } from "@tiptap/pm/model";
@@ -478,6 +479,10 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
         editor={editor}
         onProperties={() => setProperties(value => !value)}
         propertiesOpen={properties}
+        designToggle={<button type="button" className="tb-btn compact-design-toggle" aria-label="التصميم والصناديق"
+          aria-expanded={showCreative} title="التصميم والصناديق" onClick={() => setShowCreative(value => !value)}>
+          <Palette size={18} aria-hidden="true" />
+        </button>}
         page={doc.page}
         actions={{ ...actions, onPrint: openPrint }}
         onSearch={() => setShowSearch(v => !v)}
@@ -533,8 +538,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
       {showParagraphFormat && <ParagraphFormatDialog editor={editor} close={() => setShowParagraphFormat(false)} />}
       {showStyles && <StyleManager key={doc.id} overrides={doc.educationalStyles ?? []}
         onChange={onStyles} onApply={id => applyEducationalStyle(editor, id)} onClose={() => setShowStyles(false)} />}
-      {!focusMode && !printOptions && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
-        <button type="button" onClick={() => setShowCreative(value => !value)} aria-expanded={showCreative}>التصميم والصناديق</button>
+      {!focusMode && !printOptions && (showCreative || selected || mediaSelected || showBoxGallery) && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
         {(mediaSelected || selected || showCreative) && <StudioMediaControls editor={editor} onNotice={onNotice}
           showShapePicker={showCreative || !!selected} />}
         {(showCreative || selected || showBoxGallery) && <>

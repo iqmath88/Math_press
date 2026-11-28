@@ -121,3 +121,33 @@ order. The four-page PDFKit sample remained readable as PDF and embedded
 its font. The plain and mixed logical extraction checks still failed. The
 fixture requires cluster-aware text placement and a better logical mapping
 than this run-only approach.
+
+## Alpha.7 Print Edition vector proof
+
+`experiments/printEdition.cjs` resolves visual BiDi runs, preserves characters
+within each run in logical order, shapes them with HarfBuzz WASM 1.6.4, and
+records source cluster offsets. The probe writes each positioned glyph as a
+PDF vector outline and writes the plots as vector paths. It deliberately has
+no text layer. Copy, search, and assistive reading are unavailable in these
+test files. This is separate from the Professional Edition research on
+logical Unicode mapping, ToUnicode, and ActualText. The alpha.6 extraction
+failures remain relevant to that separate path only.
+
+The synthetic conics fixture produced exactly 1, 4, 10, 50, 100 and 200 A4
+sheets with footers rendered on each sheet. The 4-sheet file was 42,228
+bytes, and the 200-sheet file was 2,217,118 bytes. The latter took 552 ms
+in a single Linux Node run. RSS after export was 115,232,768 bytes; this is
+whole-process memory sampled after the export, not peak or iPad memory.
+The fixture repeats cached strings and paths and is not a general-document
+benchmark. It does not exercise actual MathDoc layout, wrapping, MathLive
+SVG, image fidelity, or the browser engine lifecycle.
+
+The appearance is viable for this bounded fixture. Integration still needs
+an adapter from MathPress's actual print-sheet geometry and visual comparison
+of the reference MathDoc, including position of headings, formulas, footers,
+and unclipped graphs. The experiment stays outside the app and does not
+introduce a raster fallback or a button disconnected from functional export.
+
+Run with the existing isolated engine dependencies plus
+`harfbuzzjs@1.6.4`: `NODE_PATH=... node experiments/printEdition.cjs OUTPUT FONT.ttf`.
+CI publishes the synthetic PDFs and JSON measurements in the independent-pdf-feasibility artifact.

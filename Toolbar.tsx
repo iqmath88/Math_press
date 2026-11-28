@@ -50,6 +50,7 @@ type Props = {
   educationalTools?: ReactNode;
   onProperties?: () => void;
   propertiesOpen?: boolean;
+  designToggle?: ReactNode;
   viewTools?: ReactNode;
   paragraphTools?: ReactNode;
   mathTools?: ReactNode;
@@ -106,7 +107,7 @@ function Group(props: { title: string; children: ReactNode; rows?: boolean }) {
 
 const Row = ({ children }: { children: ReactNode }) => <div className="rb-line">{children}</div>;
 
-export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, educationalTools, viewTools, paragraphTools, mathTools, onGraph, onError, onProperties, propertiesOpen }: Props) {
+export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, educationalTools, viewTools, paragraphTools, mathTools, onGraph, onError, onProperties, propertiesOpen, designToggle }: Props) {
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [tab, setTab] = useState<TabId>("home");
   const [collapsed, setCollapsed] = useState(false);
@@ -209,6 +210,7 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
           ))}
         </div>
         <div className="rb-quick">
+          {designToggle}
           {actions.onNewBlank && <Btn label="مستند فارغ" onClick={actions.onNewBlank}><FilePlus2 size={18} /></Btn>}
           {mathTools && <>
             <Btn label="معادلة سطرية" onClick={() => {

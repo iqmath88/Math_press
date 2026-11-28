@@ -1691,3 +1691,36 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .build-information::backdrop { background: #0e223855; }
 .build-information dd { margin: 0 0 .6rem; overflow-wrap: anywhere; }
 .topbar .version { background: transparent; }
+
+@media screen and (orientation: landscape) and (min-width: 850px) and (max-width: 1200px) {
+  .app-shell .topbar {
+    grid-template-columns: max-content minmax(0, 1fr) max-content max-content max-content;
+    min-block-size: 0;
+    gap: 8px;
+    padding: 3px 10px;
+  }
+  .app-shell .rb-strip { flex-wrap: nowrap; gap: 6px; padding: 3px 10px; }
+  .app-shell .rb-tabs { min-inline-size: 0; flex: 1 1 auto; }
+  .app-shell .rb-tab { flex: 0 0 auto; white-space: nowrap; min-block-size: 44px; }
+  .app-shell .rb-quick { flex: 0 0 auto; }
+}
+.compact-design-toggle[aria-expanded="true"] { background: var(--studio-hover); }
+
+/* Paper keeps its existing solid fills and typography in print. */
+@media screen {
+  :is(.editor-source, .block-style-library)
+    .creative-block:not([data-block-frame], [data-block-background], [data-block-surface], [data-education-block="chapter"], [data-education-block="lesson"], [data-education-block="subtitle"]) {
+    background-image: linear-gradient(145deg, color-mix(in srgb, var(--block-ink) 7%, transparent), transparent 64%);
+  }
+  :is(.editor-source, .block-style-library)
+    .creative-block:not([data-block-frame]) > .creative-block-label {
+    letter-spacing: normal;
+    border-block-end: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+    padding-block-end: .18em;
+  }
+  :is(.editor-source, .block-style-library) .creative-block[data-education-block="example"] >
+    .creative-block-content > .creative-block:is([data-block-frame="floating"], [data-block-frame="steps"], [data-block-frame="result"]) {
+    border-radius: var(--block-radius, 6px);
+  }
+  .app-shell[data-effects="low"] .editor-source .creative-block { background-image: none; }
+}

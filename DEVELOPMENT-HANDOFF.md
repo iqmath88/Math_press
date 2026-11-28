@@ -110,3 +110,20 @@ the app. Read PRINT-ENGINE.md for versions and reproduction, then continue
 with shaping clusters and explicit BiDi run layout. The version button opens
 build diagnostics for the real-iPad check. The independent publisher,
 workspace redesign, glass boxes and full performance gates remain open.
+
+### Alpha.7 Print Edition and compact workspace
+
+The isolated Print Edition probe uses HarfBuzz and Unicode BiDi to generate
+vector PDF files with a synthetic conics fixture. It verifies counts for
+1, 4, 10, 50, 100, and 200 pages. The accepted Print Edition gate is visual
+fidelity of the actual reference MathDoc. Search and copy remain a separate
+Professional Edition requirement. See PRINT-ENGINE.md for sample scope and
+measurements. Next implement an adapter from actual print sheets, compare
+reference output, and then build the PDF-blob preview and sharing UI.
+
+The design entry moved to the quick toolbar; the dedicated row now mounts
+only for explicit design or context. Tablet landscape uses a single-row
+header and horizontally scrollable tabs. Box treatments changed only in the
+screen editor and gallery and preserve custom surface controls. Full
+workspace and box redesign, device validation, and the editor performance
+gate remain open.
