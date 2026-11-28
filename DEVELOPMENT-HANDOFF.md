@@ -70,3 +70,8 @@ For the identical short A4 backup, the Chromium comparison produced one physical
   native Safari and Windows checks, the offline PDF prototype, direct manipulation
   and workspace design work, and the remaining publishing and floating-element tasks.
 - Keep preview-only delivery on PR #16.
+
+The warm dollar-conversion run is recorded in PERFORMANCE-PROFILING.md. P95
+exceeds the limit at 10, 50 and 200 pages. The trace confirms that the editor
+pagination transaction reduction remains active. The remaining latency has not
+been attributed to a specific component.

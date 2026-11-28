@@ -83,6 +83,9 @@ function printableClone(source: HTMLElement): HTMLElement {
     field.setAttribute("read-only", "");
   });
   clone.querySelectorAll(".no-print, .ProseMirror-separator").forEach(node => node.remove());
+  clone.classList.remove("ProseMirror-selectednode", "selectedCell");
+  clone.querySelectorAll(".ProseMirror-selectednode, .selectedCell").forEach(node =>
+    node.classList.remove("ProseMirror-selectednode", "selectedCell"));
   return clone;
 }
 

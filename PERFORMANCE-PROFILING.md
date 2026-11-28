@@ -43,3 +43,38 @@ The editor-side pagination optimization is carried forward. Repeated the elapsed
 | 100 | 67.47 / 92.16 | 47.25 / 76.34 | 67.32 / 108.28 | +17.5% |
 
 This session does not establish a new root cause. The changes exercised printing and document settings; the benchmark leaves print closed. Alpha.4 does not clear the 15% gate. Investigate browser scheduling separately from the MathLive mount and application work using the earlier CDP probe.
+
+## Alpha.5 warm conversion checkpoint
+
+The same Chromium host measured the final dollar keystroke through the appearance
+of a math node. Each document has four short Arabic paragraphs per page, explicit
+page breaks, and no frontmost sidebar or print preview. Each build took two
+warm-up rounds and 20 alternating measured rounds at each size. Values are
+median / P95 (minimum–maximum) in milliseconds.
+
+| Pages | v0.6.1-rc.2 | alpha.4 | alpha.5 print/media checkpoint | alpha.5 P95 change |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 21.25 / 43.48 (11.11–44.44) | 27.18 / 57.70 (12.80–101.09) | 26.54 / 46.83 (12.54–66.97) | +3.34 ms (+7.7%) |
+| 10 | 18.55 / 43.28 (10.76–60.04) | 34.45 / 55.69 (17.80–65.37) | 35.63 / 60.09 (12.56–63.42) | +16.81 ms (+38.8%) |
+| 50 | 37.02 / 87.85 (11.98–89.06) | 40.38 / 62.43 (21.14–81.70) | 50.27 / 112.74 (23.42–176.40) | +24.90 ms (+28.3%) |
+| 100 | 63.17 / 93.61 (17.22–94.61) | 54.11 / 75.17 (27.33–80.52) | 53.71 / 87.21 (20.95–90.34) | −6.40 ms (−6.8%) |
+| 200 | 62.35 / 90.70 (51.95–101.36) | 82.23 / 100.48 (67.21–106.79) | 78.82 / 115.12 (59.44–123.75) | +24.41 ms (+26.9%) |
+
+A separate Chrome DevTools Protocol trace used 12 conversions on 50 pages.
+Median sums within each conversion window are below. Trace intervals can nest.
+
+| Build | EventDispatch | UpdateLayoutTree | Layout | Paint | Pagination transactions |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| v0.6.1-rc.2 | 31.32 ms | 2.24 ms | 2.53 ms | 0.85 ms | 24 |
+| alpha.4 | 47.14 ms | 7.21 ms | 2.84 ms | 1.69 ms | 3 |
+| alpha.5 | 47.44 ms | 6.92 ms | 2.89 ms | 1.70 ms | 3 |
+
+All three builds mounted one MathLive field per conversion. Forced layout stacks
+passed through its custom-element connection, including on the reference. The
+alpha builds spend more time in event dispatch and style updates on the plain
+document fixture. The 24-to-3 reduction in redundant pagination transactions is
+preserved. These traces do not isolate which style rules or listeners explain the
+remaining difference. The large difference between alpha.4 and alpha.5 P95 at
+50 pages, despite near-identical trace medians, needs a controlled scheduling and
+outlier investigation. The performance gate is open. Cold starts, other user
+paths, memory retention, and component-by-component isolation are still pending.

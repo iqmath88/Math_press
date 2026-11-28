@@ -29,6 +29,7 @@ async function verifyShortMediaPrint(browser) {
       element.editor.commands.focus("end");
     });
     await page.locator('input[accept="image/*"]').setInputFiles(join(__dirname, "icon-512.png"));
+    await editor.locator(".studio-image.ProseMirror-selectednode").waitFor();
     const photo = editor.locator("figure.studio-image img");
     await photo.waitFor();
     await page.waitForFunction(() => document.querySelector(".editor-source .studio-image img")?.naturalWidth === 512);
@@ -40,6 +41,7 @@ async function verifyShortMediaPrint(browser) {
     const sheet = page.locator(".print-sheet");
     assert.equal(await sheet.count(), 1);
     assert.equal(await sheet.locator("math-field").count(), 2);
+    assert.equal(await sheet.locator(".ProseMirror-selectednode, .selectedCell").count(), 0);
     assert.equal(await sheet.locator(".studio-image img").evaluate(image => image.naturalWidth), 512);
     await page.emulateMedia({ media: "print" });
     assert.ok(await sheet.evaluate(element => {

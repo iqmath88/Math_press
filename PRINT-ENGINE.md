@@ -33,3 +33,8 @@ display equations, a bitmap inserted using the app picker, and the footer.
 Chromium checks one physical PDF page and an embedded bitmap. WebKit checks
 print-media geometry and the decoded image. The iPad Safari Print/Share path
 still needs manual verification with the original MathDoc.
+
+Visual review of the Chromium PDF also exposed the editor's selection outline
+around the selected image. The print clone now drops editor node and cell
+selection classes before pagination. The regression requires the image to be
+selected in the editor and the printed copy to have no selection decorations.
