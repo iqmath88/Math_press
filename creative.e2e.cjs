@@ -36,8 +36,12 @@ async function lesson(page, capture) {
   assert.equal(persisted.creativeDesign,"emerald");
   assert.equal(persisted.content.content.find(node=>node.attrs?.kind==="definition").attrs.title,"تعريف محرّر");
   if (capture) await download.saveAs(join(output,"applied-derivatives.mathdoc"));
-  await editor.locator("p").last().click();
-  await page.keyboard.press("End");
+  // Keep the media exercise on the final page independently of bidi caret behavior.
+  await editor.evaluate(el=>{
+    const paragraph = el.querySelector('[data-education-block="homework"] p');
+    const { editor } = el;
+    editor.commands.setTextSelection(editor.view.posAtDOM(paragraph,paragraph.childNodes.length));
+  });
   const tools = page.getByLabel("الأشكال الهندسية");
   await tools.selectOption("triangle");
   const shape = editor.locator(".studio-shape").first();
