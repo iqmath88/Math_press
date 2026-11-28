@@ -217,3 +217,15 @@ Fresh 20-round Chromium comparisons against v0.6.1-rc.2 put equation
 conversion P95 above the 15% limit at both 10 and 50 pages. See
 PERFORMANCE-PROFILING.md. Prioritize profiling the 50-page conversion
 tail separately from the PDF paint path before release.
+
+### Alpha.12 conversion profiling and bounded readback
+
+Pagination reuses a single DOM traversal for observer registration and
+measurement, with full refresh for geometry changes retained. A 100-page
+inspector/edit/history regression guards MathLive identity. Three same-host
+Chromium comparisons and the trace are summarized in PERFORMANCE-PROFILING.md:
+10 pages remain above the 15% gate. The alpha.11 PDF path is retained;
+grayscale readback is now bounded in 128-row bands. Next isolate
+MathLive/style dispatch cost in small documents and time real existing
+equation editing. Revalidate six-page 600 DPI save and paper print on
+the device, long export speed, and any remaining design gates before release.

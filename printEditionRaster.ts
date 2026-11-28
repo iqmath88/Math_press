@@ -182,12 +182,16 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
         if (grayscale) {
           const context = canvas.getContext("2d");
           if (!context) throw new Error("تعذر تجهيز التدرج الرمادي.");
-          const image = context.getImageData(0, 0, canvas.width, canvas.height);
-          for (let i = 0; i < image.data.length; i += 4) {
-            const gray = Math.round(image.data[i] * .2126 + image.data[i + 1] * .7152 + image.data[i + 2] * .0722);
-            image.data[i] = image.data[i + 1] = image.data[i + 2] = gray;
+          // Read a bounded row band to avoid allocating a second page-size buffer.
+          for (let top = 0; top < canvas.height; top += 128) {
+            signal.throwIfAborted();
+            const band = context.getImageData(0, top, canvas.width, Math.min(128, canvas.height - top));
+            for (let i = 0; i < band.data.length; i += 4) {
+              const gray = Math.round(band.data[i] * .2126 + band.data[i + 1] * .7152 + band.data[i + 2] * .0722);
+              band.data[i] = band.data[i + 1] = band.data[i + 2] = gray;
+            }
+            context.putImageData(band, 0, top);
           }
-          context.putImageData(image, 0, 0);
         }
         const payload = await encodeCanvas(canvas, "image/jpeg", .95);
         const bytes = await payload.arrayBuffer();

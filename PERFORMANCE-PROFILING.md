@@ -108,3 +108,37 @@ as median / nearest-rank P95 (ms).
 The 15% gate remains open. This measured warmed delimiter conversion only,
 separate from PDF generation. The measurements are not evidence of a single
 root cause or of iPad latency.
+
+### Alpha.12 pagination traversal checkpoint
+
+Alpha.11 traversed the top-level ProseMirror document for ResizeObserver
+registration and traversed it again for pagination measurement. Alpha.12
+reuses each DOM lookup to maintain the observer set. Measurement reuse and
+layout invalidation are preserved. Break computation still walks the node list;
+this is not a complete incremental pagination engine.
+
+Chrome DevTools traces from the 50-page fixture compared 12 conversions in
+each build. The median EventDispatch totals were 31.92 / 49.24 / 47.97 ms
+(reference, alpha.11, alpha.12); median UpdateLayoutTree totals were
+2.55 / 7.05 / 7.42 ms. All builds attached exactly one MathLive field per
+conversion. The alpha builds issued three pagination transactions per
+12 cycles versus 24 on the reference. The longest recorded candidate
+forced layout passed through MathLive's connectedCallback. The trace
+does not attribute the remaining style/event time to one component.
+CI publishes the candidate trace in the print-compatibility bundle.
+
+Alternating Chromium runs with two warmups and 20 measured conversions
+per build and size yielded these elapsed times (median / nearest-rank P95,
+with min–max), measured in the same run:
+
+| Pages | v0.6.1-rc.2 | alpha.11 | alpha.12 |
+| ---: | ---: | ---: | ---: |
+| 10 | 21.96 / 37.08 (11.49–38.67) | 31.69 / 42.85 (17.52–46.40) | 34.02 / 55.44 (17.78–71.73) |
+| 50 | 47.43 / 77.80 (15.73–77.88) | 55.27 / 76.85 (26.74–82.34) | 39.52 / 77.40 (25.55–112.06) |
+| 100 | 61.68 / 84.18 (17.87–84.83) | 59.11 / 92.55 (25.48–100.89) | 49.23 / 89.70 (29.90–100.88) |
+
+The 10-page case misses the 15% gate. The 50- and 100-page cases clear
+that threshold in this run; the 112.06 ms maximum at 50 pages warrants
+more sessions. Separately, the 100-page editing smoke verifies the
+inspector, MathLive identity, edit, Undo and Redo. It is a correctness
+test and gives no latency or physical-device guarantee.

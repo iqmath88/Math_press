@@ -134,7 +134,8 @@ export const Pagination = Extension.create({
   addProseMirrorPlugins() {
     const ext = this;
 
-    const measure = (view: EditorView, measurements: WeakMap<HTMLElement, { node: PMNode; item: PageItem }>) => {
+    const measure = (view: EditorView, measurements: WeakMap<HTMLElement, { node: PMNode; item: PageItem }>,
+      visit?: (element: HTMLElement) => void) => {
       if (!view.dom.isConnected) return;
       const layout: PageLayout = { ...ext.storage.layout };
       const usable = (layout.pageHeightMm - layout.marginTopMm - layout.marginBottomMm) * PX_PER_MM;
@@ -150,6 +151,7 @@ export const Pagination = Extension.create({
           items.push({ height: 0, breakAfter: isBreak });
           return;
         }
+        visit?.(dom);
         const previous = measurements.get(dom);
         if (previous?.node === node) {
           items.push(previous.item);
@@ -213,8 +215,21 @@ export const Pagination = Extension.create({
             if (raf || destroyed) return;
             raf = requestAnimationFrame(() => {
               raf = 0;
-              observe();
-              measure(editorView, measurements);
+              const doc = editorView.state.doc;
+              if (!ro || observedDoc === doc) {
+                measure(editorView, measurements);
+                return;
+              }
+              const next = new Set<HTMLElement>();
+              // Register observers during the same DOM lookup used for measurement.
+              measure(editorView, measurements, dom => {
+                next.add(dom);
+                if (!observedBlocks.has(dom)) ro.observe(dom);
+              });
+              if (destroyed) return;
+              for (const dom of observedBlocks) if (!next.has(dom)) ro.unobserve(dom);
+              observedBlocks = next;
+              observedDoc = doc;
             });
           };
           const refresh = () => {
@@ -225,19 +240,6 @@ export const Pagination = Extension.create({
             for (const entry of entries) measurements.delete(entry.target as HTMLElement);
             schedule();
           }) : null;
-          const observe = () => {
-            if (!ro || observedDoc === editorView.state.doc) return;
-            observedDoc = editorView.state.doc;
-            const next = new Set<HTMLElement>();
-            observedDoc.forEach((_node, offset) => {
-              const dom = editorView.nodeDOM(offset);
-              if (!(dom instanceof HTMLElement)) return;
-              next.add(dom);
-              if (!observedBlocks.has(dom)) ro.observe(dom);
-            });
-            for (const dom of observedBlocks) if (!next.has(dom)) ro.unobserve(dom);
-            observedBlocks = next;
-          };
           if (typeof document !== "undefined" && document.fonts?.ready) void document.fonts.ready.then(refresh);
           schedule();
           return {

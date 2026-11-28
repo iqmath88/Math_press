@@ -308,3 +308,12 @@ Linux Chromium observations. The 100-page run overlapped template QA,
 so do not use it as a controlled before/after comparison. Content styling
 also changed since alpha.10. The 50/100/200 targets of 15/30/75 seconds
 remain open, as does a separate peak renderer memory gate.
+
+### Alpha.12 grayscale working buffer
+
+Grayscale conversion reads and writes 128 rows at a time rather than
+reading back the entire render canvas. At A4/300 DPI that bounds one
+readback to about 1.27 MB instead of 34.80 MB (RGBA). Pixel coefficients
+and JPEG settings are unchanged. This is an allocation estimate, not
+measured process peak. There is no change to the color rendering pipeline,
+its previous 50/100/200 speed gate, or the independent 600-DPI path.
