@@ -1,5 +1,12 @@
 # سجل تغييرات MathPress
 
+## v0.7.0-preview.3 — Glass Creative Studio
+
+- Coalesce editor pagination observation on the next frame and preserve measurement caches through selection-only transactions.
+- Hold the file chooser selection until image storage completes.
+- Add a light and dark workspace palette and a persistent low-effects setting.
+- Insert an editable solved-example box with dedicated solution and result sections.
+
 ## v0.7.0-preview.2 — Creative Studio
 
 - Keep inserted raster originals in IndexedDB and embed them in portable MathDoc backups.
