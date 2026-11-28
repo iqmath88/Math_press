@@ -102,7 +102,7 @@ export function paginateForPrint(
     sheet.style.contain = "layout";
     const header = document.createElement("header");
     header.className = "paper-header";
-    if (!hideFurniture) applyFurniture(header,headerText,furniture?.headerEnd,furniture?.rule,furniture?.headerCenter);
+    if (!hideFurniture) applyFurniture(header,headerText,furniture?.headerEnd,furniture?.rule,furniture?.headerCenter,furniture?.preset);
     body = document.createElement("div");
     body.className = "print-sheet-content";
     if (watermark && watermarkOnPage(watermark,sheets.length+1)) sheet.append(createWatermarkLayer(watermark));
@@ -425,7 +425,7 @@ export function paginateForPrint(
     sheet.style.removeProperty("contain");
     const footer = document.createElement("footer");
     footer.className = "pg-footer";
-    if (!hideFurniture) applyFurniture(footer,footerText,furniture?.footerEnd,furniture?.rule,furniture?.footerCenter);
+    if (!hideFurniture) applyFurniture(footer,footerText,furniture?.footerEnd,furniture?.rule,furniture?.footerCenter,furniture?.preset);
     const num = document.createElement("span");
     num.className = "pg-footer-num";
     footer.append(num);

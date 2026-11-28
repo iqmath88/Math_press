@@ -54,3 +54,7 @@ The branch remains `feature/v0.8.0-advanced-glass-document-studio`, PR #16. Base
 - Letter and Legal work alongside A4/A3/A5. They export using MathDoc 6. Print-only toggles for page furniture and watermark leave saved settings untouched.
 - Local Chromium short actual-PDF test verifies one page, selectable numbering and absence of a URL in the extracted text. Emulated iPad Chromium print geometry passed in both orientations. The Apple PDF named in the brief was unavailable.
 - Continue with WebKit CI, the real Safari print fixture, and the outstanding performance gate. The floating-element prototype remains isolated. Advanced publishing and teacher productivity tasks from the brief remain open.
+
+The alpha.4 follow-up adds eight font-and-color presets for page furniture, with a settings preview and the same preset in print. The browser test checks the preset after saving and reopening MathDoc 6. Continue with custom furniture presets, distinct first/even/odd content, and the remaining publishing controls.
+
+For the identical short A4 backup, the Chromium comparison produced one physical page before and after. The measured footer edge moves from 1121.98 to 1121.73 CSS px relative to the top. Both outputs retain the page marker. Separate physical PDF probes verified Letter at 612 × 792 pt and Legal at 612 × 1008 pt, one page each. See [performance](PERFORMANCE-PROFILING.md) for the remaining gate failure.

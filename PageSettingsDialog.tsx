@@ -1,4 +1,4 @@
-import {defaultFurniture,readPageFurniture} from "./pageFurniture";
+import {defaultFurniture,readPageFurniture,furniturePresets} from "./pageFurniture";
 import WatermarkSettings from "./WatermarkSettings";
 import {readWatermark} from "./watermark";
 import { useState } from "react";
@@ -121,6 +121,17 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
 
         <details className="setting-block">
           <summary>خيارات الرأس والتذييل</summary>
+          <label>قالب الرأس والتذييل <select aria-label="قالب الرأس والتذييل" value={furniture?.preset ?? ""} onChange={event=>{
+            const theme=furniturePresets.find(item=>item[0]===event.target.value);
+            setFurniture({...defaultFurniture,...furniture,preset:theme?.[0],rule:theme?.[2] ?? furniture?.rule ?? false});
+          }}>
+            <option value="">افتراضي</option>
+            {furniturePresets.map(([id,label])=><option key={id} value={id}>{label}</option>)}
+          </select></label>
+          {furniture?.preset && <div className="furniture-sample" data-furniture-preset={furniture.preset}
+            data-furniture-rule={furniture.rule || undefined}>
+            <span>{header || "رأس الصفحة"}</span><span>{furniture.headerCenter || "عنوان الملزمة"}</span><span>{furniture.headerEnd || "الرياضيات"}</span>
+          </div>}
           <label>وسط الرأس <input maxLength={140} value={furniture?.headerCenter ?? ""} onChange={e=>setFurniture({...defaultFurniture,...furniture,headerCenter:e.target.value})}/></label>
           <label>وسط التذييل <input maxLength={140} value={furniture?.footerCenter ?? ""} onChange={e=>setFurniture({...defaultFurniture,...furniture,footerCenter:e.target.value})}/></label>
           <label>النص المقابل في الرأس <input maxLength={140} value={furniture?.headerEnd ?? ""} onChange={e=>setFurniture({...defaultFurniture,...furniture,headerEnd:e.target.value})}/></label>

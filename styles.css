@@ -1610,3 +1610,15 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .print-sheet .furniture-center { white-space:normal; }
 .print-sheet :is(.paper-header,.pg-footer):has(.furniture-center) > :not(.furniture-center) { white-space:normal; }
 .print-sheet .creative-block-label { overflow-wrap:anywhere; }
+[data-furniture-preset="academic"] { --furniture-ink:#24446a; --furniture-font:"Noto Naskh Arabic"; }
+[data-furniture-preset="minimal"] { --furniture-ink:#394757; --furniture-font:Cairo; }
+[data-furniture-preset="gold"] { --furniture-ink:#795819; --furniture-font:Amiri; }
+[data-furniture-preset="mathematical"] { --furniture-ink:#47375e; --furniture-font:Amiri; }
+[data-furniture-preset="exam"] { --furniture-ink:#243b48; --furniture-font:Cairo; }
+[data-furniture-preset="school"] { --furniture-ink:#185b48; --furniture-font:"Noto Naskh Arabic"; }
+[data-furniture-preset="book"] { --furniture-ink:#62452e; --furniture-font:Amiri; }
+[data-furniture-preset="ink"] { --furniture-ink:#202020; --furniture-font:"Noto Naskh Arabic"; }
+[data-furniture-preset] { color:var(--furniture-ink); font-family:var(--furniture-font),serif; }
+[data-furniture-preset][data-furniture-rule="true"] { border-color:var(--furniture-ink); }
+.furniture-sample { display:flex; justify-content:space-between; gap:8px; padding:5px; overflow-wrap:anywhere; }
+.furniture-sample[data-furniture-rule="true"] { border-block-end:1px solid var(--furniture-ink); }

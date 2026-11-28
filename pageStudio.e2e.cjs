@@ -69,6 +69,7 @@ async function captureTable(browser) {
     };
     const settings=await configure();
     await settings.getByText("خيارات الرأس والتذييل",{exact:true}).click();
+    await settings.getByLabel("قالب الرأس والتذييل").selectOption("academic");
     await settings.getByLabel("وسط الرأس").fill("المراجعة النهائية");
     await settings.getByLabel("وسط التذييل").fill("الفصل الأول");
     await settings.getByLabel("النص المقابل في الرأس").fill("شعبة الرياضيات");
@@ -91,6 +92,7 @@ async function captureTable(browser) {
     const data=JSON.parse(await readFile(await exported.path(),"utf8"));
     assert.equal(data.schemaVersion,6);
     assert.equal(data.pageFurniture.numberStart,7);
+    assert.equal(data.pageFurniture.preset,"academic");
     assert.equal(data.watermark.value,"مراجعة");
     if(output && engine===chromium) await exported.saveAs(join(output,"page-studio.mathdoc"));
     await page.locator('input[accept^=".mathdoc"]').setInputFiles({
@@ -101,6 +103,7 @@ async function captureTable(browser) {
     await page.getByRole("region",{name:"معاينة الطباعة"}).getByText(/1 صفحة A4/).waitFor();
     const printed=page.locator(".print-sheet");
     await printed.getByText("مراجعة",{exact:true}).waitFor();
+    assert.equal(await printed.locator("header").getAttribute("data-furniture-preset"),"academic");
     await printed.getByText("المراجعة النهائية",{exact:true}).waitFor();
     await printed.getByText("الفصل الأول",{exact:true}).waitFor();
     await printed.getByText("شعبة الرياضيات",{exact:true}).waitFor();

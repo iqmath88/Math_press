@@ -630,7 +630,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
         <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}${printOptions?.grayscale ? " grayscale-paper" : ""}`}
           id="print-document" data-creative-design={doc.publishingIdentity ? "custom" : doc.creativeDesign} style={paperStyle}>
           <div className={`editor-source${showMargins && !printOptions ? " studio-margins" : ""}`}>
-            <div className="paper-header" aria-hidden="true" data-furniture-rule={doc.pageFurniture?.rule || undefined}>
+            <div className="paper-header" aria-hidden="true" data-furniture-rule={doc.pageFurniture?.rule || undefined} data-furniture-preset={doc.pageFurniture?.preset}>
               <span>{doc.headerText}</span>{doc.pageFurniture?.headerCenter && <span className="furniture-center">{doc.pageFurniture.headerCenter}</span>}{doc.pageFurniture?.headerEnd && <span>{doc.pageFurniture.headerEnd}</span>}
             </div>
             <EditorContent editor={editor} />

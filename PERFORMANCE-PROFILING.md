@@ -31,3 +31,15 @@ A confirmed source of unnecessary work was a pagination-signature reset for ever
 The largest alpha.2 Layout stack in the three-build trace passed through MathLive's `connectedCallback`; a corresponding stack in alpha.3 reached MathLive's `userSelect` getter. All builds attached exactly one new MathLive field per conversion. Style-tree work remained higher than rc.2 after the pagination fix, so the remaining latency has not been attributed to a single cause. The fixture contains plain paragraphs and manual breaks, with galleries closed and no watermarks, tables, images or box styling. This exercise does not establish React commit, autosave, or layout costs for those features.
 
 The 15% gate is still open. Alpha.3 P95 is +63.7%, +8.6%, and +22.8% versus rc.2 at 10, 50 and 100 pages. The next step is to isolate MathLive mount/style work with unminified stacks and distinguish broader browser scheduling and frame jitter from editor commits. P1–P4 stay deferred.
+
+## Alpha.4 print checkpoint
+
+The editor-side pagination optimization is carried forward. Repeated the elapsed conversion benchmark with 20 measured rounds per size, on the same host, using rc.2, the alpha.3 checkpoint and the alpha.4 print build. Values are median / P95 in milliseconds.
+
+| Pages | rc.2 | alpha.3 | alpha.4 | alpha.4 P95 vs rc.2 |
+| ---: | ---: | ---: | ---: | ---: |
+| 10 | 28.61 / 42.96 | 30.08 / 46.52 | 30.49 / 53.77 | +25.2% |
+| 50 | 40.85 / 82.09 | 45.00 / 70.14 | 44.10 / 129.11 | +57.3% |
+| 100 | 67.47 / 92.16 | 47.25 / 76.34 | 67.32 / 108.28 | +17.5% |
+
+This session does not establish a new root cause. The changes exercised printing and document settings; the benchmark leaves print closed. Alpha.4 does not clear the 15% gate. Investigate browser scheduling separately from the MathLive mount and application work using the earlier CDP probe.
