@@ -44,6 +44,10 @@ jobs:
           mkdir -p "$RUNNER_TEMP/print-compatibility"
           export MATHPRESS_QA_OUTPUT="$RUNNER_TEMP/print-compatibility"
           trap 'echo "::error::Failed command: $BASH_COMMAND"' ERR
+          if [[ "$MATHPRESS_BRANCH" == feature/v0.8.0-advanced-glass-document-studio ]]; then
+            node safariRecovery.e2e.cjs chromium
+            node safariRecovery.e2e.cjs webkit
+          fi
           if [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-math-authoring-studio" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-educational-authoring" ] || [ "$MATHPRESS_BRANCH" = "feature/v0.6.0-professional-studio" ] || [[ "$MATHPRESS_BRANCH" == main || "$MATHPRESS_BRANCH" == release/v0.6.0 || "$MATHPRESS_BRANCH" == release/v0.6.0-rc.1 || "$MATHPRESS_BRANCH" == feature/v0.6.1-smart-math-input || "$MATHPRESS_BRANCH" == feature/v0.7.0-creative-studio || "$MATHPRESS_BRANCH" == feature/v0.8.0-advanced-glass-document-studio ]]; then
             node stability.e2e.cjs webkit history
           fi
@@ -58,10 +62,6 @@ jobs:
           npm run test:e2e
           node printCompatibility.e2e.cjs chromium
           node printCompatibility.e2e.cjs webkit
-          if [[ "$MATHPRESS_BRANCH" == feature/v0.8.0-advanced-glass-document-studio ]]; then
-            node safariRecovery.e2e.cjs chromium
-            node safariRecovery.e2e.cjs webkit
-          fi
           node stability.e2e.cjs chromium
           node stability.e2e.cjs webkit
           node authoring.e2e.cjs chromium

@@ -374,7 +374,9 @@ async function captureMediaDesign(browser) {
     assert.ok(Number(await width.inputValue()) > 44);
     assert.equal(await root.locator(".studio-image").count(), 1);
     assert.equal(await root.evaluate(el => el.editor.commands.undo()), true);
-    assert.equal(await width.inputValue(), "44");
+    assert.equal(await root.evaluate(el => el.editor.state.selection.node?.attrs.widthMm), 44);
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll(".studio-media-properties input[type=number]")][0]?.value === "44");
     await page.getByRole("button",{name:"التصميم والصناديق",exact:true}).click();
     await imageProperties.getByLabel("التسمية",{exact:true}).fill("عينة صورة نقطية");
     await page.getByLabel("الأشكال الهندسية").selectOption("triangle");
