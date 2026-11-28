@@ -212,3 +212,8 @@ overlapped template QA and requires a clean controlled rerun for comparison.
 Next isolate repeated html2canvas parsing/painting and measure equation
 editing before considering release. Verify the catalog and both templates
 on iPad, then test exporting, saving and printing the six-page sample.
+
+Fresh 20-round Chromium comparisons against v0.6.1-rc.2 put equation
+conversion P95 above the 15% limit at both 10 and 50 pages. See
+PERFORMANCE-PROFILING.md. Prioritize profiling the 50-page conversion
+tail separately from the PDF paint path before release.

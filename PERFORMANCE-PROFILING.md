@@ -93,3 +93,18 @@ Skipping ordinary cursor updates addresses unnecessary React work. The
 end-to-end measurements do not establish a conversion improvement. Continue
 isolating MathLive connection/style work on an unminified build before changing
 the editor's transaction or autosave contract.
+
+### Alpha.11 measured equation conversion checkpoint
+
+Alternating same-host Chromium runs used two warm-ups and 20 measured rounds
+per version and size. Warm closing-dollar conversion elapsed time is shown
+as median / nearest-rank P95 (ms).
+
+| Pages | v0.6.1-rc.2 | alpha.11 | P95 change |
+| ---: | ---: | ---: | ---: |
+| 10 | 20.36 / 31.76 | 25.43 / 37.31 | +17.5% |
+| 50 | 26.61 / 43.46 | 36.77 / 96.97 | +123.1% |
+
+The 15% gate remains open. This measured warmed delimiter conversion only,
+separate from PDF generation. The measurements are not evidence of a single
+root cause or of iPad latency.
