@@ -161,9 +161,16 @@ async function verifyStyleLibrary(page) {
   const inserted = block.last();
   assert.equal(await inserted.getAttribute("data-block-padding"),"15");
   assert.equal(await inserted.locator("p").textContent(),"");
+  const downloadPromise = page.waitForEvent("download");
+  await library.getByRole("button",{name:"تصدير أنماط الصناديق"}).click();
+  const exported = await readFile(await (await downloadPromise).path());
   await library.getByRole("button",{name:"إزالة النمط"}).click();
   assert.equal(await library.getByText("تعريف المبرهنة",{exact:true}).count(),0);
   await inserted.waitFor();
+  await library.getByLabel("استيراد أنماط الصناديق").setInputFiles({
+    name:"styles.json", mimeType:"application/json", buffer:exported
+  });
+  await library.getByText("تعريف المبرهنة",{exact:true}).waitFor();
 }
 async function verifyLongBox(page) {
   await page.goto(home);

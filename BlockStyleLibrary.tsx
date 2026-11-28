@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { blockLabel, blockTypes } from "./creativeDesign";
 
 const storageKey = "mathpress:block-styles:1";
@@ -33,14 +33,51 @@ export default function BlockStyleLibrary({ selected, insert, apply, notice }: {
   const [name, setName] = useState("");
   const [styles, setStyles] = useState(readStyles);
   function write(next: Style[]) {
+    if (next.length > 100) { notice("تتسع مكتبة الصناديق لـ100 نمط. احذف نمطًا قبل إضافة آخر."); return; }
     try {
       localStorage.setItem(storageKey, JSON.stringify(next));
       setStyles(next);
     } catch { notice("تعذّر حفظ مكتبة الأنماط على هذا الجهاز."); }
   }
+  function exportStyles() {
+    const file = new Blob([JSON.stringify({ format: "mathpress-block-styles", version: 1, styles }, null, 2)], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "mathpress-block-styles.json";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  async function importStyles(file?: File) {
+    if (!file) return;
+    try {
+      if (file.size > 256 * 1024) throw new Error();
+      const data = JSON.parse(await file.text());
+      if (data?.format !== "mathpress-block-styles" || data.version !== 1 ||
+          !Array.isArray(data.styles) || !data.styles.length || data.styles.length > 100 ||
+          data.styles.some((item: Partial<Style> | null) => !item || typeof item.name !== "string" ||
+            !item.name.trim() || !item.attrs || typeof item.attrs !== "object" ||
+            !blockTypes.some(([kind]) => kind === item.attrs?.kind))) {
+        throw new Error();
+      }
+      const imported: Style[] = data.styles.map((item: Style) => ({
+        id: crypto.randomUUID(), name: item.name.trim().slice(0, 80), attrs: styleAttributes(item.attrs)
+      }));
+      write([...readStyles(), ...imported]);
+    } catch { notice("تعذّر قراءة ملف أنماط الصناديق. احتُفظ بالمكتبة الحالية."); }
+  }
   return <>
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>مكتبة أنماط الصناديق</button>
     {open && <section className="block-style-library" aria-label="مكتبة أنماط الصناديق">
+      <div className="block-style-actions">
+        <button type="button" disabled={!styles.length} onClick={exportStyles}>تصدير أنماط الصناديق</button>
+        <label>استيراد أنماط الصناديق <input type="file" accept=".json,application/json" onChange={event => {
+          void importStyles(event.target.files?.[0]);
+          event.target.value = "";
+        }} /></label>
+      </div>
       {selected && <form onSubmit={event => {
         event.preventDefault();
         if (!name.trim()) return;
@@ -52,7 +89,17 @@ export default function BlockStyleLibrary({ selected, insert, apply, notice }: {
       </form>}
       {styles.length > 0 && <ul className="block-style-saved">
         {styles.map(style => <li key={style.id}>
-          <span>{style.name}</span>
+          <span className="creative-block" data-education-block={String(style.attrs.kind)}
+            data-block-background={style.attrs.background ?? undefined}
+            data-block-padding={style.attrs.padding ?? undefined}
+            style={{
+              "--block-accent": style.attrs.accent ?? undefined,
+              "--block-background": style.attrs.background ?? undefined,
+              "--block-padding": style.attrs.padding != null ? `${style.attrs.padding}px` : undefined,
+              "--block-radius": style.attrs.radius != null ? `${style.attrs.radius}px` : undefined
+            } as CSSProperties}>
+            <span className="creative-block-label">{style.name}</span>
+          </span>
           <button type="button" onClick={() => insert(String(style.attrs.kind), style.attrs)}>إدراج</button>
           {selected && <button type="button" onClick={() => apply(style.attrs)}>تطبيق</button>}
           <button type="button" onClick={() => write(styles.filter(item => item.id !== style.id))}>إزالة النمط</button>

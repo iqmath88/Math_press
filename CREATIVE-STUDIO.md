@@ -41,3 +41,8 @@ and finishing reusable styles before introducing an independent asset-store migr
 MathDoc 5 identifies documents that use editable shapes, new image properties, IndexedDB image references, or A3/A5. Export resolves local image references into portable data URLs. Import validates the document before replacing the open document. PNG, JPEG, WebP, and sanitized SVG are accepted, with a 20 MiB limit per asset and a 32 MiB limit per MathDoc backup. Images already embedded in a MathDoc 3 or 4 document are preserved as supplied.
 
 The image library uses a separate database so the document database does not require a schema migration. Assets remain available after deletion from a page to preserve historical references. Automatic asset cleanup, lightweight preview derivatives, arbitrary crop rectangles, editable shape vertices, grouping, and advanced spatial construction are pending.
+
+
+## Reusable educational boxes
+
+Open **التصميم والصناديق → مكتبة أنماط الصناديق** to preview all 23 built-in box types. Select a box in the document to save its type, colors, padding, corner radius, and title visibility as a reusable local style. Applying a style keeps the target's title and content. Removing a style from the library leaves existing boxes intact. The library is local to the browser and can be exported and imported as JSON. Imports add separate entries. Applied attributes travel with each MathDoc.

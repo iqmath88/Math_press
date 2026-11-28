@@ -1277,3 +1277,5 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .creative-block:is([data-education-block="summary"],[data-education-block="check"]) { border:1px solid var(--block-ink); border-radius:var(--block-radius,5px); }
 .creative-block[data-education-block="illustration"] { border:1px dashed var(--block-ink); background:transparent; }
 .creative-block[data-block-background] { background:var(--block-background); }
+.block-style-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-block-end:8px; }
+.block-style-actions input { max-width:100%; }
