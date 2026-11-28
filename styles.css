@@ -1258,3 +1258,22 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .studio-image figcaption { text-align:center; font-size:.9em; }
 .studio-shape svg { display:block; width:100%; height:auto; }
 .studio-image.ProseMirror-selectednode,.studio-shape.ProseMirror-selectednode { outline:2px solid var(--accent); outline-offset:3px; }
+
+.block-style-library { flex-basis:100%; max-height:min(52vh, 28rem); overflow:auto; padding:8px; }
+.block-style-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:8px; }
+.block-style-grid button { min-height:44px; text-align:start; padding:4px; }
+.block-style-grid .creative-block { display:block; margin:0; font-size:.86em; }
+.block-style-grid .creative-block-label,.block-style-grid .creative-block-content { display:block; }
+.block-style-grid i { display:block; background:currentColor; opacity:.45; height:1px; margin:4px 0; width:80%; }
+.block-style-grid i:last-child { width:55%; }
+.block-style-saved { padding-inline-start:0; list-style:none; display:grid; gap:6px; }
+.block-style-saved li,.block-style-library form { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.block-style-library button:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
+.creative-block[data-education-block="chapter"] > .creative-block-label { font-size:1.24em; }
+.creative-block[data-education-block="subtitle"] { border-block-end-width:1px; }
+.creative-block[data-education-block="ministerial-question"] { border-inline-start-width:4px; }
+.creative-block[data-education-block="note"] { background:transparent; }
+.creative-block[data-education-block="warning"] { border-inline-start-style:solid; border-block:1px dashed var(--block-ink); }
+.creative-block:is([data-education-block="summary"],[data-education-block="check"]) { border:1px solid var(--block-ink); border-radius:var(--block-radius,5px); }
+.creative-block[data-education-block="illustration"] { border:1px dashed var(--block-ink); background:transparent; }
+.creative-block[data-block-background] { background:var(--block-background); }

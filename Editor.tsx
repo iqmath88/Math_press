@@ -1,3 +1,4 @@
+import BlockStyleLibrary from "./BlockStyleLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -461,13 +462,11 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
             <option value="">الافتراضية</option>
             {designs.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
           </select></label>
-          <label>إدراج صندوق <select aria-label="إدراج صندوق" value="" onChange={event => {
-            const kind = event.target.value;
-            if (kind) editor.chain().focus().insertContent(educationBlock(kind)).run();
-          }}>
-            <option value="">اختر نوعًا</option>
-            {blockTypes.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
-          </select></label>
+          <BlockStyleLibrary selected={selected?.node.attrs} apply={editBlock} notice={onNotice}
+            insert={(kind, attrs) => {
+              const block = educationBlock(kind);
+              editor.chain().focus().insertContent({ ...block, attrs: { ...block.attrs, ...attrs } }).run();
+            }} />
           {selected && <fieldset>
             <legend>خصائص الصندوق</legend>
             <label>النوع <select value={selected.node.attrs.kind} onChange={event=>editBlock({kind:event.target.value})}>

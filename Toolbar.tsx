@@ -1,3 +1,4 @@
+import { NodeSelection } from "@tiptap/pm/state";
 import { useEffect, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
@@ -145,9 +146,16 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
 
   const pickImage = async (file?: File) => {
     if (!file) return;
+    const { doc, selection } = editor.state;
     try {
       const src = await storeImage(file);
-      if (!editor.isDestroyed) chain().setImage({ src, alt: file.name }).run();
+      if (editor.isDestroyed) return;
+      if (editor.state.doc !== doc) {
+        onError("تغيّر المستند أثناء قراءة الصورة. أعد الإدراج في الموضع المطلوب.");
+        return;
+      }
+      const target = selection instanceof NodeSelection ? selection.to : { from: selection.from, to: selection.to };
+      chain().insertContentAt(target, { type: "image", attrs: { src, alt: file.name } }).run();
     } catch (e) {
       onError(e instanceof Error ? e.message : "تعذر إدراج الصورة");
     }

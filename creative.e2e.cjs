@@ -44,7 +44,7 @@ async function lesson(page, capture) {
   await page.getByRole("group",{name:"خصائص الشكل"}).getByLabel("التسمية").fill("مثلث المماس");
   await shape.getByText("مثلث المماس").waitFor();
   await page.getByRole("group",{name:"خصائص الشكل"}).getByLabel("العرض (مم)").fill("32");
-  await editor.evaluate(async el=>{
+  const png = await editor.evaluate(async (el, paste)=>{
     const canvas = document.createElement("canvas");
     canvas.width = 2048;
     canvas.height = 1200;
@@ -67,10 +67,14 @@ async function lesson(page, capture) {
     ctx.beginPath(); ctx.moveTo(250,1000); ctx.quadraticCurveTo(950,970,1750,245); ctx.stroke();
     ctx.strokeStyle = "#273d91";
     ctx.beginPath(); ctx.moveTo(500,1180); ctx.lineTo(1840,380); ctx.stroke();
+    if (!paste) return canvas.toDataURL("image/png").split(",")[1];
     const blob = await new Promise(resolve=>canvas.toBlob(resolve));
     const data = new DataTransfer();
     data.items.add(new File([blob],"tangent.png",{type:"image/png"}));
     el.dispatchEvent(new ClipboardEvent("paste",{clipboardData:data,bubbles:true,cancelable:true}));
+  }, engine === chromium);
+  if (png) await page.locator('input[accept="image/*"]').setInputFiles({
+    name:"tangent.png", mimeType:"image/png", buffer:Buffer.from(png,"base64")
   });
   const image = editor.locator(".studio-image img");
   await image.waitFor();
@@ -132,6 +136,35 @@ async function lesson(page, capture) {
     await restored.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A5/).waitFor();
   } finally { await restored.close(); }
 }
+async function verifyStyleLibrary(page) {
+  await page.goto(home);
+  await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
+  await page.getByRole("button",{name:"التصميم والصناديق"}).click();
+  await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).click();
+  const library = page.getByRole("region",{name:"مكتبة أنماط الصناديق"});
+  assert.equal(await library.locator(".block-style-grid button").count(),23);
+  await library.getByRole("button",{name:"إدراج تعريف",exact:true}).click();
+  const block = page.locator('.editor-source [data-education-block="definition"]');
+  await block.locator("p").click();
+  await page.keyboard.insertText("نص التعريف لا يدخل في النمط");
+  await page.getByRole("group",{name:"خصائص الصندوق"}).getByLabel("الحشوة").fill("15");
+  await library.getByLabel("اسم النمط").fill("تعريف المبرهنة");
+  await library.getByRole("button",{name:"حفظ تنسيق الصندوق"}).click();
+  await page.reload();
+  const showStudio = page.getByRole("button",{name:"التصميم والصناديق"});
+  if (await page.getByRole("button",{name:"مستند فارغ",exact:true}).isVisible())
+    await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
+  await showStudio.click();
+  await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).click();
+  await library.getByText("تعريف المبرهنة",{exact:true}).waitFor();
+  await library.getByRole("button",{name:"إدراج",exact:true}).click();
+  const inserted = block.last();
+  assert.equal(await inserted.getAttribute("data-block-padding"),"15");
+  assert.equal(await inserted.locator("p").textContent(),"");
+  await library.getByRole("button",{name:"إزالة النمط"}).click();
+  assert.equal(await library.getByText("تعريف المبرهنة",{exact:true}).count(),0);
+  await inserted.waitFor();
+}
 async function verifyLongBox(page) {
   await page.goto(home);
   await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
@@ -187,6 +220,9 @@ async function captureTemplates(browser) {
     const longBox = await browser.newPage();
     try { await verifyLongBox(longBox); }
     finally { await longBox.close(); }
+    const stylePage = await browser.newPage();
+    try { await verifyStyleLibrary(stylePage); }
+    finally { await stylePage.close(); }
     if (output && engine===chromium) await captureTemplates(browser);
     console.log(engine.name(),"creative lesson editor, IndexedDB and print verified on desktop and iPad emulation");
   } finally { await browser.close(); }

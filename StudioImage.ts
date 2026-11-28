@@ -18,8 +18,9 @@ export const StudioImage = Image.extend({
   },
   addProseMirrorPlugins() {
     const editor = this.editor;
-    const insert = (files: FileList | undefined, pos: number) => {
-      const file = files && [...files].find(value=>value.type.startsWith("image/"));
+    const insert = (data: DataTransfer | null, pos: number) => {
+      const file = data && ([...data.files].find(value => value.type.startsWith("image/")) ??
+        [...data.items].find(item => item.kind === "file" && item.type.startsWith("image/"))?.getAsFile());
       if (!file) return false;
       const original = editor.state.doc;
       void storeImage(file).then(src=>{
@@ -31,11 +32,11 @@ export const StudioImage = Image.extend({
       return true;
     };
     return [new Plugin({props:{
-      handlePaste:(view,event)=>insert(event.clipboardData?.files,view.state.selection.from),
+      handlePaste:(view,event)=>insert(event.clipboardData,view.state.selection.from),
       handleDrop:(view,event,_slice,moved)=>{
         if(moved) return false;
         const pos = view.posAtCoords({left:event.clientX,top:event.clientY})?.pos;
-        return pos===undefined ? false : insert(event.dataTransfer?.files,pos);
+        return pos===undefined ? false : insert(event.dataTransfer,pos);
       }
     }})];
   },
