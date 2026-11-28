@@ -10,7 +10,7 @@ const download = (blob: Blob, name: string) => {
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
 
-export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onNotice:(message:string)=>void}) {
+export default function StudioMediaControls({editor,onNotice,showShapePicker}:{editor:Editor;onNotice:(message:string)=>void;showShapePicker:boolean}) {
   const selection=editor.state.selection;
   const selected=selection instanceof NodeSelection ? selection.node : null;
   const attrs=selected?.attrs ?? {};
@@ -83,13 +83,13 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
     onNotice(`الدقة الأفقية عند العرض المحدد: ${value} DPI${value<300 ? " · أقل من 300 DPI" : ""}`);
   };
   return <>
-    <label>الأشكال الهندسية <select value="" onChange={event=>{
+    {(showShapePicker || shape) && <label>الأشكال الهندسية <select value="" onChange={event=>{
       if (!event.target.value) return;
       const shape = {type:"studioShape",attrs:{kind:event.target.value}};
       const chain = editor.chain().focus();
       if (selection instanceof NodeSelection) chain.insertContentAt(selection.to,shape).run();
       else chain.insertContent(shape).run();
-    }}><option value="">اختر شكلًا</option>{shapeOptions.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+    }}><option value="">اختر شكلًا</option>{shapeOptions.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}
     {(image || shape) && <fieldset className="studio-media-properties">
       <legend>{image ? "خصائص الصورة" : "خصائص الشكل"}</legend>
       {number("العرض (مم)","widthMm",15,250,1,"تلقائي")}

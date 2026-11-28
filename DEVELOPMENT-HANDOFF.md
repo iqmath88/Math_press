@@ -75,3 +75,10 @@ The warm dollar-conversion run is recorded in PERFORMANCE-PROFILING.md. P95
 exceeds the limit at 10, 50 and 200 pages. The trace confirms that the editor
 pagination transaction reduction remains active. The remaining latency has not
 been attributed to a specific component.
+
+The next alpha.5 checkpoint narrows editor selection refreshes to actual box
+or media context changes. Selecting an image no longer opens the box and
+geometry controls unless the user expands the design toolbar. Explicitly
+opening design still provides the shape picker. Run creative browser tests
+when changing selection or inspector behavior. Investigate the remaining
+MathLive/style cost separately. The 15% threshold is still an acceptance gate.

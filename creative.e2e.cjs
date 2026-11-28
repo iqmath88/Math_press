@@ -353,11 +353,14 @@ async function captureMediaDesign(browser) {
     await page.getByRole("button",{name:"إدراج صورة",exact:true}).click();
     await (await chooser).setFiles(join(__dirname,"icon-512.png"));
     await root.locator(".studio-image img[src]").waitFor();
-    await page.getByRole("button",{name:"التصميم والصناديق",exact:true}).click();
     const image=root.locator(".studio-image img");
     await image.click();
     const imageProperties=page.getByRole("group",{name:"خصائص الصورة"});
+    await imageProperties.getByLabel("العرض (مم)").waitFor();
+    assert.equal(await page.getByLabel("الأشكال الهندسية").count(), 0);
+    assert.equal(await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).count(), 0);
     await imageProperties.getByLabel("العرض (مم)").fill("44");
+    await page.getByRole("button",{name:"التصميم والصناديق",exact:true}).click();
     await imageProperties.getByLabel("التسمية",{exact:true}).fill("عينة صورة نقطية");
     await page.getByLabel("الأشكال الهندسية").selectOption("triangle");
     const shape=root.locator(".studio-shape");

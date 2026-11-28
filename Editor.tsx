@@ -1,7 +1,7 @@
 import {createWatermarkLayer,watermarkOnPage} from "./watermark";
 import DocumentIdentity from "./DocumentIdentity";
 import { Fragment } from "@tiptap/pm/model";
-import { Selection } from "@tiptap/pm/state";
+import { NodeSelection, Selection } from "@tiptap/pm/state";
 import BlockStyleLibrary from "./BlockStyleLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -41,6 +41,20 @@ type Props = {
 };
 
 type ZoomMode = number | "width" | "page";
+
+function educationalBlock(selection: Selection, outermost = false) {
+  const head = selection.$from;
+  for (let index = 1; index <= head.depth; index++) {
+    const depth = outermost ? index : head.depth - index + 1;
+    const node = head.node(depth);
+    if (node.type.name === "educationBlock") return { node, pos: head.before(depth) };
+  }
+  return null;
+}
+
+function isMediaSelection(selection: Selection) {
+  return selection instanceof NodeSelection && ["image", "studioShape"].includes(selection.node.type.name);
+}
 
 export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, onStyles, onNumberStart, onNotice, actions }: Props) {
   const m = doc.page.marginsMm;
@@ -140,7 +154,19 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
 
   useEffect(() => {
     if (!editor) return;
-    const refresh = () => refreshCreativeSelection(value => value + 1);
+    const contextPosition = () => {
+      const { selection } = editor.state;
+      if (isMediaSelection(selection)) return `media:${selection.from}`;
+      const block = educationalBlock(selection);
+      return block ? `block:${block.pos}` : null;
+    };
+    let previous = contextPosition();
+    const refresh = () => {
+      const current = contextPosition();
+      if (previous === current) return;
+      previous = current;
+      refreshCreativeSelection(value => value + 1);
+    };
     editor.on("selectionUpdate", refresh);
     return () => { editor.off("selectionUpdate", refresh); };
   }, [editor]);
@@ -347,17 +373,9 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
     setGraph(null);
   };
 
-  const findBlock = (outermost = false) => {
-    const head = editor.state.selection.$from;
-    for (let index = 1; index <= head.depth; index++) {
-      const depth = outermost ? index : head.depth - index + 1;
-      const node = head.node(depth);
-      if (node.type.name === "educationBlock") return {node, pos:head.before(depth)};
-    }
-    return null;
-  };
+  const findBlock = (outermost = false) => educationalBlock(editor.state.selection, outermost);
   const selected = findBlock();
-  const mediaSelected = ["studioShape","image"].includes(editor.state.selection.$from.nodeAfter?.type.name ?? "") && editor.state.selection.to > editor.state.selection.from;
+  const mediaSelected = isMediaSelection(editor.state.selection);
   const editBlock = (attrs: Record<string, unknown>) => {
     const block = findBlock();
     if (block) editor.view.dispatch(editor.state.tr.setNodeMarkup(block.pos, undefined, {...block.node.attrs,...attrs}));
@@ -517,8 +535,9 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
         onChange={onStyles} onApply={id => applyEducationalStyle(editor, id)} onClose={() => setShowStyles(false)} />}
       {!focusMode && !printOptions && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
         <button type="button" onClick={() => setShowCreative(value => !value)} aria-expanded={showCreative}>التصميم والصناديق</button>
-        {(showCreative || selected || showBoxGallery || mediaSelected) && <>
-          <StudioMediaControls editor={editor} onNotice={onNotice}/>
+        {(mediaSelected || selected || showCreative) && <StudioMediaControls editor={editor} onNotice={onNotice}
+          showShapePicker={showCreative || !!selected} />}
+        {(showCreative || selected || showBoxGallery) && <>
           <label>هوية المستند <select value={doc.creativeDesign ?? ""} onChange={event =>
             onDesign(event.target.value || undefined)}>
             <option value="">الافتراضية</option>
