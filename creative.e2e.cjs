@@ -184,7 +184,7 @@ async function lesson(page, capture) {
     await restored.locator('input[accept^=".mathdoc"]').setInputFiles({
       name:"restored.mathdoc",mimeType:"application/json",buffer:Buffer.from(JSON.stringify(saved))
     });
-    const restoredImage = restored.locator(".editor-source .studio-image img");
+    const restoredImage = restored.locator(".editor-source .studio-image img[src]");
     await restoredImage.waitFor();
     await restoredImage.evaluate(element=>element.decode());
     assert.equal(await restoredImage.evaluate(element=>Number(element.dataset.originalWidth) || element.naturalWidth),2048);
