@@ -25,7 +25,7 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
   };
   const move = (direction: -1 | 1) => {
     const current = editor.state.selection;
-    if (!(current instanceof NodeSelection) || current.node.type.name !== "studioShape") return;
+    if (!(current instanceof NodeSelection) || !["studioShape","image"].includes(current.node.type.name)) return;
     const sibling = direction < 0 ? current.$from.nodeBefore : current.$to.nodeAfter;
     if (!sibling) return onNotice("لا يوجد موضع مجاور في هذا الاتجاه.");
     const target = direction < 0 ? current.from - sibling.nodeSize : current.to + sibling.nodeSize;
@@ -37,7 +37,7 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
   };
   const removeShape = () => {
     const current = editor.state.selection;
-    if (!(current instanceof NodeSelection) || current.node.type.name !== "studioShape") return;
+    if (!(current instanceof NodeSelection) || !["studioShape","image"].includes(current.node.type.name)) return;
     editor.view.dispatch(editor.state.tr.delete(current.from,current.to).scrollIntoView());
     editor.view.focus();
   };
@@ -111,6 +111,8 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
           void replace(event.target.files?.[0]);event.target.value="";
         }}/></label>
         <button type="button" disabled={!attrs.widthMm} onClick={dpi}>فحص الدقة النقطية</button>
+        <button type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>move(-1)}>نقل الصورة لأعلى</button>
+        <button type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>move(1)}>نقل الصورة لأسفل</button>
       </> : <>
         {number("سماكة خط الشكل","weight",1,10)}
         {["triangle","rectangle","square","circle"].includes(attrs.kind) && <>

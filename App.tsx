@@ -91,7 +91,7 @@ export default function App() {
         setNotice("اختر اسمًا فريدًا للقالب قبل استيراده.");
         return;
       }
-      const local = parsed.schemaVersion===5 ? await localizeImages(content) : content;
+      const local = parsed.schemaVersion>=5 ? await localizeImages(content) : content;
       if (persistTemplates([...savedTemplates,{name,content:local,design:parsed.creativeDesign,identity:parsed.publishingIdentity}]))
         setNotice("تم استيراد القالب دون استبدال المستند المفتوح.");
     } catch { setNotice("تعذّر استيراد القالب. احتُفظ بالمستند والمكتبة."); }
@@ -178,7 +178,7 @@ export default function App() {
     try {
       if (file.size > MAX_IMPORT_BYTES) throw new Error("ملف المستند أكبر من 32 ميغابايت.");
       const raw = JSON.parse(await file.text());
-      if (raw?.format === "mathpress" && Number.isInteger(raw.schemaVersion) && raw.schemaVersion > 5)
+      if (raw?.format === "mathpress" && Number.isInteger(raw.schemaVersion) && raw.schemaVersion > 6)
         throw new Error("يتطلب هذا المستند إصدارًا أحدث من MathPress. لم يُستبدل المستند الحالي.");
       const parsed = parseDocument(raw);
       const protectedFormat = parsed != null && parsed.schemaVersion >= 4;
@@ -188,7 +188,7 @@ export default function App() {
       }
       if (!parsed || !content) throw new Error("صيغة المستند غير معروفة أو غير مكتملة.");
       // Opening a backup must not overwrite the current local editing copy.
-      replaceDocument({ ...parsed, id: crypto.randomUUID(), content: parsed.schemaVersion === 5 ? await localizeImages(content) : content });
+      replaceDocument({ ...parsed, id: crypto.randomUUID(), content: parsed.schemaVersion >= 5 ? await localizeImages(content) : content });
       setNotice("تم فتح المستند بنجاح.");
       setShowLibrary(false);
     } catch (error) {

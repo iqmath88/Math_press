@@ -1544,3 +1544,34 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
   .publishing-workspace { display:block !important; }
   .gallery-dock { display:none !important; }
 }
+
+/* The watermark is independent of document layout, selection and page chrome. */
+.paper,.print-sheet { position:relative; }
+.watermark-editor,.watermark-editor-sheet,.page-watermark {
+  position:absolute; inset:0; pointer-events:none;
+}
+.watermark-editor { overflow:hidden; }
+.watermark-editor-sheet { block-size:var(--ph); inset-block-end:auto; }
+.page-watermark {
+  display:grid; place-items:center; overflow:hidden;
+  padding:var(--pt) var(--pr) var(--pb) var(--pl);
+  print-color-adjust:exact; -webkit-print-color-adjust:exact;
+}
+.page-watermark[data-position="top"] { align-content:start; }
+.page-watermark[data-position="bottom"] { align-content:end; }
+.page-watermark[data-repeat="true"] { grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(0,1fr); }
+.page-watermark > :is(img,span) { max-inline-size:100%; max-block-size:100%; object-fit:contain; }
+.page-watermark > span { font-weight:700; text-align:center; overflow-wrap:anywhere; }
+.paper:has(> .watermark-editor) > .editor-source,
+.print-sheet:has(> .page-watermark) > :not(.page-watermark) { position:relative; }
+
+.creative-block:not([data-block-radius]):not([data-block-frame]):not([data-education-block="chapter"],[data-education-block="lesson"],[data-education-block="subtitle"]) {
+  border-radius:7px;
+}
+.creative-block:is([data-education-block="definition"],[data-education-block="concept"],[data-education-block="summary"],[data-education-block="custom"]):not([data-block-background]) {
+  background-image:linear-gradient(115deg,#ffffff42,transparent 72%);
+}
+.economical-paper .creative-block { background-image:none; box-shadow:none; }
+:is(.paper-header,.pg-header,.pg-footer)[data-furniture-rule="true"] { gap:8px; }
+:is(.paper-header,.pg-header)[data-furniture-rule="true"] { border-block-end:1px solid #a9b8c7; }
+.pg-footer[data-furniture-rule="true"] { border-block-start:1px solid #a9b8c7; }

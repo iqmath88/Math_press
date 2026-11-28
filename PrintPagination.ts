@@ -1,3 +1,5 @@
+import {applyFurniture,type PageFurniture} from "./pageFurniture";
+import {createWatermarkLayer,watermarkOnPage,type Watermark} from "./watermark";
 import { studioPrintSources } from "./StudioImage";
 import type { MathfieldElement } from "mathlive";
 
@@ -86,7 +88,7 @@ function printableClone(source: HTMLElement): HTMLElement {
 
 export function paginateForPrint(
   source: HTMLElement, target: HTMLElement,
-  { headerText, footerText, selectedBlock, selectedOffset }: { headerText: string; footerText: string; selectedBlock?: Element | null; selectedOffset?: number }
+  { headerText, footerText, selectedBlock, selectedOffset, watermark, furniture }: { headerText: string; footerText: string; watermark?: Watermark; furniture?: PageFurniture; selectedBlock?: Element | null; selectedOffset?: number }
 ) {
   const sheets: HTMLElement[] = [];
   let body: HTMLElement;
@@ -100,9 +102,10 @@ export function paginateForPrint(
     sheet.style.contain = "layout";
     const header = document.createElement("header");
     header.className = "paper-header";
-    header.textContent = headerText;
+    applyFurniture(header,headerText,furniture?.headerEnd,furniture?.rule);
     body = document.createElement("div");
     body.className = "print-sheet-content";
+    if (watermark && watermarkOnPage(watermark,sheets.length+1)) sheet.append(createWatermarkLayer(watermark));
     sheet.append(header, body);
     target.append(sheet);
     sheets.push(sheet);
@@ -422,11 +425,10 @@ export function paginateForPrint(
     sheet.style.removeProperty("contain");
     const footer = document.createElement("footer");
     footer.className = "pg-footer";
-    const text = document.createElement("span");
-    text.textContent = footerText;
+    applyFurniture(footer,footerText,furniture?.footerEnd,furniture?.rule);
     const num = document.createElement("span");
     num.className = "pg-footer-num";
-    footer.append(text, num);
+    footer.append(num);
     sheet.append(footer);
   }
   isolateGraphIds(target);

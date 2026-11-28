@@ -1,10 +1,13 @@
+import {defaultFurniture,readPageFurniture} from "./pageFurniture";
+import WatermarkSettings from "./WatermarkSettings";
+import {readWatermark} from "./watermark";
 import { useState } from "react";
 import { fileToDataUrl } from "./imageUtil";
 import type { MathPressDocument } from "./types";
 
 type Props = {
   doc: MathPressDocument;
-  onApply: (patch: Pick<MathPressDocument, "page" | "headerText" | "footerText" | "showPageNumbers" | "background">) => void;
+  onApply: (patch: Pick<MathPressDocument, "page" | "headerText" | "footerText" | "showPageNumbers" | "background" | "watermark" | "pageFurniture">) => void;
   onClose: () => void;
 };
 
@@ -28,6 +31,8 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
   const [footer, setFooter] = useState(doc.footerText);
   const [numbers, setNumbers] = useState(doc.showPageNumbers);
   const [background, setBackground] = useState<string | null>(doc.background);
+  const [furniture,setFurniture]=useState(doc.pageFurniture);
+  const [watermark,setWatermark] = useState(doc.watermark);
   const [bgError, setBgError] = useState("");
 
   const pickBackground = async (file: File | undefined) => {
@@ -37,7 +42,7 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
   };
 
   const t = parseMm(top), b = parseMm(bottom), l = parseMm(left), r = parseMm(right);
-  const valid = t !== null && b !== null && l !== null && r !== null;
+  const valid = t !== null && b !== null && l !== null && r !== null && (!watermark || !!readWatermark(watermark));
 
   const apply = () => {
     if (!valid) return;
@@ -46,7 +51,9 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
       headerText: header,
       footerText: footer,
       showPageNumbers: numbers,
-      background
+      background,
+      watermark:readWatermark(watermark),
+      pageFurniture:readPageFurniture(furniture)
     });
   };
 
@@ -111,6 +118,18 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
           <p className="muted">تُمدَّد الصورة على كامل الصفحة وتتكرر في كل صفحة. يُفضَّل أن تكون بنسبة A4.</p>
           {bgError && <div className="gerror" role="alert">{bgError}</div>}
         </div>
+
+        <details className="setting-block">
+          <summary>خيارات الرأس والتذييل</summary>
+          <label>النص المقابل في الرأس <input maxLength={140} value={furniture?.headerEnd ?? ""} onChange={e=>setFurniture({...defaultFurniture,...furniture,headerEnd:e.target.value})}/></label>
+          <label>النص المقابل في التذييل <input maxLength={140} value={furniture?.footerEnd ?? ""} onChange={e=>setFurniture({...defaultFurniture,...furniture,footerEnd:e.target.value})}/></label>
+          <label>بداية ترقيم الصفحات <input type="number" min="1" max="9999" value={furniture?.numberStart ?? 1}
+            onChange={e=>{if(Number.isInteger(e.target.valueAsNumber)) setFurniture({...defaultFurniture,...furniture,numberStart:Math.max(1,Math.min(9999,e.target.valueAsNumber))});}} /></label>
+          <label><input type="checkbox" checked={furniture?.arabicDigits ?? false} onChange={e=>setFurniture({...defaultFurniture,...furniture,arabicDigits:e.target.checked})}/> الأرقام ١٢٣</label>
+          <label><input type="checkbox" checked={furniture?.rule ?? false} onChange={e=>setFurniture({...defaultFurniture,...furniture,rule:e.target.checked})}/> خط فاصل للرأس والتذييل</label>
+          <button type="button" onClick={()=>setFurniture(undefined)}>استعادة الإعداد البسيط</button>
+        </details>
+        <WatermarkSettings value={watermark} onChange={setWatermark}/>
 
         {orientation === "landscape" && (
           <p className="muted">ملاحظة: بعض المتصفحات (خصوصًا Safari على الآيباد) قد تتجاهل الاتجاه الأفقي عند الطباعة؛ إن حدث ذلك اختر الاتجاه الأفقي من نافذة الطباعة نفسها.</p>

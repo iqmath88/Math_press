@@ -1,3 +1,4 @@
+import {applyFurniture,pageNumber,type PageFurniture} from "./pageFurniture";
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -22,6 +23,7 @@ export type PageLayout = {
   marginBottomMm: number;
   headerText: string;
   showPageNumbers: boolean;
+  furniture?: PageFurniture;
 };
 
 type PaginationState = { revision: number; deco: DecorationSet; sig: string };
@@ -51,26 +53,23 @@ function buildBreak(
   root.appendChild(f);
 
   const foot = el("div", "pg-footer", mb);
-  const left = el("span", "pg-footer-text");
-  left.textContent = footer;
+  applyFurniture(foot,footer,layout.furniture?.footerEnd,layout.furniture?.rule);
   const right = el("span", "pg-footer-num");
-  right.textContent = layout.showPageNumbers ? `صفحة ${page} من ${total}` : "";
-  foot.append(left, right);
+  right.textContent = layout.showPageNumbers ? pageNumber(page,total,layout.furniture) : "";
+  foot.append(right);
   root.appendChild(foot);
 
   if (!last) {
     root.appendChild(el("div", "pg-gap"));
     const head = el("div", "pg-header", mt);
-    const text = el("span", "pg-header-text");
-    text.textContent = layout.headerText;
-    head.appendChild(text);
+    applyFurniture(head,layout.headerText,layout.furniture?.headerEnd,layout.furniture?.rule);
     root.appendChild(head);
   }
   return root;
 }
 
 function layoutKey(l: PageLayout) {
-  return `${l.pageHeightMm}:${l.marginTopMm}:${l.marginBottomMm}:${l.headerText}:${l.showPageNumbers ? 1 : 0}`;
+  return `${l.pageHeightMm}:${l.marginTopMm}:${l.marginBottomMm}:${l.headerText}:${l.showPageNumbers ? 1 : 0}:${l.furniture ? JSON.stringify(l.furniture) : ""}`;
 }
 
 function buildDecorations(doc: PMNode, meta: Extract<Meta, { result: PaginationResult }>) {

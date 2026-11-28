@@ -1,3 +1,5 @@
+import {pageNumber} from "./pageFurniture";
+import type { Watermark } from "./watermark";
 import { pendingStudioImages, studioPrintSources } from "./StudioImage";
 import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
 import type { Editor } from "@tiptap/core";
@@ -35,6 +37,7 @@ type Props = {
   editor: Editor;
   options: PrintOptions;
   onChange: (options: PrintOptions) => void;
+  watermark?: Watermark;
   paperSize?: string;
   usableHeightMm: number;
   onClose: () => void;
@@ -43,7 +46,7 @@ type Props = {
   selectedOffset?: number;
 };
 
-export default function PrintPreview({ paper, editor, options, onChange, paperSize = "A4", usableHeightMm, onClose, onPrint, selectedBlock, selectedOffset }: Props) {
+export default function PrintPreview({ paper, editor, options, onChange, watermark, paperSize = "A4", usableHeightMm, onClose, onPrint, selectedBlock, selectedOffset }: Props) {
   const [pages, setPages] = useState(1);
   const [issues, setIssues] = useState<string[]>([]);
   const [layoutPending, setLayoutPending] = useState(true);
@@ -59,6 +62,11 @@ export default function PrintPreview({ paper, editor, options, onChange, paperSi
       const graph = source.querySelector(".graph-node");
       const [, ...resourceResults] = await Promise.allSettled([
         document.fonts.ready,
+        ...(watermark?.kind==="image" ? [(() => {
+          const image=new Image();
+          image.src=watermark.value;
+          return image.decode();
+        })()] : []),
         ...(graph ? [loadJXG()] : []),
         ...images.map(async image => {
           await pendingStudioImages.get(image);
@@ -78,7 +86,7 @@ export default function PrintPreview({ paper, editor, options, onChange, paperSi
       if (!target) return;
       const { headerText } = editor.storage.pagination.layout;
       const result = paginateForPrint(source, target, {
-        headerText, footerText: editor.storage.pagination.footerText, selectedBlock, selectedOffset
+        headerText, footerText: editor.storage.pagination.footerText, selectedBlock, selectedOffset, watermark, furniture:editor.storage.pagination.layout.furniture
       });
       setPages(result.pages);
       const warnings = findPrintIssues(element, usableHeightMm);
@@ -94,14 +102,14 @@ export default function PrintPreview({ paper, editor, options, onChange, paperSi
     };
     void prepare();
     return () => { active = false; };
-  }, [editor, paper, usableHeightMm, selectedBlock, selectedOffset]);
+  }, [editor, paper, usableHeightMm, selectedBlock, selectedOffset, watermark]);
 
   useLayoutEffect(() => {
     if (layoutPending) return;
     paper.current?.querySelectorAll(".print-pages .pg-footer-num").forEach((num, index) => {
-      num.textContent = options.numbers ? `صفحة ${index + 1} من ${pages}` : "";
+      num.textContent = options.numbers ? pageNumber(index+1,pages,editor.storage.pagination.layout.furniture) : "";
     });
-  }, [layoutPending, options.numbers, pages, paper]);
+  }, [layoutPending, options.numbers, pages, paper, editor]);
 
   return (
     <section className="print-preview-tools no-print" aria-label="معاينة الطباعة">

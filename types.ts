@@ -1,3 +1,5 @@
+import type {PageFurniture} from "./pageFurniture";
+import type { Watermark } from "./watermark";
 import type { PublishingIdentity } from "./creativeDesign";
 import type { JSONContent } from "@tiptap/core";
 
@@ -11,7 +13,7 @@ export type PageSettings = {
 
 export type MathPressDocument = {
   format: "mathpress";
-  schemaVersion: 3 | 4 | 5;
+  schemaVersion: 3 | 4 | 5 | 6;
   id: string;
   title: string;
   language: "ar";
@@ -23,6 +25,8 @@ export type MathPressDocument = {
   /** صورة تُرسم خلف كل صفحة (ورق رسمي، إطار، علامة مائية) كـ data URL، أو null. */
   background: string | null;
   numberingStart?: number;
+  watermark?: Watermark;
+  pageFurniture?: PageFurniture;
   creativeDesign?: string;
   publishingIdentity?: PublishingIdentity;
   educationalStyles?: EducationalStyle[];

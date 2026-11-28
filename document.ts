@@ -1,3 +1,5 @@
+import {readPageFurniture} from "./pageFurniture";
+import {readWatermark} from "./watermark";
 import { designs, readDocumentIdentity } from "./creativeDesign";
 import type { JSONContent } from "@tiptap/core";
 import type { MathPressDocument, PageSettings } from "./types";
@@ -97,16 +99,20 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
   const d = raw as Record<string, unknown>;
   if (d.format !== "mathpress" || typeof d.id !== "string" || typeof d.title !== "string") return null;
   if (d.schemaVersion === 1) return migrateV1(d);
-  if ((d.schemaVersion !== 2 && d.schemaVersion !== 3 && d.schemaVersion !== 4 && d.schemaVersion !== 5) || !isDocJson(d.content)) return null;
+  if ((d.schemaVersion !== 2 && d.schemaVersion !== 3 && d.schemaVersion !== 4 && d.schemaVersion !== 5 && d.schemaVersion !== 6) || !isDocJson(d.content)) return null;
   const page = d.page as Partial<PageSettings> | undefined;
   const m = page?.marginsMm;
   const margins = m && [m.top, m.right, m.bottom, m.left].every(n => typeof n === "number" && n >= 0 && n < 60)
     ? m : DEFAULT_PAGE.marginsMm;
+  const furniture = readPageFurniture(d.pageFurniture);
+  if(d.pageFurniture!==undefined && (!furniture || d.schemaVersion!==6)) return null;
+  const watermark = readWatermark(d.watermark);
+  if (d.watermark !== undefined && (!watermark || d.schemaVersion !== 6)) return null;
   const identity = readDocumentIdentity(d.publishingIdentity);
   if (d.publishingIdentity !== undefined && !identity) return null;
   return {
     format: "mathpress",
-    schemaVersion: d.schemaVersion === 5 ? 5 : d.schemaVersion === 4 ? 4 : 3,
+    schemaVersion: d.schemaVersion === 6 ? 6 : d.schemaVersion === 5 ? 5 : d.schemaVersion === 4 ? 4 : 3,
     id: d.id,
     title: d.title,
     language: "ar",
@@ -123,6 +129,8 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
     ...(typeof d.numberingStart === "number" && Number.isInteger(d.numberingStart) && d.numberingStart >= 1 && d.numberingStart <= 9999
       ? { numberingStart: d.numberingStart } : {}),
     ...(typeof d.creativeDesign === "string" && designs.some(([id])=>id===d.creativeDesign) ? {creativeDesign:d.creativeDesign} : {}),
+    ...(furniture ? {pageFurniture:furniture} : {}),
+    ...(watermark ? {watermark} : {}),
     ...(identity ? {publishingIdentity:identity} : {}),
     ...(d.educationalStyles === undefined ? {} : { educationalStyles: readEducationalStyles(d.educationalStyles) }),
     content: d.content,
@@ -135,6 +143,8 @@ export const publishingBoxFields = ["frame","font","size","exampleNumber"] as co
 
 /** Protect additions from readers that cannot preserve their attributes. */
 export function protectEducationalDocument(doc: MathPressDocument): MathPressDocument {
+  if (doc.schemaVersion === 6) return doc;
+  if (doc.watermark || doc.pageFurniture) return {...doc,schemaVersion:6};
   if (doc.schemaVersion === 5) return doc;
   if (doc.publishingIdentity || doc.page.size !== "A4") return {...doc,schemaVersion:5};
   const nodes = [doc.content];

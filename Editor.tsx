@@ -1,3 +1,4 @@
+import {createWatermarkLayer,watermarkOnPage} from "./watermark";
 import DocumentIdentity from "./DocumentIdentity";
 import { Fragment } from "@tiptap/pm/model";
 import { Selection } from "@tiptap/pm/state";
@@ -67,8 +68,22 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
   const [wordCount, setWordCount] = useState(0);
   const snapshotOf = useMemo(createEditorSnapshot, []);
   const stageRef = useRef<HTMLDivElement>(null);
+  const watermarkRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLElement>(null);
   const zoom = printOptions ? 1 : typeof zoomMode === "number" ? zoomMode : fitZoom;
+  useEffect(() => {
+    const host=watermarkRef.current;
+    if (!host || !doc.watermark || printOptions) return;
+    const watermark=doc.watermark;
+    host.replaceChildren(...Array.from({length:pageCount},(_,index)=>{
+      const page=document.createElement("div");
+      page.className="watermark-editor-sheet";
+      page.style.insetBlockStart=`calc(${index} * (var(--ph) + var(--gap)))`;
+      if(watermarkOnPage(watermark,index+1)) page.append(createWatermarkLayer(watermark));
+      return page;
+    }));
+    return ()=>host.replaceChildren();
+  },[doc.watermark,pageCount,printOptions]);
   const [showSearch, setShowSearch] = useState(false);
   const [showParagraphFormat, setShowParagraphFormat] = useState(false);
   const [copiedParagraph, setCopiedParagraph] = useState<ReturnType<typeof selectedParagraphFormat> | undefined>(undefined);
@@ -140,10 +155,11 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
       marginTopMm: m.top,
       marginBottomMm: m.bottom,
       headerText: doc.headerText,
-      showPageNumbers: doc.showPageNumbers
+      showPageNumbers: doc.showPageNumbers,
+      furniture:doc.pageFurniture
     };
     editor.commands.repaginate();
-  }, [editor, paperHeight, paperWidth, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers]);
+  }, [editor, paperHeight, paperWidth, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers, doc.pageFurniture]);
 
   // اتجاه الصفحة عند الطباعة (@page لا يقبل متغيرات CSS فنكتبه ديناميكيًا).
   useEffect(() => {
@@ -423,6 +439,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
       <style>{styleSheet}</style>
       {printOptions && <PrintPreview paper={paperRef} editor={editor} options={printOptions}
         onChange={setPrintOptions} paperSize={doc.page.size} usableHeightMm={(paperHeight) - m.top - m.bottom}
+        watermark={printOptions.economical ? undefined : doc.watermark}
         selectedBlock={printOrigin.current?.block} selectedOffset={printOrigin.current?.offset}
         onClose={() => {
           const origin = printOrigin.current;
@@ -608,9 +625,12 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
         <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}`}
           id="print-document" data-creative-design={doc.publishingIdentity ? "custom" : doc.creativeDesign} style={paperStyle}>
           <div className={`editor-source${showMargins && !printOptions ? " studio-margins" : ""}`}>
-            <div className="paper-header" aria-hidden="true"><span>{doc.headerText}</span></div>
+            <div className="paper-header" aria-hidden="true" data-furniture-rule={doc.pageFurniture?.rule || undefined}>
+              <span>{doc.headerText}</span>{doc.pageFurniture?.headerEnd && <span>{doc.pageFurniture.headerEnd}</span>}
+            </div>
             <EditorContent editor={editor} />
           </div>
+          {!printOptions && doc.watermark && <div className="watermark-editor" aria-hidden="true" ref={watermarkRef}/>}
           {printOptions && <div className="mp-editor print-pages" />}
         </article>
       </div>
