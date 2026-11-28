@@ -115,6 +115,10 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>مكتبة أنماط الصناديق</button>
     {open && <section className="block-style-library" aria-label="مكتبة أنماط الصناديق">
       <div className="block-style-actions">
+        <strong style={{flex:"1 1 auto"}}>معرض الصناديق التعليمية</strong>
+        <button type="button" onClick={()=>setOpen(false)} aria-label="إغلاق معرض الصناديق">إغلاق ×</button>
+      </div>
+      <div className="block-style-actions">
         <button type="button" onClick={insertSolvedExample}>إدراج مثال محلول</button>
         <button type="button" disabled={!styles.length} onClick={exportStyles}>تصدير أنماط الصناديق</button>
         <label>استيراد أنماط الصناديق <input type="file" accept=".json,application/json" onChange={event => {
