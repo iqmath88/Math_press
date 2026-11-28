@@ -247,3 +247,19 @@ Poppler verified 210 tile images at 600 pixels per inch. The file was
 4,893,364 bytes and the end-to-end export took 32.58 s. Instrumentation recorded
 a maximum single canvas of 1,343,544 pixels in this workload. This is the
 largest observed canvas allocation, not total browser or device memory.
+
+Tiled follow-up: clipping rectangles overdraw three shared source pixels
+on internal edges. The enclosing eight-pixel bleed remains, and adjacent
+opaque samples cover the PDF reader's antialias line. Poppler thumbnails
+were visually reviewed on the six-page calculus fixture. Identical JPEGs
+share a PDF image object using SHA-256 in secure browser contexts. The
+crop buffer is encoded to a temporary Blob URL and reclaimed at the end
+of the sheet. Memory hints can select 512-pixel or 1024-pixel cores on
+lower-memory clients. Those hints supplement physical DPI and canvas
+bounds. Auxiliary image buffers and overall browser memory are separate.
+
+The six-page file in the overlap/dedup run was 4,137,372 bytes versus
+4,893,364 bytes in the initial tiled run. Concurrent local builds mean
+the elapsed times from those two runs are not a controlled comparison.
+The follow-up verifies the 600-DPI export can be cancelled and all six
+MathDoc sheets remain available.

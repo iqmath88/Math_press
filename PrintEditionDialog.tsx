@@ -95,7 +95,11 @@ export default function PrintEditionDialog({ paper, pages, widthMm, heightMm, pa
     <p><bdi>{pixels.width} × {pixels.height}</bdi> بكسل لكل صفحة
       {" · "}{(Math.min(pixels.width, edge + 16) * Math.min(pixels.height, edge + 16) * 4 / 1048576).toFixed(1)} ميبيبايت لمخزن الرسم {tiled ? "المجزّأ" : "للصفحة"}</p>
     {result && <p>حجم الملف الناتج: {(result.file.size / 1024).toFixed(0)} كيلوبايت</p>}
-    {busy && <progress max={last - first + 1} value={progress} aria-label="تقدم التصدير" />}
+    {busy && <div aria-live="polite">
+      <progress max={last - first + 1} value={progress} aria-label="تقدم التصدير" />
+      <p>{progress === 0 ? "جارٍ تجهيز التصدير…" : progress === last - first + 1
+        ? "جارٍ إنهاء ملف PDF…" : `جارٍ تصدير الصفحة ${first + Math.floor(progress ?? 0)} من ${last}…`}</p>
+    </div>}
     {error && <p role="alert">{error}</p>}
     <div className="grow-row">
       <button type="button" onClick={() => void generate()} disabled={busy || !valid || blocked}>إنشاء PDF</button>

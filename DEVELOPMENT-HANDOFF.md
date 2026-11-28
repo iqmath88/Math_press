@@ -168,3 +168,12 @@ calculus MathDoc exported in Chromium with the Apple tablet budget selected:
 1,343,544 pixels. Keep this tolerance and compare with actual iPad hardware.
 Next optimize repeated tile rendering and encoded memory, then validate the
 workspace and box redesign. The physical-device and performance gates are open.
+
+Alpha.10 follow-up adds clip overdraw to address observed seams in Poppler,
+device-memory-informed tile edges, JPEG deduplication, and temporary cropped
+image Blob URLs. The export dialog shows the active page, and the test
+cancels a tiled job without losing the six sheets. The vector path remains
+isolated. Next validate native Files/share/print on the preview with the
+six-page sample, rerun the 50/100/200 timing and peak memory comparisons
+under controlled conditions, then finish the premium workspace and 23 boxes.
+The stable rollback reference remains main at 9f978463d9a4b7cf2d76f848bc7ee6ca4313c872.

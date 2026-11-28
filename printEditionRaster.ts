@@ -1,9 +1,16 @@
 import html2canvas from "html2canvas";
+import type { PDFImage } from "pdf-lib";
 import { PDFDocument, clip, endPath, popGraphicsState, pushGraphicsState, rectangle } from "pdf-lib";
 import { convertLatexToMarkup } from "mathlive";
 import { canvasPixelLimit, pagePixels, PRINT_RESOLUTIONS, printTileEdge, printTiles } from "./printEditionQuality";
 
-function prepareImage(source: HTMLImageElement, clone: HTMLImageElement, scale: number, limit: number) {
+function encodeCanvas(canvas: HTMLCanvasElement, mime: "image/png" | "image/jpeg", quality?: number) {
+  return new Promise<Blob>((resolve, reject) => canvas.toBlob(
+    blob => blob ? resolve(blob) : reject(new Error("تعذر ترميز صورة في PDF.")), mime, quality,
+  ));
+}
+
+async function prepareImage(source: HTMLImageElement, clone: HTMLImageElement, scale: number, limit: number) {
   const css = getComputedStyle(source);
   const { clipPath, rotate } = css;
   if (rotate && rotate !== "none" && rotate !== "0deg") {
@@ -43,12 +50,14 @@ function prepareImage(source: HTMLImageElement, clone: HTMLImageElement, scale: 
     context.fillRect(0, 0, bl, height);
     context.drawImage(source, bl, bt, width - bl - br, height - bt - bb);
     clone.removeAttribute("srcset");
-    clone.src = canvas.toDataURL("image/png");
+    const url = URL.createObjectURL(await encodeCanvas(canvas, "image/png"));
+    clone.src = url;
     clone.style.clipPath = "none";
     clone.style.border = "0";
     clone.style.width = width + "px";
     clone.style.height = height + "px";
     clone.style.maxWidth = "none";
+    return url;
   } finally {
     canvas.width = canvas.height = 0;
   }
@@ -76,6 +85,7 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
   const pxToX = widthMm * 72 / (25.4 * pixels.width);
   const pxToY = heightMm * 72 / (25.4 * pixels.height);
   let compressedBytes = 0;
+  const embeddedImages = new Map<string, PDFImage>();
   const sheets = Array.from(paper.querySelectorAll<HTMLElement>(".print-sheet")).slice(first - 1, last);
   if (sheets.length !== last - first + 1) throw new Error("تغيّر عدد صفحات المعاينة.");
   for (const sheet of sheets) {
@@ -111,25 +121,30 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
     const pages = owner.createElement("div");
     pages.className = "mp-editor print-pages";
     const clone = sheet.cloneNode(true) as HTMLElement;
-    const sources = [...sheet.querySelectorAll("img")];
-    clone.querySelectorAll("img").forEach((image, i) => prepareImage(sources[i], image, scale, Math.min(pixelLimit, 9_000_000)));
-    for (const equation of clone.querySelectorAll<HTMLElement>(".math-node[data-latex]")) {
-      const latex = equation.dataset.latex ?? "";
-      const block = equation.classList.contains("math-block");
-      const markup = convertLatexToMarkup(latex, { defaultMode: block ? "math" : "inline-math" });
-      if (markup.includes("ML__error")) throw new Error("تعذر رسم معادلة في صفحة " + (first + index));
-      const replacement = owner.createElement("span");
-      replacement.className = "math-visual";
-      replacement.dir = "ltr";
-      replacement.innerHTML = markup;
-      equation.replaceChildren(replacement);
-    }
-    pages.append(clone);
-    wrapper.append(pages);
-    owner.body.append(wrapper);
+    const sourceImages = [...sheet.querySelectorAll("img")];
+    const objectUrls: string[] = [];
     const canvas = owner.createElement("canvas");
     const page = document.addPage([widthPt, heightPt]);
     try {
+      for (const [i, image] of [...clone.querySelectorAll("img")].entries()) {
+        signal.throwIfAborted();
+        const url = await prepareImage(sourceImages[i], image, scale, Math.min(pixelLimit, 9_000_000));
+        if (url) objectUrls.push(url);
+      }
+      for (const equation of clone.querySelectorAll<HTMLElement>(".math-node[data-latex]")) {
+        const latex = equation.dataset.latex ?? "";
+        const block = equation.classList.contains("math-block");
+        const markup = convertLatexToMarkup(latex, { defaultMode: block ? "math" : "inline-math" });
+        if (markup.includes("ML__error")) throw new Error("تعذر رسم معادلة في صفحة " + (first + index));
+        const replacement = owner.createElement("span");
+        replacement.className = "math-visual";
+        replacement.dir = "ltr";
+        replacement.innerHTML = markup;
+        equation.replaceChildren(replacement);
+      }
+      pages.append(clone);
+      wrapper.append(pages);
+      owner.body.append(wrapper);
       await owner.fonts.ready;
       await Promise.all([...clone.querySelectorAll("img")].map(image => image.decode()));
       for (const [tileIndex, tile] of tiles.entries()) {
@@ -159,17 +174,32 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
           }
           context.putImageData(image, 0, 0);
         }
-        const payload = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر ترميز جزء من صفحة PDF.")), "image/jpeg", .95);
-        });
-        compressedBytes += payload.size;
-        if (compressedBytes > 96 * 1024 * 1024)
-          throw new Error("تجاوزت الصفحات ميزانية PDF. صدّر نطاقاً أقصر أو اختر دقة أقل.");
-        const image = await document.embedJpg(await payload.arrayBuffer());
-        if (tiles.length > 1) page.pushOperators(pushGraphicsState(), rectangle(
-          tile.left * pxToX, heightPt - tile.bottom * pxToY,
-          (tile.right - tile.left) * pxToX, (tile.bottom - tile.top) * pxToY,
-        ), clip(), endPath());
+        const payload = await encodeCanvas(canvas, "image/jpeg", .95);
+        const bytes = await payload.arrayBuffer();
+        signal.throwIfAborted();
+        const digest = globalThis.crypto?.subtle
+          ? Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), byte => byte.toString(16).padStart(2, "0")).join("")
+          : undefined;
+        let image = digest ? embeddedImages.get(digest) : undefined;
+        if (!image) {
+          compressedBytes += bytes.byteLength;
+          if (compressedBytes > 96 * 1024 * 1024)
+            throw new Error("تجاوزت الصفحات ميزانية PDF. صدّر نطاقاً أقصر أو اختر دقة أقل.");
+          image = await document.embedJpg(bytes);
+          if (digest) embeddedImages.set(digest, image);
+        }
+        if (tiles.length > 1) {
+          // Overdraw shared opaque pixels inside the bleed to avoid PDF-viewer
+          // antialiasing seams along adjacent clipping rectangles.
+          const left = Math.max(tile.x, tile.left - 3);
+          const right = Math.min(tile.x + tile.width, tile.right + 3);
+          const top = Math.max(tile.y, tile.top - 3);
+          const bottom = Math.min(tile.y + tile.height, tile.bottom + 3);
+          page.pushOperators(pushGraphicsState(), rectangle(
+            left * pxToX, heightPt - bottom * pxToY,
+            (right - left) * pxToX, (bottom - top) * pxToY,
+          ), clip(), endPath());
+        }
         page.drawImage(image, {
           x: tile.x * pxToX, y: heightPt - (tile.y + tile.height) * pxToY,
           width: tile.width * pxToX, height: tile.height * pxToY,
@@ -182,6 +212,7 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
     } finally {
       canvas.width = canvas.height = 0;
       wrapper.remove();
+      for (const url of objectUrls) URL.revokeObjectURL(url);
     }
   }
   signal.throwIfAborted();

@@ -27,4 +27,9 @@ describe("physical PDF raster resolution", () => {
       expect(t.y + t.height).toBeGreaterThanOrEqual(t.bottom);
     }
   });
+
+  it("uses 512-pixel tiles when a browser reports two GiB of device memory", () => {
+    const limit = canvasPixelLimit({ userAgent: "Desktop", maxTouchPoints: 0, deviceMemory: 2 });
+    expect(printTileEdge(4961, 7016, 600, limit)).toBe(512);
+  });
 });

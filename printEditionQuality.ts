@@ -8,14 +8,17 @@ export function pagePixels(widthMm: number, heightMm: number, dpi: number) {
   };
 }
 
-export function canvasPixelLimit(device: Pick<Navigator, "userAgent" | "maxTouchPoints">) {
+export function canvasPixelLimit(device: Pick<Navigator, "userAgent" | "maxTouchPoints"> & { deviceMemory?: number }) {
   const appleTablet = /iPad|iPhone|iPod/.test(device.userAgent) ||
     (/Macintosh/.test(device.userAgent) && device.maxTouchPoints > 1);
+  if (device.deviceMemory && device.deviceMemory <= 2) return 4_000_000;
+  if (device.deviceMemory && device.deviceMemory <= 4) return 8_000_000;
   return appleTablet ? 16_000_000 : 40_000_000;
 }
 
 export function printTileEdge(width: number, height: number, dpi: number, limit: number) {
   if (dpi <= 300 && width * height <= Math.min(limit, 9_000_000)) return Math.max(width, height);
+  if (limit <= 4_000_000) return 512;
   return limit <= 16_000_000 ? 1024 : 2048;
 }
 

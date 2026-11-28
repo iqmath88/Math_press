@@ -150,6 +150,11 @@ async function run() {
         await writeFile(join(output, "calculus-6-tiled-metrics.json"), JSON.stringify(report, null, 2));
         console.log("six-page tiled PDF", report);
         await page.screenshot({ path: join(output, "tiled-600-dialog.png") });
+        await dialog.getByRole("button", { name: "إنشاء PDF" }).click();
+        await dialog.getByRole("button", { name: "إلغاء التصدير" }).click();
+        await dialog.getByText("أُلغي التصدير.", { exact: true }).waitFor();
+        assert.equal(await dialog.getByRole("link", { name: "تنزيل PDF" }).count(), 0);
+        assert.equal(await sheets.count(), 6);
         await dialog.getByRole("button", { name: "إغلاق" }).click();
         await page.evaluate(() => { delete navigator.userAgent; });
       }
