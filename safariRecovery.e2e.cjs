@@ -162,6 +162,8 @@ async function run() {
         await writeFile(join(output, "workbook-10.mathdoc"), JSON.stringify(data, null, 2));
         await preview.getByRole("button", { name: "تصدير PDF تجريبي" }).click();
         const dialog = page.getByRole("dialog", { name: "تصدير PDF نقطي تجريبي" });
+        await page.evaluate(() => window.addEventListener("mathpress-pdf-timings",
+          event => { window.pdfPhaseTimings = event.detail; }, { once: true }));
         const metrics = [];
         const client = await page.context().newCDPSession(page);
         const measure = async () => metrics.push((await client.send("Runtime.getHeapUsage")).usedSize);
@@ -181,7 +183,8 @@ async function run() {
           const embedded = execFileSync("pdfimages", ["-list", file], { encoding: "utf8" });
           assert.equal((embedded.match(/\bimage\s+2480\s+3508\b/g) ?? []).length, 10);
           const report = { pages: 10, dpi: 300, elapsedMs: Date.now() - start, bytes: (await readFile(file)).length,
-            sampledJsHeapBeforeBytes: metrics[0], sampledJsHeapPeakBytes: Math.max(...metrics) };
+            sampledJsHeapBeforeBytes: metrics[0], sampledJsHeapPeakBytes: Math.max(...metrics),
+            phases: await page.evaluate(() => window.pdfPhaseTimings) };
           await writeFile(join(output, "workbook-10-metrics.json"), JSON.stringify(report, null, 2));
           console.log("10-page workbook", report);
         } finally {
@@ -221,6 +224,7 @@ async function run() {
           if (n !== 4 && !workbook) assert.match(sheet, new RegExp(`PAGE-${index + 1}(?![0-9])`));
         }
         if (n === 4) {
+          assert.match(pages[0], /[−-]4/u);
           assert.match(execFileSync("pdffonts", [file], { encoding: "utf8" }), /NotoNaskhArabic.*yes\s+yes\s+yes/);
           const bbox = execFileSync("pdftotext", ["-bbox", file, "-"], { encoding: "utf8" });
           const words = [...bbox.matchAll(/<word xMin="([\d.-]+)" yMin="[\d.-]+" xMax="([\d.-]+)"/g)];

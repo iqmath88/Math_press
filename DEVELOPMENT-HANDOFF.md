@@ -183,3 +183,20 @@ the panel's independent scrolling. Chromium verifies panel and stage do not
 overlap in either tablet orientation, while landscape header + tabs remains
 101 CSS px. The full premium workspace and educational boxes remain open.
 The 50/100/200 desktop reruns and their limitations are in PRINT-ENGINE.md.
+
+### Alpha.11 academic catalog and raster profiling checkpoint
+
+The user reports exporting and saving a six-page 600-DPI PDF on real iPad
+with alpha.10. This is a user-confirmed real-device export and save, not
+confirmation of paper printing, long workloads, or the alpha.11 build.
+The alpha.11 regression still produces 210 tiles under the simulated budget.
+
+The raster path skips duplicate linked stylesheets in its cloned document,
+re-injects the serialized styles, and caches bounded MathLive static markup
+within one job. The browser workbook test records prepare, paint, encode,
+and serialize timings in its artifact. The 23 academic markers and group
+header styles apply to both the library and exported blocks. Catalog samples
+use MathPress's independent PDF export in color, gray, and economy. Graph
+numeric direction and vertex label offsets were adjusted. More sophisticated
+template variants, full inspector/Glass redesign, and the editing performance,
+long export and real-device paper print gates remain open.

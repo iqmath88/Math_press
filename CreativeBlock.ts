@@ -1,5 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
-import { blockLabel, blockFonts, blockFrames } from "./creativeDesign";
+import { blockMark, blockLabel, blockFonts, blockFrames } from "./creativeDesign";
 
 export const CreativeBlock = Node.create({
   name: "educationBlock",
@@ -46,7 +46,9 @@ export const CreativeBlock = Node.create({
     const number=HTMLAttributes["data-example-number"];
     const title=node.attrs.title || blockLabel(node.attrs.kind);
     return ["section",mergeAttributes(HTMLAttributes,{class:"creative-block"}),[
-      "div",{class:"creative-block-label",contenteditable:"false"}, number ? `${title} ${number}` : title
+      "div",{class:"creative-block-label",contenteditable:"false"},
+      ["span", {class:"academic-block-mark", "aria-hidden":"true"}, blockMark(node.attrs.kind)],
+      ["span", {}, number ? `${title} ${number}` : title]
     ],["div",{class:"creative-block-content"},0]];
   }
 });

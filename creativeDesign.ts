@@ -9,6 +9,15 @@ export const blockTypes = [
   ["exercise","تمرين"], ["check","اختبر فهمك"], ["summary","خلاصة"], ["homework","واجب"],
   ["illustration","وسيلة إيضاح"], ["custom","صندوق مخصص"]
 ] as const;
+const blockMarks: Record<(typeof blockTypes)[number][0], string> = {
+  chapter: "◆", lesson: "▣", subtitle: "▸", definition: "≔", concept: "◈",
+  law: "ƒ", theorem: "⊢", proof: "∎", property: "∝", rule: "⇒",
+  example: "◇", solution: "✓", note: "•", warning: "!", idea: "✦",
+  "ministerial-idea": "✧", "ministerial-question": "؟", exercise: "✎",
+  check: "☑", summary: "≡", homework: "▤", illustration: "△", custom: "□",
+};
+export const blockMark = (kind: unknown) => blockMarks[blockTypes.find(([id]) => id === kind)?.[0] ?? "custom"];
+
 export const blockLabel = (kind: unknown) => blockTypes.find(([id]) => id === kind)?.[1] ?? "صندوق مخصص";
 
 export const designs = [

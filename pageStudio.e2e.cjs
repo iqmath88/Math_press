@@ -76,13 +76,36 @@ async function captureCatalog(browser) {
         {type:"paragraph",content:[{type:"text",text:"عينة تنسيق قابلة للتحرير — المشتقة والقيم القصوى."}]}
       ]}))},true);
     });
+    await page.locator(".document-title-input").fill("كتالوج الصناديق الأكاديمية");
+    await page.getByRole("tab", { name: "ملف", exact: true }).click();
+    const source = page.waitForEvent("download");
+    await page.getByRole("button", { name: "تصدير المستند كملف قابل للتحرير" }).click();
+    await (await source).saveAs(join(output, "academic-box-catalog.mathdoc"));
     await page.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
     const preview=page.getByRole("region",{name:"معاينة الطباعة"});
     await preview.getByText(/صفحة A4/).waitFor();
-    assert.equal(await page.locator(".print-sheet .creative-block").count(),23);
-    await page.pdf({path:join(output,"glass-box-catalog.pdf"),preferCSSPageSize:true});
-    await preview.getByText("تدرج رمادي",{exact:true}).click();
-    await page.pdf({path:join(output,"glass-box-catalog-gray.pdf"),preferCSSPageSize:true});
+    const marks = await page.locator(".print-sheet .academic-block-mark").allTextContents();
+    assert.equal(marks.length, 23);
+    assert.equal(new Set(marks).size, 23);
+    await page.screenshot({ path: join(output, "academic-box-catalog-preview.png") });
+    const sheetCount = await page.locator(".print-sheet").count();
+    await preview.getByRole("button", { name: "تصدير PDF تجريبي" }).click();
+    const dialog = page.getByRole("dialog", { name: "تصدير PDF نقطي تجريبي" });
+    for (const [mode, suffix] of [["color", "color"], ["gray", "gray"], ["economy", "economy"]]) {
+      await dialog.getByLabel("مظهر").selectOption(mode);
+      const generate = dialog.getByRole("button", { name: "إنشاء PDF" });
+      await generate.click();
+      const link = dialog.getByRole("link", { name: "تنزيل PDF" });
+      await link.or(dialog.getByRole("alert")).first().waitFor({ timeout: 60_000 });
+      assert.deepEqual(await dialog.getByRole("alert").allTextContents(), []);
+      const save = page.waitForEvent("download");
+      await link.click();
+      const file = join(output, `academic-box-catalog-${suffix}.pdf`);
+      await (await save).saveAs(file);
+      const info = execFileSync("pdfinfo", [file], { encoding: "utf8" });
+      assert.match(info, new RegExp(`^Pages:\\s+${sheetCount}$`, "m"));
+      assert.match(execFileSync("pdfimages", ["-list", file], { encoding: "utf8" }), /image\s+2480\s+3508/);
+    }
   } finally {await page.close();}
 }
 

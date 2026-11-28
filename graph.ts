@@ -184,6 +184,12 @@ export function mountGraph(box: HTMLElement, initial: GraphSpec, onDrawn?: (erro
         renderer: "svg"
       });
       lastErrors = drawItems(board, spec);
+      for (const label of box.querySelectorAll("svg text")) {
+        if (/^\s*[-−+]?[\p{Nd}]+(?:[.,٫][\p{Nd}]+)?\s*$/u.test(label.textContent ?? "")) {
+          label.setAttribute("direction", "ltr");
+          label.setAttribute("unicode-bidi", "isolate");
+        }
+      }
     } catch (e) {
       lastErrors = [e instanceof Error ? e.message : "تعذر إنشاء الرسم"];
     }

@@ -391,6 +391,7 @@ button.primary,
   max-width: 100%;
 }
 .graph-box {
+  direction: ltr;
   max-width: 100%;
   margin: auto;
 }
@@ -1630,10 +1631,8 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .creative-block:not([data-block-frame]):is([data-education-block="law"],[data-education-block="theorem"],[data-education-block="proof"]) { border-radius:7px; }
 .creative-block:not([data-block-frame])[data-education-block="concept"] { border-inline-start:4px double var(--block-ink); }
 .creative-block:not([data-block-frame])[data-education-block="property"] > .creative-block-label { text-decoration:underline dotted; text-underline-offset:3px; }
-.creative-block:not([data-block-frame])[data-education-block="idea"] > .creative-block-label::before { content:"◈"; margin-inline-end:.5em; }
 .creative-block:not([data-block-frame])[data-education-block="ministerial-idea"] { border-block-start:2px double var(--block-ink); }
 .creative-block:not([data-block-frame])[data-education-block="illustration"] > .creative-block-label { text-align:center; }
-.creative-block:not([data-block-frame])[data-education-block="check"] > .creative-block-label::before { content:"؟"; margin-inline-end:.5em; }
 .creative-block:not([data-block-frame])[data-education-block="homework"] { border-inline-start:0; border-block-end:1px solid var(--block-ink); }
 .furniture-center { position:absolute; inset-inline-start:50%; transform:translateX(50%); max-inline-size:32%; text-overflow:ellipsis; white-space:nowrap; overflow:hidden; }
 :is(.paper-header,.pg-header,.pg-footer):has(.furniture-center) { position:relative; }
@@ -1746,3 +1745,33 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .print-edition-dialog iframe { display: block; inline-size: 100%; block-size: 48vh; margin-block-start: 12px; }
 .print-edition-dialog input[type="number"] { inline-size: 5em; }
 .print-sheet .math-visual { color: var(--math-color, inherit); font-size: var(--math-size, 1em); }
+
+.academic-block-mark {
+  display: inline-block;
+  margin-inline-end: .5em;
+  min-inline-size: 1em;
+  text-align: center;
+  font-family: "Noto Naskh Arabic", serif;
+  font-weight: 600;
+  line-height: 1;
+}
+.creative-block-label { position: relative; }
+.creative-block:is([data-education-block="definition"], [data-education-block="concept"], [data-education-block="property"], [data-education-block="rule"]):not([data-block-frame]) > .creative-block-label .academic-block-mark {
+  border-inline-end: 1px solid currentColor;
+  padding-inline-end: .35em;
+}
+.creative-block:is([data-education-block="proof"], [data-education-block="solution"], [data-education-block="summary"]):not([data-block-frame]) > .creative-block-label .academic-block-mark {
+  float: inline-end;
+  margin-inline: .5em 0;
+}
+.creative-block:is([data-education-block="warning"], [data-education-block="ministerial-question"], [data-education-block="check"], [data-education-block="homework"]):not([data-block-frame]) > .creative-block-label .academic-block-mark {
+  outline: 1px solid currentColor;
+  border-radius: 4px;
+  padding: .10em .22em;
+}
+.creative-block:is([data-education-block="law"], [data-education-block="example"]):not([data-block-frame]) > .creative-block-label {
+  background: var(--block-background, var(--creative-tint, #eef4fa));
+  color: var(--block-ink);
+  border-block-end: 1px solid currentColor;
+}
+.creative-block[data-education-block="proof"]:not([data-block-frame]) > .creative-block-content > :is(p,ol) { margin-block: .18em; }

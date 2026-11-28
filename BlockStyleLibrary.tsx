@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useState, type CSSProperties } from "react";
-import { blockLabel, blockTypes, blockFonts, blockFrames } from "./creativeDesign";
+import { blockMark, blockLabel, blockTypes, blockFonts, blockFrames } from "./creativeDesign";
 
 const storageKey = "mathpress:block-styles:1";
 type Style = { id: string; name: string; attrs: Record<string, unknown> };
@@ -191,7 +191,7 @@ export default function BlockStyleLibrary({ open, setOpen, dock, selected, inser
             } else { insert(kind,attrs); finish(); }
           }}>
             <span className="creative-block" data-education-block={kind} data-block-frame={frame || undefined}>
-              <span className="creative-block-label">{label}</span>
+              <span className="creative-block-label"><span className="academic-block-mark" aria-hidden="true">{blockMark(kind)}</span>{label}</span>
               <span dir="rtl" className="creative-block-content">{samples[kind] ?? "مثال على تنسيق المحتوى."}</span>
             </span>
           </button>

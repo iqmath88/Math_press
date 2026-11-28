@@ -72,6 +72,7 @@ type ExportOptions = {
   grayscale: boolean;
   signal: AbortSignal;
   onProgress: (done: number) => void;
+  onTimings?: (timings: { prepareMs: number; paintMs: number; encodeMs: number; serializeMs: number }) => void;
 };
 
 export async function renderPrintEdition(paper: HTMLElement, options: ExportOptions) {
@@ -86,6 +87,8 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
   const pxToY = heightMm * 72 / (25.4 * pixels.height);
   let compressedBytes = 0;
   const embeddedImages = new Map<string, PDFImage>();
+  const equations = new Map<string, string>();
+  const timings = { prepareMs: 0, paintMs: 0, encodeMs: 0, serializeMs: 0 };
   const sheets = Array.from(paper.querySelectorAll<HTMLElement>(".print-sheet")).slice(first - 1, last);
   if (sheets.length !== last - first + 1) throw new Error("تغيّر عدد صفحات المعاينة.");
   for (const sheet of sheets) {
@@ -114,6 +117,7 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
     }
   }).join("\n");
   for (const [index, sheet] of sheets.entries()) {
+    const prepareStart = performance.now();
     signal.throwIfAborted();
     const wrapper = paper.cloneNode(false) as HTMLElement;
     wrapper.removeAttribute("id");
@@ -134,7 +138,13 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
       for (const equation of clone.querySelectorAll<HTMLElement>(".math-node[data-latex]")) {
         const latex = equation.dataset.latex ?? "";
         const block = equation.classList.contains("math-block");
-        const markup = convertLatexToMarkup(latex, { defaultMode: block ? "math" : "inline-math" });
+        const key = (block ? "display:" : "inline:") + latex;
+        let markup = equations.get(key);
+        if (markup === undefined) {
+          markup = convertLatexToMarkup(latex, { defaultMode: block ? "math" : "inline-math" });
+          // Bound both the number of strings and the cost of unusually large equations.
+          if (equations.size < 128 && markup.length < 16_384) equations.set(key, markup);
+        }
         if (markup.includes("ML__error")) throw new Error("تعذر رسم معادلة في صفحة " + (first + index));
         const replacement = owner.createElement("span");
         replacement.className = "math-visual";
@@ -147,23 +157,28 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
       owner.body.append(wrapper);
       await owner.fonts.ready;
       await Promise.all([...clone.querySelectorAll("img")].map(image => image.decode()));
+      timings.prepareMs += performance.now() - prepareStart;
       for (const [tileIndex, tile] of tiles.entries()) {
         signal.throwIfAborted();
         canvas.width = tile.width;
         canvas.height = tile.height;
+        const paintStart = performance.now();
         await html2canvas(clone, {
           canvas, scale,
           x: tile.x / scale, y: tile.y / scale,
           width: tile.width / scale, height: tile.height / scale,
           backgroundColor: "#ffffff",
           logging: false,
-          ignoreElements: element => element.id === "root",
+          ignoreElements: element => element.id === "root" ||
+            (element.tagName === "LINK" && element.getAttribute("rel") === "stylesheet"),
           onclone: async cloned => {
             cloned.head.append(cloned.importNode(stylesheet, true));
             await cloned.fonts.ready;
           },
         });
         signal.throwIfAborted();
+        timings.paintMs += performance.now() - paintStart;
+        const encodeStart = performance.now();
         if (grayscale) {
           const context = canvas.getContext("2d");
           if (!context) throw new Error("تعذر تجهيز التدرج الرمادي.");
@@ -206,6 +221,7 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
         });
         if (tiles.length > 1) page.pushOperators(popGraphicsState());
         canvas.width = canvas.height = 0;
+        timings.encodeMs += performance.now() - encodeStart;
         onProgress(index + (tileIndex + 1) / tiles.length);
         await new Promise<void>(resolve => setTimeout(resolve, 0));
       }
@@ -216,5 +232,10 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
     }
   }
   signal.throwIfAborted();
-  return new Blob([new Uint8Array(await document.save())], { type: "application/pdf" });
+  const serializeStart = performance.now();
+  const data = await document.save();
+  signal.throwIfAborted();
+  timings.serializeMs = performance.now() - serializeStart;
+  options.onTimings?.(timings);
+  return new Blob([new Uint8Array(data)], { type: "application/pdf" });
 }

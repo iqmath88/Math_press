@@ -71,7 +71,8 @@ export function drawShape(attrs:Record<string,unknown>) {
     geometry.points.forEach(([x,y],index)=>{
       if(!names[index]) return;
       const text=document.createElementNS(svgNS,"text");
-      text.setAttribute("x",String(x));text.setAttribute("y",String(y));
+      text.setAttribute("x",String(x + (x < 100 ? -6 : x > 100 ? 6 : 0)));
+      text.setAttribute("y",String(y + (y < 65 ? -7 : 10)));
       text.setAttribute("text-anchor","middle");text.setAttribute("font-size","10");text.setAttribute("fill",ink);
       text.textContent=names[index];group.append(text);
     });

@@ -52,6 +52,7 @@ export default function PrintEditionDialog({ paper, pages, widthMm, heightMm, pa
       const { renderPrintEdition } = await import("./printEditionRaster");
       const blob = await renderPrintEdition(paper, {
         widthMm, heightMm, first, last, dpi, grayscale: !!options.grayscale, signal: controller.signal, onProgress: setProgress,
+        onTimings: timings => window.dispatchEvent(new CustomEvent("mathpress-pdf-timings", { detail: timings })),
       });
       controller.signal.throwIfAborted();
       const name = filename.trim().replace(/[\\/:*?"<>|]/g, "-").replace(/\.pdf$/i, "") || "MathPress";
