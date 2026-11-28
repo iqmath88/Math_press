@@ -169,8 +169,8 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
       style.id = "mp-page-style";
       document.head.appendChild(style);
     }
-    style.textContent = `@page{size:${doc.page.size} ${landscape ? "landscape" : "portrait"};margin:0}`;
-  }, [landscape, doc.page.size]);
+    style.textContent = `@page{size:${paperWidth}mm ${paperHeight}mm;margin:0}`;
+  }, [paperWidth, paperHeight]);
 
   const openGraph = useCallback((pos?: number) => {
     if (!editor) return;
@@ -439,7 +439,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
       <style>{styleSheet}</style>
       {printOptions && <PrintPreview paper={paperRef} editor={editor} options={printOptions}
         onChange={setPrintOptions} paperSize={doc.page.size} usableHeightMm={(paperHeight) - m.top - m.bottom}
-        watermark={printOptions.economical ? undefined : doc.watermark}
+        watermark={doc.watermark}
         selectedBlock={printOrigin.current?.block} selectedOffset={printOrigin.current?.offset}
         onClose={() => {
           const origin = printOrigin.current;

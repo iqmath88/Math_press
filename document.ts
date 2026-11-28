@@ -118,7 +118,7 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
     language: "ar",
     direction: "rtl",
     page: {
-      size: page?.size === "A3" || page?.size === "A5" ? page.size : "A4",
+      size: page?.size === "A3" || page?.size === "A5" || page?.size === "Letter" || page?.size === "Legal" ? page.size : "A4",
       orientation: page?.orientation === "landscape" ? "landscape" : "portrait",
       marginsMm: { ...margins }
     },
@@ -145,7 +145,7 @@ export const publishingBoxFields = ["frame","font","size","exampleNumber",...adv
 /** Protect additions from readers that cannot preserve their attributes. */
 export function protectEducationalDocument(doc: MathPressDocument): MathPressDocument {
   if (doc.schemaVersion === 6) return doc;
-  if (doc.watermark || doc.pageFurniture) return {...doc,schemaVersion:6};
+  if (doc.watermark || doc.pageFurniture || doc.page.size==="Letter" || doc.page.size==="Legal") return {...doc,schemaVersion:6};
 
   let version = doc.publishingIdentity || doc.page.size !== "A4" ? 5 : doc.schemaVersion;
   const nodes = [doc.content];

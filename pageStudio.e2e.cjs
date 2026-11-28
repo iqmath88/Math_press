@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const { mkdir, readFile } = require("node:fs/promises");
+const { execFileSync } = require("node:child_process");
 const { join } = require("node:path");
 const { chromium, webkit } = require("playwright-core");
 
@@ -105,7 +106,19 @@ async function captureTable(browser) {
     await printed.getByText("شعبة الرياضيات",{exact:true}).waitFor();
     await printed.getByText("العام الدراسي",{exact:true}).waitFor();
     await printed.getByText("صفحة ٧ من ٧",{exact:true}).waitFor();
-    if(output && engine===chromium) await page.pdf({path:join(output,"page-studio.pdf"),preferCSSPageSize:true});
+    if(output && engine===chromium) {
+      const path=join(output,"page-studio.pdf");
+      await page.pdf({path,preferCSSPageSize:true,displayHeaderFooter:false});
+      assert.match(execFileSync("pdfinfo",[path],{encoding:"utf8"}),/^Pages:\s+1$/m);
+      const text=execFileSync("pdftotext",[path,"-"],{encoding:"utf8"});
+      assert.match(text,/٧/);
+      assert.doesNotMatch(text,/https?:\/\//);
+    }
+    await page.getByRole("region",{name:"معاينة الطباعة"}).getByText("الرأس والتذييل",{exact:true}).click();
+    await printed.getByText("شعبة الرياضيات",{exact:true}).waitFor({state:"detached"});
+    await printed.getByText("صفحة ٧ من ٧",{exact:true}).waitFor();
+    await page.getByRole("region",{name:"معاينة الطباعة"}).getByText("العلامة المائية",{exact:true}).click();
+    await printed.locator(".page-watermark").waitFor({state:"detached"});
     await page.getByRole("button",{name:"العودة للتحرير"}).click();
     const logo=await configure();
     await logo.getByLabel("نوع العلامة المائية").selectOption("image");

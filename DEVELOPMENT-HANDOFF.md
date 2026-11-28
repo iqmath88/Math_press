@@ -45,3 +45,12 @@ Still open: richer page chrome and presets, width controls in the table UI, full
 ## Alpha.3 performance increment
 
 Previously green Alpha.2 CI: https://github.com/iqmath88/Math_press/actions/runs/46134384376. Alpha.3 preserves equivalent mapped pagination widgets and skips toolbar refresh on metadata-only transactions. See [profiling and benchmark evidence](PERFORMANCE-PROFILING.md). The 15% gate remains blocked; continue P0 before expanding publishing features. The isolated floating model remains outside the editor.
+
+## Alpha.4 print increment
+
+The branch remains `feature/v0.8.0-advanced-glass-document-studio`, PR #16. Baseline code: `d02cff6d85e65d83128ca4a7c982aeec6e2cae92`. See [print engine notes](PRINT-ENGINE.md) for browser printing, sheet geometry, and independent PDF options.
+
+- Print uses millimetre page sizes and a shared subpixel allowance for PDF and preview, with no separate minimum-height wrapper. Normal sheets and their footers stay together. Overflow remains visible and is reported.
+- Letter and Legal work alongside A4/A3/A5. They export using MathDoc 6. Print-only toggles for page furniture and watermark leave saved settings untouched.
+- Local Chromium short actual-PDF test verifies one page, selectable numbering and absence of a URL in the extracted text. Emulated iPad Chromium print geometry passed in both orientations. The Apple PDF named in the brief was unavailable.
+- Continue with WebKit CI, the real Safari print fixture, and the outstanding performance gate. The floating-element prototype remains isolated. Advanced publishing and teacher productivity tasks from the brief remain open.

@@ -70,7 +70,7 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
       <div className="modal" role="dialog" aria-modal="true" aria-label="إعدادات الصفحة" onClick={e => e.stopPropagation()}>
         <strong>إعدادات الصفحة</strong>
         <label>حجم الورق <select value={size} onChange={event=>setSize(event.target.value as typeof size)}>
-          <option>A4</option><option>A5</option><option>A3</option>
+          <option>A4</option><option>A5</option><option>A3</option><option>Letter</option><option>Legal</option>
         </select></label>
 
         <div className="setting-block">

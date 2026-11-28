@@ -6,7 +6,7 @@ import type { Editor } from "@tiptap/core";
 import { paginateForPrint } from "./PrintPagination";
 import { loadJXG } from "./graph";
 
-export type PrintOptions = { backgrounds: boolean; numbers: boolean; economical: boolean; grayscale?: boolean };
+export type PrintOptions = { backgrounds: boolean; numbers: boolean; economical: boolean; grayscale?: boolean; watermark?: boolean; furniture?: boolean };
 
 function nextFrame() {
   return new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -29,6 +29,9 @@ export function findPrintIssues(paper: HTMLElement, usableHeightMm: number): str
   if ([...editor.querySelectorAll("math-field")].some(tooWide)) issues.push("قد تتجاوز معادلة طويلة هامش الطباعة.");
   if ([...editor.querySelectorAll("img")].some(img => tooWide(img) || img.getBoundingClientRect().height > maxHeight))
     issues.push("تتجاوز صورة مساحة الطباعة المتاحة.");
+  if ([...editor.querySelectorAll<HTMLElement>(".paper-header,.pg-footer")].some(zone =>
+    zone.scrollHeight > zone.clientHeight+1 || zone.scrollWidth > zone.clientWidth+1))
+    issues.push("يتجاوز محتوى الرأس أو التذييل المساحة المخصصة. زد الهامش أو اختصر النص.");
   return issues;
 }
 
@@ -50,6 +53,7 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
   const [pages, setPages] = useState(1);
   const [issues, setIssues] = useState<string[]>([]);
   const [layoutPending, setLayoutPending] = useState(true);
+  const printWatermark = options.watermark === false || options.economical ? undefined : watermark;
   useEffect(() => {
     let active = true;
     const prepare = async () => {
@@ -62,9 +66,9 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
       const graph = source.querySelector(".graph-node");
       const [, ...resourceResults] = await Promise.allSettled([
         document.fonts.ready,
-        ...(watermark?.kind==="image" ? [(() => {
+        ...(printWatermark?.kind==="image" ? [(() => {
           const image=new Image();
-          image.src=watermark.value;
+          image.src=printWatermark.value;
           return image.decode();
         })()] : []),
         ...(graph ? [loadJXG()] : []),
@@ -86,7 +90,7 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
       if (!target) return;
       const { headerText } = editor.storage.pagination.layout;
       const result = paginateForPrint(source, target, {
-        headerText, footerText: editor.storage.pagination.footerText, selectedBlock, selectedOffset, watermark, furniture:editor.storage.pagination.layout.furniture
+        headerText, footerText: editor.storage.pagination.footerText, selectedBlock, selectedOffset, watermark:printWatermark, hideFurniture:options.furniture===false, furniture:editor.storage.pagination.layout.furniture
       });
       setPages(result.pages);
       const warnings = findPrintIssues(element, usableHeightMm);
@@ -102,7 +106,7 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
     };
     void prepare();
     return () => { active = false; };
-  }, [editor, paper, usableHeightMm, selectedBlock, selectedOffset, watermark]);
+  }, [editor, paper, usableHeightMm, selectedBlock, selectedOffset, printWatermark, options.furniture]);
 
   useLayoutEffect(() => {
     if (layoutPending) return;
@@ -128,6 +132,11 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
           onChange={e => onChange({ ...options, economical: e.target.checked })} /> حبر اقتصادي</label>
         <label className="check"><input type="checkbox" checked={options.grayscale ?? false}
           onChange={e=>onChange({...options,grayscale:e.target.checked})}/> تدرج رمادي</label>
+        <label className="check"><input type="checkbox" checked={options.furniture !== false}
+          onChange={e=>onChange({...options,furniture:e.target.checked})}/> الرأس والتذييل</label>
+        {watermark && !options.economical && <label className="check"><input type="checkbox" checked={options.watermark !== false}
+          onChange={e=>onChange({...options,watermark:e.target.checked})}/> العلامة المائية</label>}
+        <span className="muted">عطّل رؤوس المتصفح وتذييلاته من نافذة الطباعة إذا ظهرت خياراتها.</span>
         <span className="muted">اختر نطاق الصفحات من نافذة الطباعة.</span>
       </div>
       {issues.length > 0 && <ul className="print-issues" aria-live="polite">{issues.map(issue => <li key={issue}>{issue}</li>)}</ul>}
