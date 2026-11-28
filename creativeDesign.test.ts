@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDocument, parseDocument, protectEducationalDocument } from "./document";
-import { creativeTemplates, educationBlock, makeTemplate } from "./creativeDesign";
+import { creativeTemplates, educationBlock, makeTemplate, solvedExample } from "./creativeDesign";
 import { validateImportedContent } from "./importValidation";
 
 describe("Creative Studio documents", () => {
@@ -16,5 +16,13 @@ describe("Creative Studio documents", () => {
     expect(protectEducationalDocument({...base,creativeDesign:"academic"}).schemaVersion).toBe(4);
     const content = {type:"doc",content:[educationBlock("definition")]};
     expect(protectEducationalDocument({...base,content}).schemaVersion).toBe(4);
+  });
+
+  it("protects editable publishing attributes while preserving partial examples", () => {
+    const content = {type:"doc",content:[solvedExample(3)]};
+    const document = protectEducationalDocument({...createDocument(),content});
+    expect(document.schemaVersion).toBe(5);
+    expect(parseDocument(document)?.content).toEqual(content);
+    expect(validateImportedContent(content,true)?.content?.[0].attrs?.exampleNumber).toBe("3");
   });
 });

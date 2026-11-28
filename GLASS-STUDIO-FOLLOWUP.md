@@ -1,6 +1,6 @@
-# Glass Creative Studio preview.3 follow-up
+# Glass Creative Studio preview.4 follow-up
 
-The working branch is `feature/v0.7.0-creative-studio`, tracked by draft PR #15. Start from the latest commit on that branch and compare against preview.2 commit `d84bc52563522e0e2749a7870d603da069b519fa`.
+The working branch is `feature/v0.7.0-creative-studio`, tracked by draft PR #15. Start from the latest commit on that branch and compare against preview.3 commit `158e5d5caa29fdfaddf71e00229812b8be21df24`.
 
 ## Verification gates
 
@@ -11,7 +11,7 @@ The working branch is `feature/v0.7.0-creative-studio`, tracked by draft PR #15.
 
 ## Work still open
 
-- Independently configurable question and heading treatments, numbered solved examples, style groups, and the remaining Style Studio controls.
+- Full-document reusable style groups, dynamic example renumbering after moves and deletions, and remaining Style Studio controls. Current example numbers are assigned at insertion and remain editable.
 - Lightweight image derivatives with an original-resolution print path, arbitrary crop rectangles, editable geometry points and measurements.
-- Remaining template catalog, expanded derivatives chapter and its full visual print review.
+- Complete the template catalog and verify additional print fixtures. The derivatives chapter now includes a cover and a multi-step example.
 - End-to-end WebKit and performance gates before promotion from preview.

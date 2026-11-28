@@ -1,5 +1,12 @@
 # سجل تغييرات MathPress
 
+## v0.7.0-preview.4 — Professional Publishing Studio
+
+- Add eight publication frames, per-section typography, editable example numbers and reorderable solved-example sections.
+- Add a derivatives chapter cover and worked solution. Add editable practice and focused review templates.
+- Preserve new publication attributes in MathDoc 5 and omit neutral attributes from exports of older boxes.
+- Exercise the visible file chooser on WebKit using a temporary on-disk image.
+
 ## v0.7.0-preview.3 — Glass Creative Studio
 
 - Coalesce editor pagination observation on the next frame and preserve measurement caches through selection-only transactions.
