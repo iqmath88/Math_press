@@ -184,7 +184,13 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
     <div className="ribbon no-print">
       <input
         ref={fileRef} className="visually-hidden" type="file" accept="image/*"
-        onChange={e => { void pickImage(e.target.files?.[0]); e.target.value = ""; }}
+        onChange={event => {
+          const input = event.currentTarget;
+          const file = input.files?.[0];
+          void pickImage(file).finally(() => {
+            if (input.files?.[0] === file) input.value = "";
+          });
+        }}
       />
       <div className="rb-strip">
         <div className="rb-tabs" role="tablist" aria-label="الأقسام">
