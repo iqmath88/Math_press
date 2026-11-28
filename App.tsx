@@ -1,7 +1,7 @@
 import { localizeImages, portableImages } from "./imageAssets";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JSONContent } from "@tiptap/core";
-import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw, Moon, Sun } from "lucide-react";
+import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw, Moon, Sun, Layers } from "lucide-react";
 import type { EducationalStyle } from "./educationalStyles";
 import type { MathPressDocument } from "./types";
 import { createDocument, parseDocument, protectEducationalDocument } from "./document";
@@ -45,6 +45,12 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem("mathpress-studio-theme", dark ? "dark" : "light"); } catch { /* unavailable */ }
   }, [dark]);
+  const [lowEffects, setLowEffects] = useState(() => {
+    try { return localStorage.getItem("mathpress-studio-effects") === "low"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("mathpress-studio-effects", lowEffects ? "low" : "standard"); } catch { /* unavailable */ }
+  }, [lowEffects]);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showTemplates,setShowTemplates] = useState(false);
   const [templateQuery,setTemplateQuery] = useState("");
@@ -195,15 +201,19 @@ export default function App() {
   }[saveState]), [saveState]);
 
   return (
-    <div className="app-shell" data-theme={dark ? "dark" : "light"}>
+    <div className="app-shell" data-theme={dark ? "dark" : "light"} data-effects={lowEffects ? "low" : "standard"}>
       <header className="topbar no-print">
         <div className="brand">
           <div className="brand-mark"><Sigma size={24} /></div>
           <div><strong>MathPress Studio <small className="version" dir="ltr">v{VERSION}</small></strong></div>
         </div>
         <input className="document-title-input" value={doc.title} onChange={e => setDoc(old => ({ ...old, title: e.target.value }))} aria-label="عنوان المستند" placeholder="عنوان المستند" />
+        <div className="glass-view-controls">
         <button type="button" className="studio-theme" aria-label="الوضع الداكن" aria-pressed={dark}
           onClick={() => setDark(value => !value)}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
+          <button type="button" className="studio-theme" title="تأثيرات بصرية منخفضة" aria-label="تأثيرات بصرية منخفضة"
+            aria-pressed={lowEffects} onClick={() => setLowEffects(value => !value)}><Layers size={18} /></button>
+        </div>
         <button type="button" aria-expanded={showTemplates} onClick={()=>setShowTemplates(value=>!value)}>القوالب</button>
         <div className={`save-status ${saveState}`} aria-live="polite">{status.icon}<span>{status.label}</span></div>
       </header>
