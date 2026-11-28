@@ -1471,3 +1471,46 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
   }
   .block-style-library .block-style-grid { gap:6px; }
 }
+
+
+/* Compact publishing refinement; document rules are shared with print. */
+.creative-block[data-education-block="chapter"]:not([data-block-frame]) {
+  border:0; border-block-end:3px double var(--block-ink);
+  padding:var(--block-padding,8px 12px); background:var(--block-background,var(--creative-tint,#eef4fa));
+}
+.creative-block[data-education-block="chapter"]:not([data-block-frame]) > .creative-block-label {
+  font-size:1.35em; font-weight:700; padding-block-end:4px;
+}
+.creative-block[data-education-block="example"]:not([data-block-frame]) > .creative-block-label {
+  background:var(--block-ink); color:white;
+}
+.creative-block[data-education-block="example"] > .creative-block-content > .creative-block:not([data-block-padding]) {
+  margin-block:4px; padding:4px 8px;
+}
+.creative-block[data-education-block="example"] > .creative-block-content > .creative-block[data-block-frame="floating"]:not([data-block-padding]) {
+  border:0; border-inline-start:2px solid var(--block-ink); border-radius:0;
+}
+.creative-block[data-education-block="example"] > .creative-block-content > .creative-block[data-block-frame="steps"]:not([data-block-padding]) {
+  border:0; border-block-start:1px solid var(--block-ink); border-radius:0;
+}
+.creative-block[data-education-block="example"] > .creative-block-content > .creative-block[data-block-frame="result"]:not([data-block-padding]) {
+  border:0; border-block-start:2px solid var(--block-ink);
+}
+@media screen {
+  .app-shell .block-style-library {
+    background:var(--studio-glass); border-radius:14px;
+    box-shadow:0 8px 28px rgb(23 43 73 / 16%);
+  }
+  .block-style-library .block-style-heading { align-items:center; gap:5px; }
+  .block-style-library .block-style-heading button { padding-inline:8px; }
+  .block-style-library .block-style-card > button:first-child {
+    background:var(--studio-control); border-color:var(--studio-rule);
+  }
+  .block-style-library .block-style-card .creative-block-content { color:var(--studio-text); }
+  .creative-tools .selected-box-properties {
+    border:1px solid var(--studio-rule); border-radius:10px;
+    background:var(--studio-glass); gap:6px; padding:6px 10px;
+  }
+  .selected-box-properties legend { font-weight:700; color:var(--studio-text); }
+  .selected-box-properties input:not([type="checkbox"]):not([type="color"]) { max-width:120px; }
+}
