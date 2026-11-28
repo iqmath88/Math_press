@@ -85,12 +85,14 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
 
   const [pageLabels, setPageLabels] = useState<string[]>([]);
   const [showCreative, setShowCreative] = useState(false);
+  const [, refreshCreativeSelection] = useState(0);
   const [properties, setProperties] = useState(false);
   const [showMargins, setShowMargins] = useState(false);
   const printOrigin = useRef<{ block: Element | null; offset: number; x: number; y: number; stageX: number; stageY: number } | null>(null);
 
   const editor = useEditor({
     extensions,
+    shouldRerenderOnTransaction: false,
     content: doc.content,
     editorProps: {
       handleKeyDown: (_view, event) => {
@@ -116,6 +118,13 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
     setPageCount(editor.storage.pagination.pages);
     return () => { editor.storage.pagination.onPages = null; };
   }, [editor]);
+
+  useEffect(() => {
+    if (!editor || !showCreative) return;
+    const refresh = () => refreshCreativeSelection(value => value + 1);
+    editor.on("selectionUpdate", refresh);
+    return () => { editor.off("selectionUpdate", refresh); };
+  }, [editor, showCreative]);
 
   // إعدادات الصفحة تصل إلى مقسّم الصفحات عبر تخزين الإضافة ثم يُعاد القياس.
   useEffect(() => {

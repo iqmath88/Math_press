@@ -152,6 +152,11 @@ async function lesson(page, capture) {
   if (capture) {
     await page.pdf({path:join(output,"applied-derivatives.pdf"),preferCSSPageSize:true});
     await page.screenshot({path:join(output,"creative-preview.png")});
+    await page.getByRole("button",{name:"العودة للتحرير"}).click();
+    await page.getByRole("button",{name:"الوضع الداكن"}).click();
+    await page.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
+    await page.getByRole("region",{name:"معاينة الطباعة"}).getByText(/6 صفحة A4/).waitFor();
+    await page.pdf({path:join(output,"applied-derivatives-dark.pdf"),preferCSSPageSize:true});
   }
   assert.equal(await page.locator(".print-sheet").count(),6);
   const restored = await page.context().browser().newPage();
