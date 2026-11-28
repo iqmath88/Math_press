@@ -1514,3 +1514,33 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
   .selected-box-properties legend { font-weight:700; color:var(--studio-text); }
   .selected-box-properties input:not([type="checkbox"]):not([type="color"]) { max-width:120px; }
 }
+
+
+/* Docked publishing workspace: no overlap with the editable paper. */
+@media screen {
+  .publishing-workspace { display:flex; direction:ltr; flex:1; min-width:0; min-height:0; align-items:stretch; }
+  .publishing-workspace > .page-stage { flex:1 1 0; min-width:0; }
+  .gallery-dock { direction:rtl; flex:0 0 auto; min-width:0; }
+  .gallery-dock:empty { display:none; }
+  .app-shell .gallery-dock .block-style-library {
+    position:sticky; top:120px; inset-inline-end:auto; inset-block-end:auto;
+    width:clamp(260px,26vw,360px); max-height:calc(100dvh - 140px);
+    display:flex; flex-direction:column; overflow:hidden; box-sizing:border-box;
+    margin:8px; padding:10px; background:var(--studio-glass,#f8fbff);
+    box-shadow:none; z-index:1;
+  }
+  .gallery-dock .block-style-heading { position:static; flex:none; padding:0 0 8px; }
+  .gallery-dock .block-style-filters { flex:none; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); padding:8px 0; border-bottom:1px solid var(--studio-rule,#bfcde0); }
+  .gallery-dock .block-style-filters label { min-width:0; }
+  .gallery-dock .block-style-scroll { overflow:auto; min-height:0; flex:1; overscroll-behavior:contain; padding:6px 2px; }
+  .gallery-dock .block-style-grid { gap:8px; }
+  .gallery-dock .block-style-card > button:first-child { min-height:96px; }
+  @media(max-width:700px) {
+    .publishing-workspace { flex-direction:column; }
+    .app-shell .gallery-dock .block-style-library { position:static; width:auto; max-height:48dvh; }
+  }
+}
+@media print {
+  .publishing-workspace { display:block !important; }
+  .gallery-dock { display:none !important; }
+}
