@@ -8,6 +8,59 @@ const engine = process.argv[2] === "webkit" ? webkit : chromium;
 const home = process.env.MATHPRESS_QA_URL || "http://127.0.0.1:4174/";
 const output = process.env.MATHPRESS_QA_OUTPUT;
 
+async function verifyShortMediaPrint(browser) {
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true });
+  try {
+    await page.goto(home);
+    await page.getByRole("button", { name: "مستند فارغ", exact: true }).tap();
+    const editor = page.locator(".editor-source .tiptap");
+    await editor.evaluate(element => {
+      element.editor.commands.setContent({
+        type: "doc", content: [
+          { type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: "عنوان الدرس SHORTTITLE" }] },
+          { type: "paragraph", content: [
+            { type: "text", text: "شرح معادلة " },
+            { type: "mathInline", attrs: { latex: "f(x)=x^2-4" } },
+          ] },
+          { type: "mathBlock", attrs: { latex: String.raw`\frac{-b\pm\sqrt{b^2-4ac}}{2a}` } },
+          { type: "paragraph" },
+        ],
+      }, true);
+      element.editor.commands.focus("end");
+    });
+    await page.locator('input[accept="image/*"]').setInputFiles(join(__dirname, "icon-512.png"));
+    const photo = editor.locator("figure.studio-image img");
+    await photo.waitFor();
+    await page.waitForFunction(() => document.querySelector(".editor-source .studio-image img")?.naturalWidth === 512);
+    await page.getByRole("button", { name: "طباعة / PDF", exact: true }).tap();
+    const preview = page.getByRole("region", { name: "معاينة الطباعة" });
+    await preview.getByText(/1 صفحة A4/).waitFor();
+    await preview.getByText("تشخيص الطباعة", { exact: true }).tap();
+    await preview.getByText(require("./package.json").version, { exact: false }).waitFor();
+    const sheet = page.locator(".print-sheet");
+    assert.equal(await sheet.count(), 1);
+    assert.equal(await sheet.locator("math-field").count(), 2);
+    assert.equal(await sheet.locator(".studio-image img").evaluate(image => image.naturalWidth), 512);
+    await page.emulateMedia({ media: "print" });
+    assert.ok(await sheet.evaluate(element => {
+      const footer = element.querySelector(".pg-footer").getBoundingClientRect();
+      return footer.bottom <= element.getBoundingClientRect().bottom + 1;
+    }));
+    if (output && engine === chromium) {
+      await mkdir(output, { recursive: true });
+      const path = join(output, "short-media-safari-reproduction.pdf");
+      await page.pdf({ path, preferCSSPageSize: true, displayHeaderFooter: false, printBackground: true });
+      assert.match(execFileSync("pdfinfo", [path], { encoding: "utf8" }), /^Pages:\s+1$/m);
+      assert.match(execFileSync("pdfimages", ["-list", path], { encoding: "utf8" }), /^\s*1\s+\d+\s+image\s/m);
+      const content = execFileSync("pdftotext", [path, "-"], { encoding: "utf8" });
+      assert.match(content, /SHORTTITLE/);
+      assert.doesNotMatch(content, /https?:\/\//);
+    }
+  } finally {
+    await page.close();
+  }
+}
+
 async function captureCatalog(browser) {
   const page=await browser.newPage({viewport:{width:1440,height:1150}});
   try {
@@ -56,6 +109,7 @@ async function captureTable(browser) {
   const browser=await engine.launch(engine===chromium && process.env.MATHPRESS_CHROMIUM ?
     {executablePath:process.env.MATHPRESS_CHROMIUM} : {});
   try {
+    await verifyShortMediaPrint(browser);
     const page=await browser.newPage({viewport:{width:1280,height:1000}});
     await page.goto(home);
     await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();

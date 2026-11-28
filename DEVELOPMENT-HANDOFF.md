@@ -58,3 +58,15 @@ The branch remains `feature/v0.8.0-advanced-glass-document-studio`, PR #16. Base
 The alpha.4 follow-up adds eight font-and-color presets for page furniture, with a settings preview and the same preset in print. The browser test checks the preset after saving and reopening MathDoc 6. Continue with custom furniture presets, distinct first/even/odd content, and the remaining publishing controls.
 
 For the identical short A4 backup, the Chromium comparison produced one physical page before and after. The measured footer edge moves from 1121.98 to 1121.73 CSS px relative to the top. Both outputs retain the page marker. Separate physical PDF probes verified Letter at 612 × 792 pt and Legal at 612 × 1008 pt, one page each. See [performance](PERFORMANCE-PROFILING.md) for the remaining gate failure.
+
+## Alpha.5 checkpoint
+
+- Print sheet geometry, readiness checks, diagnostics, and synthetic short-media
+  regression are in place. Retest the original Apple case with the same MathDoc
+  and capture the print diagnostics, the native settings, and the resulting PDF.
+- Image properties show inherited values without mutating document attrs. DPI
+  uses the original pixel width and the rendered width, including auto sizing.
+- Remaining gates include the full performance matrix and bottleneck attribution,
+  native Safari and Windows checks, the offline PDF prototype, direct manipulation
+  and workspace design work, and the remaining publishing and floating-element tasks.
+- Keep preview-only delivery on PR #16.

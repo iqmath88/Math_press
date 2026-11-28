@@ -113,3 +113,11 @@
 - تعرض شاشة التحرير فواصل تقديرية على مستوى الكتل. يُحسب التقسيم التفصيلي للفقرات والجداول في معاينة الطباعة.
 - تعرض المعاينة تحذيرًا للكتل التي تتجاوز ارتفاع صفحة A4 ويتعذّر تقسيمها، مثل مجموعة صفوف مدمجة كبيرة. راجع ملف PDF الناتج عند ظهور التحذير.
 - تعتمد خيارات حفظ PDF ونطاق الصفحات والخلفية على نافذة الطباعة في نظام التشغيل. تغطي الاختبارات الآلية محاكاة iPad، وأُقرّ اختبار Safari اليدوي على الجهاز قبل الدمج.
+
+## 0.8.0-alpha.5 — preview checkpoint
+
+- Added print diagnostics and kept in-bounds sheet footers inside fixed print
+  page boxes. The print action waits for the images in the preview itself.
+- Clarified unset media properties and enabled resolution checks for auto-sized images.
+- Added a short A4 regression with Arabic text, MathLive equations and an uploaded
+  bitmap. Native Apple print reproduction and the full performance gate remain open.

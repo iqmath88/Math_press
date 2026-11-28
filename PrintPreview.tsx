@@ -42,14 +42,16 @@ type Props = {
   onChange: (options: PrintOptions) => void;
   watermark?: Watermark;
   paperSize?: string;
-  usableHeightMm: number;
+  paperGeometry: { width: number; height: number; top: number; right: number; bottom: number; left: number };
   onClose: () => void;
   onPrint: () => void;
   selectedBlock?: Element | null;
   selectedOffset?: number;
 };
 
-export default function PrintPreview({ paper, editor, options, onChange, watermark, paperSize = "A4", usableHeightMm, onClose, onPrint, selectedBlock, selectedOffset }: Props) {
+export default function PrintPreview({ paper, editor, options, onChange, watermark, paperSize = "A4", paperGeometry, onClose, onPrint, selectedBlock, selectedOffset }: Props) {
+  const { width, height, top, right, bottom, left } = paperGeometry;
+  const usableHeightMm = height - top - bottom;
   const [pages, setPages] = useState(1);
   const [issues, setIssues] = useState<string[]>([]);
   const [layoutPending, setLayoutPending] = useState(true);
@@ -92,6 +94,10 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
       const result = paginateForPrint(source, target, {
         headerText, footerText: editor.storage.pagination.footerText, selectedBlock, selectedOffset, watermark:printWatermark, hideFurniture:options.furniture===false, furniture:editor.storage.pagination.layout.furniture
       });
+      // Safari can defer decoding the actual print nodes even when the source
+      // thumbnail and the separate original-image probe are already decoded.
+      const printedImages = await Promise.allSettled([...target.querySelectorAll("img")].map(image => image.decode()));
+      if (!active) return;
       setPages(result.pages);
       const warnings = findPrintIssues(element, usableHeightMm);
       if (result.overflow) warnings.push("توجد كتلة يتعذر تقسيمها ضمن مساحة صفحة واحدة.");
@@ -100,6 +106,8 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
       else if (document.fonts.status !== "loaded") warnings.push("تحميل الخطوط مستمر.");
       if (graph && [...element.querySelectorAll(".graph-node .graph-box")].some(box => !box.querySelector("svg")))
         warnings.push("لم يكتمل عرض بعض الرسوم.");
+      if (printedImages.some(result => result.status === "rejected"))
+        warnings.push("تعذر تجهيز صورة داخل صفحات الطباعة.");
       setIssues(warnings);
       setLayoutPending(false);
       if (selectedBlock) target.querySelector("[data-studio-print-anchor]")?.closest(".print-sheet")?.scrollIntoView({ block: "nearest" });
@@ -139,6 +147,18 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
         <span className="muted">عطّل رؤوس المتصفح وتذييلاته من نافذة الطباعة إذا ظهرت خياراتها.</span>
         <span className="muted">اختر نطاق الصفحات من نافذة الطباعة.</span>
       </div>
+      <details className="print-diagnostics">
+        <summary>تشخيص الطباعة</summary>
+        <dl>
+          <dt>الإصدار والبناء</dt><dd><bdi>{import.meta.env.VITE_APP_VERSION} · {import.meta.env.VITE_APP_BUILD}</bdi></dd>
+          <dt>أبعاد الورقة</dt><dd><bdi>{width} × {height}</bdi> مم</dd>
+          <dt>الهوامش</dt><dd>أعلى {top}، يمين {right}، أسفل {bottom}، يسار {left} مم</dd>
+          <dt>ارتفاع المتن المتاح</dt><dd>{usableHeightMm} مم</dd>
+          <dt>مساحة الرأس والتذييل</dt><dd>{top} مم للرأس · {bottom} مم للتذييل</dd>
+          <dt>الصفحات المحسوبة</dt><dd>{layoutPending ? "جارٍ الحساب…" : pages}</dd>
+          <dt>تحذيرات المعاينة</dt><dd>{layoutPending ? "جارٍ الفحص…" : issues.length}</dd>
+        </dl>
+      </details>
       {issues.length > 0 && <ul className="print-issues" aria-live="polite">{issues.map(issue => <li key={issue}>{issue}</li>)}</ul>}
     </section>
   );
