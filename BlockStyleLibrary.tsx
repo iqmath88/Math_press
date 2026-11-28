@@ -114,7 +114,7 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
   return <>
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>مكتبة أنماط الصناديق</button>
     {open && <section className="block-style-library" aria-label="مكتبة أنماط الصناديق">
-      <div className="block-style-actions">
+      <div className="block-style-actions block-style-heading">
         <strong style={{flex:"1 1 auto"}}>معرض الصناديق التعليمية</strong>
         <button type="button" onClick={()=>setOpen(false)} aria-label="إغلاق معرض الصناديق">إغلاق ×</button>
       </div>
