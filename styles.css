@@ -1724,3 +1724,8 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
   }
   .app-shell[data-effects="low"] .editor-source .creative-block { background-image: none; }
 }
+
+.build-information.print-edition-dialog { inline-size: min(52rem, 92vw); max-inline-size: 92vw; }
+.print-edition-dialog iframe { display: block; inline-size: 100%; block-size: 48vh; margin-block-start: 12px; }
+.print-edition-dialog input[type="number"] { inline-size: 5em; }
+.print-sheet .math-visual { color: var(--math-color, inherit); font-size: var(--math-size, 1em); }

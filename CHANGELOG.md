@@ -137,3 +137,9 @@
 - Moved the design tools entry into the quick ribbon and compacted the
   tablet landscape header.
 - Added lighter editor-only styling for educational boxes.
+
+## 0.8.0-alpha.8 — experimental PDF download
+
+- Added an on-demand raster export dialog in print preview. It creates a PDF
+  Blob from paginated MathDoc, with range, resolution, download and sharing.
+- Loaded static MathLive styles with the app for offline preview rendering.

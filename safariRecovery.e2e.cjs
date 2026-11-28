@@ -53,6 +53,29 @@ async function run() {
       assert.equal(await sheets.count(), n);
       if (n === 4) assert.equal(await sheets.locator(".graph-box svg").count(), 4);
       assert.equal(await sheets.locator(".page-watermark").count(), n);
+      if (n === 4) {
+        await page.evaluate(() => { window.print = () => { throw new Error("Independent PDF must not call window.print"); }; });
+        await preview.getByRole("button", { name: "تصدير PDF تجريبي" }).click();
+        const exportDialog = page.getByRole("dialog", { name: "تصدير PDF نقطي تجريبي" });
+        if (engine === chromium) {
+          await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+          await page.context().setOffline(true);
+        }
+        await exportDialog.getByRole("button", { name: "إنشاء PDF" }).click();
+        const downloadLink = exportDialog.getByRole("link", { name: "تنزيل PDF" });
+        await downloadLink.or(exportDialog.getByRole("alert")).first().waitFor({ timeout: 60_000 });
+        assert.deepEqual(await exportDialog.getByRole("alert").allTextContents(), []);
+        if (engine === chromium) await page.screenshot({ path: join(output, "raster-export-dialog.png") });
+        const result = page.waitForEvent("download");
+        await downloadLink.click();
+        const file = join(output, `conics-raster-${engine.name()}.pdf`);
+        await (await result).saveAs(file);
+        const info = execFileSync("pdfinfo", [file], { encoding: "utf8" });
+        assert.match(info, /^Pages:\s+4$/m);
+        assert.match(info, /Page size:\s+595\.\d+ x 841\.\d+/);
+        await exportDialog.getByRole("button", { name: "إغلاق" }).click();
+        if (engine === chromium) await page.context().setOffline(false);
+      }
       await page.emulateMedia({ media: "print" });
       const physicalGeometry = await sheets.evaluateAll(nodes => nodes.every(sheet => {
         const rect = sheet.getBoundingClientRect();

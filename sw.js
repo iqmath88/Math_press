@@ -41,7 +41,9 @@ self.addEventListener('fetch', event=>{
   }
   event.respondWith((async()=>{
     const cache=await caches.open(CACHE);
-    const hit=await cache.match(request);
+    // Vite sends Vary: Origin. Module requests can differ from precache fetches.
+    const immutableAsset = url.pathname.startsWith(new URL("assets/", ROOT).pathname);
+    const hit = await cache.match(request, { ignoreVary: immutableAsset });
     if(hit) return hit;
     return fetch(request);
   })());

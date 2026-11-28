@@ -1,3 +1,4 @@
+import PrintEditionDialog from "./PrintEditionDialog";
 import {pageNumber} from "./pageFurniture";
 import type { Watermark } from "./watermark";
 import { pendingStudioImages, studioPrintSources } from "./StudioImage";
@@ -52,6 +53,7 @@ type Props = {
 export default function PrintPreview({ paper, editor, options, onChange, watermark, paperSize = "A4", paperGeometry, onClose, onPrint, selectedBlock, selectedOffset }: Props) {
   const { width, height, top, right, bottom, left } = paperGeometry;
   const usableHeightMm = height - top - bottom;
+  const [exportOpen, setExportOpen] = useState(false);
   const [pages, setPages] = useState(1);
   const [issues, setIssues] = useState<string[]>([]);
   const [layoutPending, setLayoutPending] = useState(true);
@@ -128,6 +130,7 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
       <div className="grow-row">
         <strong>معاينة الطباعة</strong>
         <span aria-live="polite">{layoutPending ? "جارٍ تجهيز الصفحات…" : `${pages} صفحة ${paperSize}`}</span>
+        <button type="button" disabled={layoutPending} onClick={() => setExportOpen(true)}>تصدير PDF تجريبي</button>
         <button type="button" className="primary-action" disabled={layoutPending} onClick={onPrint}>طباعة / PDF</button>
         <button type="button" onClick={onClose}>العودة للتحرير</button>
       </div>
@@ -159,6 +162,9 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
           <dt>تحذيرات المعاينة</dt><dd>{layoutPending ? "جارٍ الفحص…" : issues.length}</dd>
         </dl>
       </details>
+      {exportOpen && paper.current && <PrintEditionDialog paper={paper.current} pages={pages}
+        widthMm={width} heightMm={height} paperSize={paperSize} grayscale={!!options.grayscale}
+        blocked={issues.length > 0} onClose={() => setExportOpen(false)} />}
       {issues.length > 0 && <ul className="print-issues" aria-live="polite">{issues.map(issue => <li key={issue}>{issue}</li>)}</ul>}
     </section>
   );

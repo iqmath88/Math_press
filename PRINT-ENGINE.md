@@ -151,3 +151,29 @@ introduce a raster fallback or a button disconnected from functional export.
 Run with the existing isolated engine dependencies plus
 `harfbuzzjs@1.6.4`: `NODE_PATH=... node experiments/printEdition.cjs OUTPUT FONT.ttf`.
 CI publishes the synthetic PDFs and JSON measurements in the independent-pdf-feasibility artifact.
+
+## Alpha.8 experimental raster export
+
+The UI takes physical page dimensions and sheets from the existing MathDoc
+preview. It draws each sheet into a canvas on demand and embeds that page
+in a PDF with point dimensions derived from the configured millimetres. It
+draws static MathLive markup for formulas in the clone, retains source graph
+SVG in the sheet supplied to the rasterizer, and releases each canvas after
+encoding it. The dialog produces a PDF Blob for preview, download and system
+sharing where supported. Cancellation is cooperative between pages. Preview
+options set colour, economy, watermark and page furniture before export.
+
+This is a labelled raster fallback. It cannot provide searchable text or
+vector elements, and unsupported image crop and rotation or known overflow
+block export. CSS fidelity is still limited by the renderer; device, complex
+table and large-document validation are open. The HarfBuzz prototype remains
+isolated until the shared-layout vector adapter is available.
+
+The four-page conic regression exercises the download using the actual
+MathDoc, asserts A4 and four physical pages, and prevents window.print from
+being called. Chromium additionally exercises the first lazy export while
+offline after the service worker has taken control. Static equation CSS is
+loaded with the app; the PDF and canvas modules remain on demand. Immutable
+hashed assets use a cache match without Vary to handle the different Origin
+headers used by precaching and lazy requests. The canvas renderer snapshots
+same-origin sheet styles to avoid losing styling in the offline clone.

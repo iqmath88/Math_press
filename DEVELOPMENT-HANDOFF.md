@@ -127,3 +127,11 @@ header and horizontally scrollable tabs. Box treatments changed only in the
 screen editor and gallery and preserve custom surface controls. Full
 workspace and box redesign, device validation, and the editor performance
 gate remain open.
+
+### Alpha.8 export integration checkpoint
+
+Print preview offers an experimental raster PDF dialog. It reuses actual
+MathDoc pagination, loads its renderer only on demand, and produces a PDF
+Blob without the browser print API. The independent vector HarfBuzz prototype
+remains isolated. Continue with vector integration, complete CSS and element
+coverage, and native iPad testing before approval. See PRINT-ENGINE.md.
