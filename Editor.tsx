@@ -88,6 +88,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
   const [pageLabels, setPageLabels] = useState<string[]>([]);
   const [showCreative, setShowCreative] = useState(false);
   const [showBoxGallery, setShowBoxGallery] = useState(false);
+  const [galleryDock, setGalleryDock] = useState<HTMLDivElement | null>(null);
   const [, refreshCreativeSelection] = useState(0);
   const [properties, setProperties] = useState(false);
   const [showMargins, setShowMargins] = useState(false);
@@ -498,7 +499,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
         onChange={onStyles} onApply={id => applyEducationalStyle(editor, id)} onClose={() => setShowStyles(false)} />}
       {!focusMode && !printOptions && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
         <button type="button" onClick={() => setShowCreative(value => !value)} aria-expanded={showCreative}>التصميم والصناديق</button>
-        {(showCreative || selected) && <>
+        {(showCreative || selected || showBoxGallery) && <>
           <StudioMediaControls editor={editor} onNotice={onNotice}/>
           <label>هوية المستند <select value={doc.creativeDesign ?? ""} onChange={event =>
             onDesign(event.target.value || undefined)}>
@@ -506,7 +507,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
             {designs.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
           </select></label>
           <DocumentIdentity current={doc.publishingIdentity} apply={onIdentity} notice={onNotice} />
-          <BlockStyleLibrary open={showBoxGallery} setOpen={setShowBoxGallery} selected={selected?.node.attrs}
+          <BlockStyleLibrary dock={galleryDock} open={showBoxGallery} setOpen={setShowBoxGallery} selected={selected?.node.attrs}
             apply={editBlock} notice={onNotice}
             wrap={(kind,attrs) => {
               if (editor.state.selection.empty) return onNotice("حدد فقرة أو أكثر أولًا.");
@@ -581,6 +582,8 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
           </fieldset>}
         </>}
       </section>}
+      <div className="publishing-workspace">
+      <div className="gallery-dock no-print" ref={setGalleryDock} />
       <div className={`page-stage${focusMode ? " document-focus" : ""}`} ref={stageRef}>
         {showPages && !focusMode && !printOptions && <nav className="page-navigation no-print" aria-label="التنقل بين الصفحات">
           {Array.from({ length: pageCount }, (_, index) => <button type="button" key={index}
@@ -611,6 +614,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
         </article>
       </div>
 
+      </div>
       {!focusMode && !printOptions && <div className="document-view-status no-print">
         <span title="الصفحات النهائية في معاينة الطباعة">صفحة {currentPage} من {pageCount} · تقديري</span><span>{wordCount} كلمة</span><span dir="ltr">{Math.round(zoom * 100)}%</span>
       </div>}
