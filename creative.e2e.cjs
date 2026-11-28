@@ -113,7 +113,22 @@ async function lesson(page, capture) {
   await editor.locator(".graph-box svg").first().waitFor();
   await image.waitFor();
   await shape.getByText("مثلث المماس").waitFor();
-  if (capture) await page.screenshot({path:join(output,"creative-editor.png")});
+  if (capture) {
+    await page.screenshot({path:join(output,"creative-editor.png")});
+    const theme = page.getByRole("button",{name:"الوضع الداكن"});
+    const effects = page.getByRole("button",{name:"تأثيرات بصرية منخفضة"});
+    const paperColor = () => page.locator(".paper").first().evaluate(element=>getComputedStyle(element).backgroundColor);
+    const initialColor = await paperColor();
+    await theme.click();
+    assert.equal(await theme.getAttribute("aria-pressed"),"true");
+    assert.equal(await paperColor(),initialColor);
+    await page.screenshot({path:join(output,"glass-dark.png")});
+    await effects.click();
+    assert.equal(await effects.getAttribute("aria-pressed"),"true");
+    assert.equal(await page.locator(".topbar").evaluate(element=>getComputedStyle(element).backdropFilter),"none");
+    await effects.click();
+    await theme.click();
+  }
   await page.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
   await page.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A4/).waitFor();
   await page.locator(".print-sheet .studio-image img").waitFor();
@@ -145,13 +160,14 @@ async function lesson(page, capture) {
     await restored.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A5/).waitFor();
   } finally { await restored.close(); }
 }
-async function verifyStyleLibrary(page) {
+async function verifyStyleLibrary(page, capture) {
   await page.goto(home);
   await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
   await page.getByRole("button",{name:"التصميم والصناديق"}).click();
   await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).click();
   const library = page.getByRole("region",{name:"مكتبة أنماط الصناديق"});
   assert.equal(await library.locator(".block-style-grid button").count(),23);
+  if (capture) await page.screenshot({path:join(output,"glass-box-library.png")});
   await library.getByRole("button",{name:"إدراج تعريف",exact:true}).click();
   const block = page.locator('.editor-source [data-education-block="definition"]');
   await block.locator("p").click();
@@ -246,7 +262,7 @@ async function captureTemplates(browser) {
     try { await verifyLongBox(longBox); }
     finally { await longBox.close(); }
     const stylePage = await browser.newPage();
-    try { await verifyStyleLibrary(stylePage); }
+    try { await verifyStyleLibrary(stylePage, !!output && engine===chromium); }
     finally { await stylePage.close(); }
     if (output && engine===chromium) await captureTemplates(browser);
     console.log(engine.name(),"creative lesson editor, IndexedDB and print verified on desktop and iPad emulation");
