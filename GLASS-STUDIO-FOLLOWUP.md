@@ -23,3 +23,9 @@ The working branch is `feature/v0.7.0-creative-studio`, tracked by draft PR #15.
 - On the iPad and Windows, edit a MathLive equation between Arabic words and verify the caret, Undo and Redo.
 - Print the derivatives lesson and exam on A4, then repeat a page on A3 or A5. Verify margins, page numbers and grayscale readability.
 - Open a MathDoc 3 or 4 backup, then export and reopen the current MathDoc 5 sample. Compare the text, images, shape annotations and page styles.
+
+## 0.7.0 release order
+
+Keep PR #15 as a draft until all required checks and manual acceptance are complete. PR #15 currently targets the feature branch of PR #14. Review #14 first. If it is approved for integration, preserve its commit ancestry when merging, then retarget #15 and verify that its diff contains only Creative Studio work. If #14 is integrated by squash, rebase the Studio-only range explicitly before retargeting and rerun required checks. Keep experimental page-engine PRs #10–#13 out of the release. Merge and publish only with explicit production approval.
+
+Personal templates can be moved as MathDoc, including embedded images. A custom identity travels with a document and can also be moved independently as JSON. The RC version is retained pending browser and manual gates.

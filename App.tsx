@@ -61,6 +61,41 @@ export default function App() {
         !!validateImportedContent(item.content,true)) : [];
     } catch { return []; }
   });
+  const persistTemplates = (next: SavedCreativeTemplate[]) => {
+    try {
+      localStorage.setItem("mathpress-creative-templates",JSON.stringify(next));
+      setSavedTemplates(next);
+      return true;
+    } catch { setNotice("تعذّر حفظ القوالب في التخزين المحلي."); return false; }
+  };
+  const exportTemplate = async (item: SavedCreativeTemplate) => {
+    try {
+      const content = await portableImages(item.content);
+      const doc = protectEducationalDocument({...createDocument(item.name),content:item.content,
+        creativeDesign:item.design,publishingIdentity:item.identity});
+      const blob = new Blob([JSON.stringify({...doc,content})],{type:"application/json"});
+      if (blob.size > MAX_IMPORT_BYTES) throw new Error("القالب أكبر من حد الاستيراد.");
+      downloadBlob(blob,`${safeName(item.name)}.mathdoc`);
+    } catch (error) { setNotice(error instanceof Error ? error.message : "تعذّر تصدير القالب."); }
+  };
+  const importTemplate = async (file?: File) => {
+    if (!file) return;
+    try {
+      if (file.size>MAX_IMPORT_BYTES) throw new Error();
+      const raw = JSON.parse(await file.text());
+      const parsed = parseDocument(raw);
+      const content = parsed && validateImportedContent(parsed.content);
+      if (!parsed || !content || (parsed.schemaVersion>=4 && !preservesSuppliedContent(raw,{...parsed,content}))) throw new Error();
+      const name = parsed.title.trim();
+      if (!name || savedTemplates.some(item=>item.name===name)) {
+        setNotice("اختر اسمًا فريدًا للقالب قبل استيراده.");
+        return;
+      }
+      const local = parsed.schemaVersion===5 ? await localizeImages(content) : content;
+      if (persistTemplates([...savedTemplates,{name,content:local,design:parsed.creativeDesign,identity:parsed.publishingIdentity}]))
+        setNotice("تم استيراد القالب دون استبدال المستند المفتوح.");
+    } catch { setNotice("تعذّر استيراد القالب. احتُفظ بالمستند والمكتبة."); }
+  };
   const [showPageSettings, setShowPageSettings] = useState(false);
   const [importing, setImporting] = useState(false);
   const [report, setReport] = useState<{ title: string; result: ImportResult } | null>(null);
@@ -229,20 +264,32 @@ export default function App() {
               <span>{item.content.find(node=>node.type==="educationBlock")?.content?.[0]?.content?.[0]?.text}</span>
             </button>)}
           {savedTemplates.filter(item=>item.name.includes(templateQuery)).map(item=>
-            <button type="button" key={item.name} onClick={()=>{
+            <div className="creative-template-entry" key={item.name}><button type="button" onClick={()=>{
               replaceDocument(protectEducationalDocument({...createDocument(item.name),content:structuredClone(item.content),creativeDesign:item.design,publishingIdentity:readDocumentIdentity(item.identity)}));
               setShowTemplates(false);
-            }}>{item.name}</button>)}
+            }}>{item.name}</button>
+              <button type="button" onClick={()=>void exportTemplate(item)}>تصدير القالب</button>
+              <button type="button" onClick={()=>{
+                const name = window.prompt("الاسم الجديد للقالب",item.name)?.trim();
+                if (!name || name===item.name || savedTemplates.some(other=>other.name===name)) return;
+                persistTemplates(savedTemplates.map(other=>other===item?{...item,name}:other));
+              }}>إعادة تسمية</button>
+              <button type="button" onClick={()=>{
+                if(window.confirm(`إزالة القالب «${item.name}» من المكتبة؟`))
+                  persistTemplates(savedTemplates.filter(other=>other!==item));
+              }}>إزالة القالب</button>
+            </div>)}
         </div>
+        <label>استيراد قالب <input type="file" accept=".mathdoc,application/json" onChange={event=>{
+          const input=event.currentTarget;
+          const file=input.files?.[0];
+          void importTemplate(file).finally(()=>{if(input.files?.[0]===file) input.value="";});
+        }}/></label>
         <button type="button" onClick={()=>{
           const name = window.prompt("اسم القالب",doc.title)?.trim();
           if (!name) return;
           const next = [...savedTemplates.filter(item=>item.name!==name),{name,content:doc.content,design:doc.creativeDesign,identity:doc.publishingIdentity}];
-          try {
-            localStorage.setItem("mathpress-creative-templates",JSON.stringify(next));
-            setSavedTemplates(next);
-            setNotice("تم حفظ القالب على هذا الجهاز.");
-          } catch {setNotice("تعذر حفظ القالب في التخزين المحلي.");}
+          if (persistTemplates(next)) setNotice("تم حفظ القالب على هذا الجهاز.");
         }}>حفظ المستند قالبًا</button>
       </section>}
 

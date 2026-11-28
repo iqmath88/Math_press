@@ -241,6 +241,12 @@ function createMathNode(name: "mathInline" | "mathBlock") {
           view.dispatch(closeHistory(view.state.tr.setSelection(selection).setMeta("addToHistory", false)).scrollIntoView());
           textHandoff.set(editor, mf);
           view.focus();
+          const handedOff = view.state.selection;
+          focusFrame = requestAnimationFrame(() => {
+            if (editor.isDestroyed || textHandoff.get(editor)!==mf || !handedOff.eq(view.state.selection)) return;
+            const focused = document.activeElement;
+            if (focused===document.body || focused===mf || controls.contains(focused)) view.focus();
+          });
           return true;
         };
         const listeners = new AbortController();

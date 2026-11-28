@@ -324,6 +324,10 @@ async function captureEducationalDesign(browser) {
     await page.getByRole("button",{name:"التصميم والصناديق",exact:true}).click();
     assert.equal(await root.locator(":scope > .creative-block").count(),11);
     await page.screenshot({path:join(output,"educational-design-editor.png"),fullPage:true});
+    await page.getByRole("tab",{name:"ملف",exact:true}).click();
+    const download = page.waitForEvent("download");
+    await page.getByRole("button",{name:"تصدير المستند كملف قابل للتحرير"}).click();
+    await (await download).saveAs(join(output,"educational-design.mathdoc"));
     await page.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
     await page.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A4/).waitFor();
     assert.equal(await page.locator(".print-sheet").count(),1);
@@ -331,6 +335,49 @@ async function captureEducationalDesign(browser) {
     await page.pdf({path:join(output,"educational-design.pdf"),preferCSSPageSize:true});
   } finally { await page.close(); }
 }
+async function captureMediaDesign(browser) {
+  const page = await browser.newPage({viewport:{width:1440,height:1200}});
+  try {
+    await page.goto(home);
+    await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
+    await page.locator(".document-title-input").fill("لوحة الصور والأشكال الهندسية");
+    const root=page.locator(".editor-source .tiptap");
+    await root.locator("p").first().click();
+    await page.keyboard.insertText("لوحة الصور والأشكال الهندسية");
+    await page.keyboard.press("Enter");
+    await page.getByRole("tab",{name:"إدراج",exact:true}).click();
+    const chooser=page.waitForEvent("filechooser");
+    await page.getByRole("button",{name:"إدراج صورة",exact:true}).click();
+    await (await chooser).setFiles(join(__dirname,"icon-512.png"));
+    await root.locator(".studio-image img[src]").waitFor();
+    await page.getByRole("button",{name:"التصميم والصناديق",exact:true}).click();
+    const image=root.locator(".studio-image img");
+    await image.click();
+    const imageProperties=page.getByRole("group",{name:"خصائص الصورة"});
+    await imageProperties.getByLabel("العرض (مم)").fill("44");
+    await imageProperties.getByLabel("التسمية",{exact:true}).fill("عينة صورة نقطية");
+    await page.getByLabel("الأشكال الهندسية").selectOption("triangle");
+    const shape=root.locator(".studio-shape");
+    await shape.click();
+    const shapeProperties=page.getByRole("group",{name:"خصائص الشكل"});
+    await shapeProperties.getByLabel("التسمية",{exact:true}).fill("مثلث قابل للتحرير");
+    await shapeProperties.getByLabel("قياس خط البُعد").fill("٦ سم");
+    await shapeProperties.getByLabel("أسماء النقاط، مفصولة بفاصلة").fill("A,B,C");
+    await page.getByRole("tab",{name:"ملف",exact:true}).click();
+    const download=page.waitForEvent("download");
+    await page.getByRole("button",{name:"تصدير المستند كملف قابل للتحرير"}).click();
+    await (await download).saveAs(join(output,"media-design.mathdoc"));
+    await page.getByRole("button",{name:"التصميم والصناديق",exact:true}).click();
+    await page.screenshot({path:join(output,"media-design-editor.png")});
+    await page.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
+    await page.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A4/).waitFor();
+    assert.equal(await page.locator(".print-sheet").count(),1);
+    await page.locator(".print-sheet .studio-image img[src]").waitFor();
+    await page.locator(".print-sheet .studio-shape").getByText("٦ سم",{exact:true}).waitFor();
+    await page.pdf({path:join(output,"media-design.pdf"),preferCSSPageSize:true});
+  } finally {await page.close();}
+}
+
 async function captureTemplates(browser) {
   for (const [title, fileName] of [
     [/القطوع المخروطية/,"conics"], [/امتحان رياضيات/,"exam"],
@@ -372,7 +419,7 @@ async function captureTemplates(browser) {
     const stylePage = await browser.newPage();
     try { await verifyStyleLibrary(stylePage, !!output && engine===chromium); }
     finally { await stylePage.close(); }
-    if (output && engine===chromium) { await captureTemplates(browser); await captureEducationalDesign(browser); }
+    if (output && engine===chromium) { await captureTemplates(browser); await captureEducationalDesign(browser); await captureMediaDesign(browser); }
     console.log(engine.name(),"creative lesson editor, IndexedDB and print verified on desktop and iPad emulation");
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1});

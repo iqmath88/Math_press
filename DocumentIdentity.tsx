@@ -23,6 +23,24 @@ export default function DocumentIdentity({current,apply,notice}: {
   const [library,setLibrary] = useState(savedIdentities);
   const update = (patch: Partial<PublishingIdentity>) => setDraft(previous=>({...previous,...patch}));
   const candidate = readDocumentIdentity(draft);
+  const store = (next: PublishingIdentity[]) => {
+    try {localStorage.setItem(key,JSON.stringify(next));setLibrary(next);}
+    catch {notice("تعذّر حفظ الهوية على هذا الجهاز.");}
+  };
+  const importIdentity = async (file?: File) => {
+    if (!file) return;
+    try {
+      if (file.size>16_384) throw new Error();
+      const identity = readDocumentIdentity(JSON.parse(await file.text()));
+      if (!identity) throw new Error();
+      if (savedIdentities().some(item=>item.name===identity.name)) {
+        notice("توجد هوية بهذا الاسم. اختر اسمًا مختلفًا في ملف الهوية.");
+        return;
+      }
+      store([...savedIdentities(),identity]);
+      setDraft(identity);
+    } catch { notice("تعذّر قراءة ملف الهوية."); }
+  };
   return <details className="publishing-identity">
     <summary>هوية مخصصة للملزمة</summary>
     <fieldset>
@@ -38,8 +56,7 @@ export default function DocumentIdentity({current,apply,notice}: {
       <button type="button" disabled={!candidate} onClick={()=>{
         if (!candidate) return;
         const next=[...savedIdentities().filter(item=>item.name!==candidate.name),candidate];
-        try {localStorage.setItem(key,JSON.stringify(next));setLibrary(next);}
-        catch {notice("تعذّر حفظ الهوية على هذا الجهاز.");}
+        store(next);
       }}>حفظ الهوية</button>
       <label>الهويات المحفوظة <select value="" onChange={e=>{
         const chosen=library.find(item=>item.name===e.target.value);
@@ -48,6 +65,21 @@ export default function DocumentIdentity({current,apply,notice}: {
         <option value="">اختر هوية</option>
         {library.map(item=><option key={item.name}>{item.name}</option>)}
       </select></label>
+      <button type="button" disabled={!candidate} onClick={()=>{
+        if(!candidate) return;
+        const url=URL.createObjectURL(new Blob([JSON.stringify(candidate,null,2)],{type:"application/json"}));
+        const anchor=document.createElement("a");
+        anchor.href=url; anchor.download="mathpress-identity.json"; anchor.click();
+        window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+      }}>تصدير الهوية</button>
+      <label>استيراد هوية <input type="file" accept=".json,application/json" onChange={event=>{
+        const input=event.currentTarget;
+        const file=input.files?.[0];
+        void importIdentity(file).finally(()=>{if(input.files?.[0]===file) input.value="";});
+      }}/></label>
+      <button type="button" disabled={!library.some(item=>item.name===draft.name)} onClick={()=>{
+        if(window.confirm(`إزالة «${draft.name}» من المكتبة؟`)) store(savedIdentities().filter(item=>item.name!==draft.name));
+      }}>إزالة الهوية من المكتبة</button>
     </fieldset>
   </details>;
 }

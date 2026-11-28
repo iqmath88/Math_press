@@ -1416,3 +1416,4 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .creative-block:is([data-education-block="example"],[data-education-block="ministerial-question"]):not([data-block-frame]) > .creative-block-label { padding-block:3px; }
 .creative-block:is([data-education-block="example"],[data-education-block="ministerial-question"]):not([data-block-frame]) > .creative-block-content { padding-block:4px; }
 .creative-block[data-education-block="proof"]:not([data-block-frame]) > .creative-block-content > p:last-child::after { content:"□"; margin-inline-start:.5em; }
+.creative-template-entry { display:grid; gap:4px; align-content:start; }

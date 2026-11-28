@@ -46,3 +46,9 @@ The image library uses a separate database so the document database does not req
 ## Reusable educational boxes
 
 Open **التصميم والصناديق → مكتبة أنماط الصناديق** to preview all 23 built-in box types. Select a box in the document to save its type, colors, padding, corner radius, and title visibility as a reusable local style. Applying a style keeps the target's title and content. Removing a style from the library leaves existing boxes intact. The library is local to the browser and can be exported and imported as JSON. Imports add separate entries. Applied attributes travel with each MathDoc.
+
+### Moving templates and identities
+
+Open the template gallery to export, rename, or remove a personal template. Export creates a portable MathDoc file. Import into the gallery adds the template without replacing the open document. In the custom identity panel, export and import a JSON identity independently of the document.
+
+The asset store writes original image bytes using ArrayBuffer and can still read earlier Blob records. MathDoc backups embed originals. The PWA upgrade keeps the document database separate from the Service Worker cache.
