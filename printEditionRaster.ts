@@ -1,6 +1,56 @@
 import html2canvas from "html2canvas";
 import { PDFDocument } from "pdf-lib";
 import { convertLatexToMarkup } from "mathlive";
+import { canvasPixelLimit, pagePixels, PRINT_RESOLUTIONS } from "./printEditionQuality";
+
+function prepareImage(source: HTMLImageElement, clone: HTMLImageElement, scale: number) {
+  const css = getComputedStyle(source);
+  const { clipPath, rotate } = css;
+  if (rotate && rotate !== "none" && rotate !== "0deg") {
+    if (!/^[-+]?\d+(?:\.\d+)?deg$/.test(rotate)) throw new Error("تعذر تمثيل دوران الصورة.");
+    clone.style.rotate = "none";
+    clone.style.transform = `rotate(${rotate})${css.transform === "none" ? "" : " " + css.transform}`;
+  }
+  if (clipPath === "none") return;
+  // StudioImage writes a four-sided percentage inset on the image border box.
+  const edges = clipPath.match(/^inset\(([^)]+)\)$/)?.[1].trim().split(/\s+/);
+  if (!edges || edges.length > 4 || edges.some(edge => !/^(?:\d+(?:\.\d+)?%|0(?:px)?)$/.test(edge)))
+    throw new Error("تعذر تمثيل نمط قص الصورة.");
+  const [top, right = top, bottom = top, left = right] = edges.map(edge => parseFloat(edge) / 100);
+  const width = source.offsetWidth;
+  const height = source.offsetHeight;
+  const canvas = source.ownerDocument.createElement("canvas");
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  try {
+    const context = canvas.getContext("2d");
+    if (!context || !canvas.width || !canvas.height) throw new Error("تعذر تجهيز الصورة المقصوصة.");
+    context.scale(canvas.width / width, canvas.height / height);
+    context.beginPath();
+    context.rect(left * width, top * height, (1 - left - right) * width, (1 - top - bottom) * height);
+    context.clip();
+    const borders = [css.borderTopWidth, css.borderRightWidth, css.borderBottomWidth, css.borderLeftWidth].map(parseFloat);
+    const [bt, br, bb, bl] = borders;
+    context.fillStyle = css.borderTopColor;
+    context.fillRect(0, 0, width, bt);
+    context.fillStyle = css.borderRightColor;
+    context.fillRect(width - br, 0, br, height);
+    context.fillStyle = css.borderBottomColor;
+    context.fillRect(0, height - bb, width, bb);
+    context.fillStyle = css.borderLeftColor;
+    context.fillRect(0, 0, bl, height);
+    context.drawImage(source, bl, bt, width - bl - br, height - bt - bb);
+    clone.removeAttribute("srcset");
+    clone.src = canvas.toDataURL("image/png");
+    clone.style.clipPath = "none";
+    clone.style.border = "0";
+    clone.style.width = width + "px";
+    clone.style.height = height + "px";
+    clone.style.maxWidth = "none";
+  } finally {
+    canvas.width = canvas.height = 0;
+  }
+}
 
 type ExportOptions = {
   widthMm: number;
@@ -15,15 +65,17 @@ type ExportOptions = {
 
 export async function renderPrintEdition(paper: HTMLElement, options: ExportOptions) {
   const { widthMm, heightMm, first, last, dpi, grayscale, signal, onProgress } = options;
+  const pixels = pagePixels(widthMm, heightMm, dpi);
+  if (!PRINT_RESOLUTIONS.includes(dpi) || pixels.width * pixels.height > canvasPixelLimit(navigator))
+    throw new Error("الدقة المختارة تتجاوز ميزانية الصفحة لهذا الجهاز. اختر دقة أقل.");
+  let compressedBytes = 0;
   const sheets = Array.from(paper.querySelectorAll<HTMLElement>(".print-sheet")).slice(first - 1, last);
   if (sheets.length !== last - first + 1) throw new Error("تغيّر عدد صفحات المعاينة.");
   for (const sheet of sheets) {
     if (sheet.matches(".print-sheet-overflow")) throw new Error("توجد صفحة تتجاوز المساحة الطباعية.");
     for (const image of sheet.querySelectorAll("img")) {
       if (!image.complete || !image.naturalWidth) throw new Error("تعذر تحميل صورة من المستند.");
-      const { clipPath, rotate } = getComputedStyle(image);
-      if (clipPath !== "none" || (rotate && rotate !== "none" && rotate !== "0deg"))
-        throw new Error("التصدير النقطي التجريبي لا يدعم قص الصور أو تدويرها. استخدم طباعة المتصفح لهذا المستند.");
+
     }
   }
   const document = await PDFDocument.create();
@@ -52,6 +104,8 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
     const pages = owner.createElement("div");
     pages.className = "mp-editor print-pages";
     const clone = sheet.cloneNode(true) as HTMLElement;
+    const sources = [...sheet.querySelectorAll("img")];
+    clone.querySelectorAll("img").forEach((image, i) => prepareImage(sources[i], image, dpi / 96));
     for (const equation of clone.querySelectorAll<HTMLElement>(".math-node[data-latex]")) {
       const latex = equation.dataset.latex ?? "";
       const block = equation.classList.contains("math-block");
@@ -66,10 +120,14 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
     pages.append(clone);
     wrapper.append(pages);
     owner.body.append(wrapper);
-    let canvas: HTMLCanvasElement;
+    const canvas = owner.createElement("canvas");
+    canvas.width = pixels.width;
+    canvas.height = pixels.height;
     try {
       await owner.fonts.ready;
-      canvas = await html2canvas(clone, {
+      await Promise.all([...clone.querySelectorAll("img")].map(image => image.decode()));
+      await html2canvas(clone, {
+        canvas,
         scale: dpi / 96,
         width: widthMm * 96 / 25.4,
         height: heightMm * 96 / 25.4,
@@ -81,6 +139,9 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
           await cloned.fonts.ready;
         },
       });
+    } catch (error) {
+      canvas.width = canvas.height = 0;
+      throw error;
     } finally {
       wrapper.remove();
     }
@@ -99,12 +160,16 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
       const payload = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر ترميز صفحة PDF.")), "image/jpeg", .95);
       });
+      compressedBytes += payload.size;
+      if (compressedBytes > 96 * 1024 * 1024)
+        throw new Error("تجاوزت الصفحات ميزانية PDF. صدّر نطاقاً أقصر أو اختر دقة أقل.");
       const image = await document.embedJpg(await payload.arrayBuffer());
       document.addPage([widthPt, heightPt]).drawImage(image, { x: 0, y: 0, width: widthPt, height: heightPt });
     } finally {
       canvas.width = canvas.height = 0;
     }
     onProgress(index + 1);
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
   }
   signal.throwIfAborted();
   return new Blob([new Uint8Array(await document.save())], { type: "application/pdf" });

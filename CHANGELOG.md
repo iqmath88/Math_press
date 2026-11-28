@@ -143,3 +143,9 @@
 - Added an on-demand raster export dialog in print preview. It creates a PDF
   Blob from paginated MathDoc, with range, resolution, download and sharing.
 - Loaded static MathLive styles with the app for offline preview rendering.
+
+## 0.8.0-alpha.9 — print resolution checkpoint
+
+- Defaulted independent PDF to 300 DPI and exposed five physical resolutions.
+- Added cropped and rotated image rendering and explicit memory safeguards.
+- Brought range, ink mode, page furniture and watermark settings into export.

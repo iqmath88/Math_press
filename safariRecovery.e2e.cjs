@@ -35,6 +35,10 @@ async function run() {
         ...(i ? [{ type: "pageBreak" }] : []),
         { type: "paragraph", content: [{ type: "text", text: `PAGE-${i + 1} محتوى تعليمي` }] },
       ]).flat();
+      if (n === 1) content.push({ type: "image", attrs: {
+        src: "data:image/png;base64," + (await readFile(join(__dirname, "icon-512.png"))).toString("base64"),
+        widthMm: 48, rotation: 25, cropTop: 18, cropLeft: 25, opacity: .85, align: "center",
+      } });
       const data = { ...reference, schemaVersion: 6, id: randomUUID(), title: `مرجع القطوع ${n}`, footerText: "FOOTERTEST",
         showPageNumbers: true, watermark: { kind: "text", value: "معاينة", opacity: .12, rotation: -35, size: 52, position: "center", pages: "all", repeat: false, color: "#193c6b" }, content: { type: "doc", content } };
       if (n === 4 && engine === chromium)
@@ -73,8 +77,31 @@ async function run() {
         const info = execFileSync("pdfinfo", [file], { encoding: "utf8" });
         assert.match(info, /^Pages:\s+4$/m);
         assert.match(info, /Page size:\s+595\.\d+ x 841\.\d+/);
+        const embedded = execFileSync("pdfimages", ["-list", file], { encoding: "utf8" });
+        assert.equal((embedded.match(/\bimage\s+2480\s+3508\b/g) ?? []).length, 4);
         await exportDialog.getByRole("button", { name: "إغلاق" }).click();
         if (engine === chromium) await page.context().setOffline(false);
+      }
+      if (n === 1 && engine === chromium) {
+        await writeFile(join(output, "cropped-rotated-reference.mathdoc"), JSON.stringify(data, null, 2));
+        await preview.getByRole("button", { name: "تصدير PDF تجريبي" }).click();
+        const dialog = page.getByRole("dialog", { name: "تصدير PDF نقطي تجريبي" });
+        for (const [dpi, w, h] of [[150, 1240, 1754], [216, 1786, 2526], [300, 2480, 3508], [450, 3720, 5262], [600, 4961, 7016]]) {
+          await dialog.getByLabel("الدقة").selectOption(String(dpi));
+          const start = Date.now();
+          await dialog.getByRole("button", { name: "إنشاء PDF" }).click();
+          const download = dialog.getByRole("link", { name: "تنزيل PDF" });
+          await download.or(dialog.getByRole("alert")).first().waitFor({ timeout: 60_000 });
+          assert.deepEqual(await dialog.getByRole("alert").allTextContents(), []);
+          const save = page.waitForEvent("download");
+          await download.click();
+          const file = join(output, `cropped-rotated-${dpi}.pdf`);
+          await (await save).saveAs(file);
+          const embedded = execFileSync("pdfimages", ["-list", file], { encoding: "utf8" });
+          assert.match(embedded, new RegExp(`image\\s+${w}\\s+${h}\\b`));
+          console.log("cropped and rotated", dpi, w, h, Date.now() - start, "ms", (await readFile(file)).length, "bytes");
+        }
+        await dialog.getByRole("button", { name: "إغلاق" }).click();
       }
       await page.emulateMedia({ media: "print" });
       const physicalGeometry = await sheets.evaluateAll(nodes => nodes.every(sheet => {

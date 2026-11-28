@@ -43,6 +43,7 @@ type Props = {
   onChange: (options: PrintOptions) => void;
   watermark?: Watermark;
   paperSize?: string;
+  documentName: string;
   paperGeometry: { width: number; height: number; top: number; right: number; bottom: number; left: number };
   onClose: () => void;
   onPrint: () => void;
@@ -50,7 +51,7 @@ type Props = {
   selectedOffset?: number;
 };
 
-export default function PrintPreview({ paper, editor, options, onChange, watermark, paperSize = "A4", paperGeometry, onClose, onPrint, selectedBlock, selectedOffset }: Props) {
+export default function PrintPreview({ paper, editor, options, onChange, watermark, paperSize = "A4", documentName, paperGeometry, onClose, onPrint, selectedBlock, selectedOffset }: Props) {
   const { width, height, top, right, bottom, left } = paperGeometry;
   const usableHeightMm = height - top - bottom;
   const [exportOpen, setExportOpen] = useState(false);
@@ -163,8 +164,11 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
         </dl>
       </details>
       {exportOpen && paper.current && <PrintEditionDialog paper={paper.current} pages={pages}
-        widthMm={width} heightMm={height} paperSize={paperSize} grayscale={!!options.grayscale}
-        blocked={issues.length > 0} onClose={() => setExportOpen(false)} />}
+        widthMm={width} heightMm={height} paperSize={paperSize} documentName={documentName}
+        options={options} onOptions={onChange} hasWatermark={!!watermark}
+        currentPage={Math.max(1, [...paper.current.querySelectorAll(".print-sheet")].findIndex(sheet =>
+          sheet.querySelector("[data-studio-print-anchor]")) + 1)}
+        blocked={layoutPending || issues.length > 0} onClose={() => setExportOpen(false)} />}
       {issues.length > 0 && <ul className="print-issues" aria-live="polite">{issues.map(issue => <li key={issue}>{issue}</li>)}</ul>}
     </section>
   );

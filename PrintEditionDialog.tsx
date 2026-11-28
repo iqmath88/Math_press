@@ -1,3 +1,5 @@
+import { DEFAULT_PRINT_DPI, PRINT_RESOLUTIONS, canvasPixelLimit, pagePixels } from "./printEditionQuality";
+import type { PrintOptions } from "./PrintPreview";
 import { useEffect, useRef, useState } from "react";
 
 type Props = {
@@ -6,23 +8,31 @@ type Props = {
   widthMm: number;
   heightMm: number;
   paperSize: string;
-  grayscale: boolean;
+  options: PrintOptions;
+  onOptions: (options: PrintOptions) => void;
+  documentName: string;
+  currentPage: number;
+  hasWatermark: boolean;
   blocked: boolean;
   onClose: () => void;
 };
 
-export default function PrintEditionDialog({ paper, pages, widthMm, heightMm, paperSize, grayscale, blocked, onClose }: Props) {
+export default function PrintEditionDialog({ paper, pages, widthMm, heightMm, paperSize, options, onOptions, documentName, currentPage, hasWatermark, blocked, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const job = useRef<AbortController>();
   const [first, setFirst] = useState(1);
   const [last, setLast] = useState(pages);
-  const [dpi, setDpi] = useState(144);
-  const [filename, setFilename] = useState("MathPress");
+  const [dpi, setDpi] = useState(DEFAULT_PRINT_DPI);
+  const [filename, setFilename] = useState(documentName || "MathPress");
   const [progress, setProgress] = useState<number>();
   const [result, setResult] = useState<{ file: File; url: string; count: number }>();
   const [error, setError] = useState("");
   const busy = progress !== undefined;
   const valid = Number.isInteger(first) && Number.isInteger(last) && first >= 1 && last >= first && last <= pages;
+
+  const pixels = pagePixels(widthMm, heightMm, dpi);
+  const overBudget = pixels.width * pixels.height > canvasPixelLimit(navigator);
+  const mode = options.economical ? "economy" : options.grayscale ? "gray" : "color";
 
   useEffect(() => {
     dialog.current?.showModal();
@@ -31,7 +41,7 @@ export default function PrintEditionDialog({ paper, pages, widthMm, heightMm, pa
   useEffect(() => () => { if (result) URL.revokeObjectURL(result.url); }, [result]);
 
   async function generate() {
-    if (!valid || blocked || job.current) return;
+    if (!valid || blocked || overBudget || job.current) return;
     const controller = new AbortController();
     job.current = controller;
     setProgress(0);
@@ -40,7 +50,7 @@ export default function PrintEditionDialog({ paper, pages, widthMm, heightMm, pa
     try {
       const { renderPrintEdition } = await import("./printEditionRaster");
       const blob = await renderPrintEdition(paper, {
-        widthMm, heightMm, first, last, dpi, grayscale, signal: controller.signal, onProgress: setProgress,
+        widthMm, heightMm, first, last, dpi, grayscale: !!options.grayscale, signal: controller.signal, onProgress: setProgress,
       });
       controller.signal.throwIfAborted();
       const name = filename.trim().replace(/[\\/:*?"<>|]/g, "-").replace(/\.pdf$/i, "") || "MathPress";
@@ -58,20 +68,37 @@ export default function PrintEditionDialog({ paper, pages, widthMm, heightMm, pa
     aria-labelledby="print-edition-title" onClose={onClose}>
     <h2 id="print-edition-title">تصدير PDF نقطي تجريبي</h2>
     <p>{pages} صفحة {paperSize} · {widthMm > heightMm ? "أفقي" : "عمودي"} · {widthMm} × {heightMm} مم</p>
-    <p>تتحول الصفحات إلى صور داخل PDF. البحث ونسخ النص غير متاحين. قد تختلف بعض التأثيرات البصرية. تُضبط الألوان والرأس والتذييل والعلامة المائية في معاينة الطباعة.</p>
+    <p>تتحول الصفحات إلى صور داخل PDF. البحث ونسخ النص غير متاحين. قد تختلف بعض التأثيرات البصرية.</p>
     {blocked && <p role="alert">عالج تحذيرات المعاينة قبل التصدير.</p>}
     <div className="grow-row">
       <label>اسم الملف <input value={filename} onChange={e => setFilename(e.target.value)} disabled={busy} /></label>
       <label>من <input type="number" min={1} max={pages} value={first} onChange={e => setFirst(+e.target.value)} disabled={busy} /></label>
       <label>إلى <input type="number" min={first} max={pages} value={last} onChange={e => setLast(+e.target.value)} disabled={busy} /></label>
       <label>الدقة <select value={dpi} onChange={e => setDpi(+e.target.value)} disabled={busy}>
-        <option value={144}>144 DPI</option><option value={216}>216 DPI</option>
+        {PRINT_RESOLUTIONS.map(value => <option key={value} value={value}>{value} DPI</option>)}
       </select></label>
     </div>
+    <div className="grow-row">
+      <button type="button" disabled={busy} onClick={() => { setFirst(1); setLast(pages); }}>كل الصفحات</button>
+      <button type="button" disabled={busy} onClick={() => { setFirst(currentPage); setLast(currentPage); }}>الصفحة الحالية</button>
+      <label>مظهر <select value={mode} disabled={busy} onChange={e => {
+        onOptions({ ...options, economical: e.target.value === "economy", grayscale: e.target.value === "gray" });
+      }}><option value="color">ملون</option><option value="gray">رمادي</option><option value="economy">حبر اقتصادي</option></select></label>
+      <label><input type="checkbox" checked={options.furniture !== false} disabled={busy}
+        onChange={e => onOptions({ ...options, furniture: e.target.checked })} /> الرأس والتذييل</label>
+      <label><input type="checkbox" checked={options.numbers} disabled={busy}
+        onChange={e => onOptions({ ...options, numbers: e.target.checked })} /> ترقيم الصفحات</label>
+      {hasWatermark && <label><input type="checkbox" checked={options.watermark !== false && !options.economical}
+        disabled={busy || options.economical} onChange={e => onOptions({ ...options, watermark: e.target.checked })} /> العلامة المائية</label>}
+    </div>
+    <p><bdi>{pixels.width} × {pixels.height}</bdi> بكسل لكل صفحة
+      {" · "}{(pixels.width * pixels.height * 4 / 1048576).toFixed(1)} ميبيبايت لمخزن الصفحة الخام</p>
+    {result && <p>حجم الملف الناتج: {(result.file.size / 1024).toFixed(0)} كيلوبايت</p>}
+    {overBudget && <p role="alert">الدقة المختارة تتجاوز ميزانية الصفحة لهذا الجهاز. اختر دقة أقل.</p>}
     {busy && <progress max={last - first + 1} value={progress} aria-label="تقدم التصدير" />}
     {error && <p role="alert">{error}</p>}
     <div className="grow-row">
-      <button type="button" onClick={() => void generate()} disabled={busy || !valid || blocked}>إنشاء PDF</button>
+      <button type="button" onClick={() => void generate()} disabled={busy || !valid || blocked || overBudget}>إنشاء PDF</button>
       {busy && <button type="button" onClick={() => job.current?.abort()}>إلغاء التصدير</button>}
       {result && <>
         <a href={result.url} download={result.file.name}>تنزيل PDF</a>

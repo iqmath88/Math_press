@@ -457,7 +457,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
     <>
       <style>{styleSheet}</style>
       {printOptions && <PrintPreview paper={paperRef} editor={editor} options={printOptions}
-        onChange={setPrintOptions} paperSize={doc.page.size} paperGeometry={{ width: paperWidth, height: paperHeight, ...m }}
+        onChange={setPrintOptions} documentName={doc.title} paperSize={doc.page.size} paperGeometry={{ width: paperWidth, height: paperHeight, ...m }}
         watermark={doc.watermark}
         selectedBlock={printOrigin.current?.block} selectedOffset={printOrigin.current?.offset}
         onClose={() => {

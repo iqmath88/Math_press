@@ -135,3 +135,12 @@ MathDoc pagination, loads its renderer only on demand, and produces a PDF
 Blob without the browser print API. The independent vector HarfBuzz prototype
 remains isolated. Continue with vector integration, complete CSS and element
 coverage, and native iPad testing before approval. See PRINT-ENGINE.md.
+
+### Alpha.9 DPI and transformed image checkpoint
+
+The independent exporter defaults to 300 DPI and renders all five requested
+physical resolutions on desktop. The cropped/rotated reference and conics are
+part of the browser regression. Physical dimensions are checked using PDF
+image metadata. On devices over the per-page allocation budget the dialog
+blocks explicitly. Continue with long real documents and peak memory,
+real iPad testing, and the remaining Glass Studio, boxes and performance work.

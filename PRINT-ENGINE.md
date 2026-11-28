@@ -177,3 +177,29 @@ loaded with the app; the PDF and canvas modules remain on demand. Immutable
 hashed assets use a cache match without Vary to handle the different Origin
 headers used by precaching and lazy requests. The canvas renderer snapshots
 same-origin sheet styles to avoid losing styling in the offline clone.
+
+## Alpha.9 physical DPI checkpoint
+
+The existing independent raster exporter renders a fresh page buffer with integer
+dimensions derived from sheet millimetres and the chosen DPI. The default is
+300 DPI. Embedded A4 image sizes for 150, 216, 300, 450 and 600 were verified
+from the PDFs using pdfimages: 1240×1754, 1786×2526, 2480×3508, 3720×5262 and
+4961×7016. Cropped image insets are painted into a transparent target-DPI image
+buffer; the clone retains its physical box, applies rotation through a CSS
+transform, and preserves opacity. Source images and MathDoc are untouched.
+
+The UI shows raw per-sheet buffer size, and actual file size after export.
+Apple mobile/tablet-like clients use a conservative 16 million pixel budget;
+other clients use 40 million. Larger sheets/resolutions are explicitly blocked
+with no resolution downgrade. Each canvas is released between pages, and the
+output aborts above a cumulative 96 MiB of compressed raster payload. Those
+limits are safeguards, not measurements of browser or iPad peak RSS. The
+renderer yields between sheets. The independent viewer, Files, sharing, and
+memory behavior still require device validation. Print Edition remains raster.
+
+On Linux Chromium, the cropped/rotated one-page A4 case took 407 / 570 / 679 /
+1038 / 1098 ms at 150 / 216 / 300 / 450 / 600 DPI, respectively. Those are
+single elapsed samples (including automation and download), not P95 values.
+The 300-DPI conics case used all four 2480×3508 image pages, including the first
+lazy render offline. Artwork from the real iPad described in the brief was
+not separately attached to this turn; it was not used as a pixel baseline.
