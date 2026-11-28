@@ -52,6 +52,7 @@ export async function storeImage(file: Blob) {
       image.src = url;
     });
   } finally { URL.revokeObjectURL(url); }
+  const record = {type, bytes: await original.arrayBuffer()};
   const id = "mathpress-asset:" + crypto.randomUUID();
   const db = await openAssets();
   try {
@@ -59,7 +60,7 @@ export async function storeImage(file: Blob) {
       const tx = db.transaction("images","readwrite");
       tx.oncomplete = () => resolve();
       tx.onabort = () => reject(tx.error);
-      tx.objectStore("images").put(original,id);
+      tx.objectStore("images").put(record,id);
     });
   } finally { db.close(); }
   return id;
@@ -70,7 +71,12 @@ export async function readImage(id: string) {
   try {
     return await new Promise<Blob>((resolve,reject) => {
       const req = db.transaction("images").objectStore("images").get(id);
-      req.onsuccess = () => req.result instanceof Blob ? resolve(req.result) : reject(new Error("أصل الصورة غير موجود في التخزين المحلي."));
+      req.onsuccess = () => {
+        const value = req.result;
+        if (value instanceof Blob) resolve(value);
+        else if (value?.bytes instanceof ArrayBuffer && types.has(value.type)) resolve(new Blob([value.bytes],{type:value.type}));
+        else reject(new Error("أصل الصورة غير موجود في التخزين المحلي."));
+      };
       req.onerror = () => reject(req.error);
     });
   } finally { db.close(); }
