@@ -210,3 +210,22 @@ documents. The 300-DPI Chromium run measured 3.87 s end to end and
 before export and 54,517,248 bytes maximum at 200-ms sampling. These do not
 include Canvas process memory or establish iPad headroom. Cancelling a
 second export produced no download and kept all ten sheets.
+
+Extended Chromium/Linux stress runs used fresh sessions and repeated the mixed
+ten-page workbook as ten-page chapters separated by a manual break. All
+outputs were checked for the expected physical page count and 2480×3508
+embedded page images at 300 DPI.
+
+| Pages | Export elapsed (after preview) | File bytes | Sampled JS heap before / peak |
+| ---: | ---: | ---: | ---: |
+| 50 | 18.58 s | 14,091,353 | 23.64 / 77.15 MB |
+| 100 | 43.14 s | 28,235,864 | 42.92 / 103.00 MB |
+| 200 | 145.68 s | 56,537,333 | 59.42 / 143.14 MB |
+
+The first 200-page attempt exceeded a 30-second preview wait. It completed
+on retry with a 120-second preview allowance. One Linux renderer RSS
+observation during that longer run was roughly 1.5 GB. A sampled JS heap
+series does not measure canvas or whole-process peak memory. Do not
+interpret these single desktop runs as mobile acceptance or equation
+performance comparisons. Use smaller export ranges until the large
+iPad workload is independently verified.

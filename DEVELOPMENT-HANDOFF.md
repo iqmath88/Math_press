@@ -151,3 +151,10 @@ downloads and inspects the integrated PDF and checks cancelled export
 leaves all sheets in place. The sampled JavaScript heap and output
 metrics are published with print-compatibility evidence. Next measure
 50/100/200-page independent raster workloads and true device memory.
+
+Extended 50/100/200-page samples completed on Chromium Linux at 300 DPI
+using the ten-page workbook as repeated chapters. The 200-page rerun
+required a longer preview wait and took 145.68 seconds to export.
+PRINT-ENGINE.md records timing, files and sampled memory separately from
+iPad/real Safari acceptance. The 23-box redesign and editor performance
+comparison remain pending.
