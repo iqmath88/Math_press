@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from "react";
-import { blockLabel, blockTypes } from "./creativeDesign";
+import { blockLabel, blockTypes, blockFonts, blockFrames } from "./creativeDesign";
 
 const storageKey = "mathpress:block-styles:1";
 type Style = { id: string; name: string; attrs: Record<string, unknown> };
@@ -8,6 +8,9 @@ function styleAttributes(attrs: Record<string, unknown>) {
   const color = (value: unknown) => typeof value === "string" && /^#[\da-f]{6}$/i.test(value) ? value : null;
   const length = (value: unknown, max: number) => typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max ? value : null;
   return {
+    frame: blockFrames.find(frame=>frame===attrs.frame) ?? null,
+    font: blockFonts.find(font=>font===attrs.font) ?? null,
+    size: typeof attrs.size==="number" && attrs.size>=10 ? length(attrs.size,30) : null,
     kind: blockTypes.some(([kind]) => kind === attrs.kind) ? attrs.kind : "custom",
     accent: color(attrs.accent), background: color(attrs.background),
     padding: length(attrs.padding, 48), radius: length(attrs.radius, 30), hideTitle: attrs.hideTitle === true
@@ -94,6 +97,7 @@ export default function BlockStyleLibrary({ selected, insert, insertSolvedExampl
           <span className="creative-block" data-education-block={String(style.attrs.kind)}
             data-block-background={style.attrs.background ?? undefined}
             data-block-padding={style.attrs.padding ?? undefined}
+            data-block-frame={String(style.attrs.frame ?? "")}
             style={{
               "--block-accent": style.attrs.accent ?? undefined,
               "--block-background": style.attrs.background ?? undefined,

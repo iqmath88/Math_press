@@ -128,14 +128,17 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
 }
 
 
-/** Older editors reject version 4 before loading content they cannot preserve. */
+export const publishingBoxFields = ["frame","font","size","exampleNumber"] as const;
+
+/** Protect additions from readers that cannot preserve their attributes. */
 export function protectEducationalDocument(doc: MathPressDocument): MathPressDocument {
   if (doc.schemaVersion === 5) return doc;
   if (doc.page.size !== "A4") return {...doc,schemaVersion:5};
   const nodes = [doc.content];
   while(nodes.length) {
     const node = nodes.pop()!;
-    if (node.type === "studioShape" || node.type === "image" &&
+    if (node.type === "studioShape" ||
+      (node.type === "educationBlock" && publishingBoxFields.some(key=>node.attrs?.[key]!=null)) || node.type === "image" &&
       (String(node.attrs?.src ?? "").startsWith("mathpress-asset:") ||
         ["widthMm","rotation","opacity","border","align","crop","caption"].some(key=>node.attrs?.[key]!=null)))
       return {...doc,schemaVersion:5};

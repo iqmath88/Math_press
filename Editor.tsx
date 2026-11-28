@@ -6,7 +6,7 @@ import type { JSONContent } from "@tiptap/core";
 import type { MathfieldElement } from "mathlive";
 import { paperDimensions, type MathPressDocument } from "./types";
 import StudioMediaControls from "./StudioMediaControls";
-import { blockTypes, designVariables, designs, educationBlock, solvedExample } from "./creativeDesign";
+import { blockTypes, blockFonts, blockFrames, designVariables, designs, educationBlock, solvedExample } from "./creativeDesign";
 import { createEditorSnapshot } from "./editorSnapshot";
 import { SmartMathInput } from "./SmartMathInput";
 import { buildExtensions } from "./extensions";
@@ -463,7 +463,14 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
             {designs.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
           </select></label>
           <BlockStyleLibrary selected={selected?.node.attrs} apply={editBlock} notice={onNotice}
-            insertSolvedExample={() => editor.chain().focus().insertContent(solvedExample()).run()}
+            insertSolvedExample={() => {
+              let number=0;
+              editor.state.doc.descendants(node=>{
+                if (node.type.name==="educationBlock" && node.attrs.kind==="example" && /^[0-9]+$/.test(node.attrs.exampleNumber ?? ""))
+                  number=Math.max(number,Number(node.attrs.exampleNumber));
+              });
+              editor.chain().focus().insertContent(solvedExample(number+1)).run();
+            }}
             insert={(kind, attrs) => {
               const block = educationBlock(kind);
               editor.chain().focus().insertContent({ ...block, attrs: { ...block.attrs, ...attrs } }).run();
@@ -474,6 +481,18 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
               {blockTypes.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
             </select></label>
             <label>العنوان <input value={selected.node.attrs.title} onChange={event=>editBlock({title:event.target.value})}/></label>
+            <label>بنية الصندوق <select value={selected.node.attrs.frame ?? ""} onChange={event=>editBlock({frame:event.target.value || null})}>
+              <option value="">حسب النوع</option>
+              {blockFrames.map((frame,index)=><option key={frame} value={frame}>{["رأس ملوّن","شريط جانبي","عنوان عائم","إطار مزدوج","خطوات","مقارنة","نتيجة","تنبيه"][index]}</option>)}
+            </select></label>
+            <label>خط الصندوق <select value={selected.node.attrs.font ?? ""} onChange={event=>editBlock({font:event.target.value || null})}>
+              <option value="">خط المستند</option>
+              {blockFonts.map(font=><option key={font}>{font}</option>)}
+            </select></label>
+            <label>حجم خط الصندوق <input type="number" min={10} max={30} value={selected.node.attrs.size ?? ""}
+              onChange={event=>{const size=event.target.valueAsNumber;editBlock({size:Number.isInteger(size)?Math.max(10,Math.min(30,size)):null});}} /></label>
+            {selected.node.attrs.kind==="example" && <label>رقم المثال <input inputMode="numeric" maxLength={8}
+              value={selected.node.attrs.exampleNumber ?? ""} onChange={event=>editBlock({exampleNumber:event.target.value.replace(/[^0-9٠-٩]/g,"") || null})} /></label>}
             <label>اللون <input type="color" value={selected.node.attrs.accent ?? "#193c6b"} onChange={event=>editBlock({accent:event.target.value})}/></label>
             <label>الخلفية <input type="color" value={selected.node.attrs.background ?? "#eef4fa"} onChange={event=>editBlock({background:event.target.value})}/></label>
             <label>الحشوة <input type="number" min={0} max={48} value={selected.node.attrs.padding ?? ""} onChange={event=> {
@@ -485,7 +504,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
               editBlock({radius:Number.isInteger(value) ? Math.max(0,Math.min(30,value)) : null});
             }}/></label>
             <label><input type="checkbox" checked={selected.node.attrs.hideTitle} onChange={event=>editBlock({hideTitle:event.target.checked})}/> إخفاء العنوان</label>
-            <button type="button" onClick={() => editBlock({title:"",accent:null,background:null,padding:null,radius:null,hideTitle:false})}>استعادة التنسيق</button>
+            <button type="button" onClick={() => editBlock({title:"",accent:null,background:null,padding:null,radius:null,hideTitle:false,frame:null,font:null,size:null})}>استعادة التنسيق</button>
             <button type="button" onClick={() => {
               const block = findBlock();
               if (block) editor.chain().focus().insertContentAt(block.pos + block.node.nodeSize,block.node.toJSON()).run();

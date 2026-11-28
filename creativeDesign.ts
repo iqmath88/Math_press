@@ -35,12 +35,19 @@ const equation = (latex: string): JSONContent => ({type:"mathBlock",attrs:{latex
 export const educationBlock = (kind: string, content = [paragraph("")]): JSONContent =>
   ({type:"educationBlock",attrs:{kind},content});
 
-export function solvedExample(): JSONContent {
-  return educationBlock("example", [
-    paragraph("اكتب منطوق المثال هنا."),
-    { ...educationBlock("solution", [paragraph("اكتب خطوات الحل هنا.")]), attrs: { kind: "solution", title: "الحل" } },
-    { ...educationBlock("summary", [paragraph("اكتب النتيجة هنا.")]), attrs: { kind: "summary", title: "النتيجة النهائية" } }
+export const blockFonts = ["Cairo", "Amiri", "Noto Naskh Arabic"] as const;
+export const blockFrames = ["header", "side", "floating", "double", "steps", "comparison", "result", "alert"] as const;
+
+export function solvedExample(number?: number): JSONContent {
+  const example = educationBlock("example", [
+    { ...educationBlock("custom", [paragraph("اكتب منطوق المثال هنا.")]),
+      attrs: {kind:"custom", title:"السؤال", accent:"#9e2431", frame:"floating"} },
+    { ...educationBlock("solution", [paragraph("اكتب خطوات الحل هنا.")]),
+      attrs: { kind:"solution", title:"الحل", accent:"#193c6b", frame:"steps" } },
+    { ...educationBlock("summary", [paragraph("اكتب النتيجة هنا.")]),
+      attrs: { kind:"summary", title:"النتيجة النهائية", frame:"result" } }
   ]);
+  return { ...example, attrs: { ...example.attrs, exampleNumber: number == null ? null : String(number) } };
 }
 
 const conicGraph = (caption: string, branches: string[], from = "", to = ""): JSONContent => ({

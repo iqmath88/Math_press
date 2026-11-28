@@ -1,3 +1,4 @@
+import { publishingBoxFields } from "./document";
 import type { JSONContent } from "@tiptap/core";
 
 const types = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
@@ -91,9 +92,9 @@ export async function portableImages(node: JSONContent, cache = new Map<string,P
     if (!cache.has(id)) cache.set(id,readImage(id).then(dataUrl));
     attrs = {...attrs,src:await cache.get(id)!};
   }
-  if (node.type === "image" && attrs) {
+  if ((node.type === "image" || node.type === "educationBlock") && attrs) {
     attrs = {...attrs};
-    for (const key of ["widthMm","rotation","opacity","border","align","crop","caption"]) {
+    for (const key of node.type === "image" ? ["widthMm","rotation","opacity","border","align","crop","caption"] : publishingBoxFields) {
       if (attrs[key] == null) delete attrs[key];
     }
   }

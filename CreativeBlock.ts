@@ -1,5 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
-import { blockLabel } from "./creativeDesign";
+import { blockLabel, blockFonts, blockFrames } from "./creativeDesign";
 
 export const CreativeBlock = Node.create({
   name: "educationBlock",
@@ -21,6 +21,16 @@ export const CreativeBlock = Node.create({
       radius: {default:null,parseHTML:el=>el.dataset.blockRadius ? Number(el.dataset.blockRadius) : null,renderHTML:attrs=>
         Number.isInteger(attrs.radius) && attrs.radius >= 0 && attrs.radius <= 30
           ? {"data-block-radius":attrs.radius,style:`--block-radius:${attrs.radius}px`} : {}},
+      frame: {default:null,parseHTML:el=>el.dataset.blockFrame ?? null,renderHTML:attrs=>
+        blockFrames.some(frame=>frame===attrs.frame) ? {"data-block-frame":attrs.frame} : {}},
+      font: {default:null,parseHTML:el=>el.dataset.blockFont ?? null,renderHTML:attrs=>
+        blockFonts.some(font=>font===attrs.font) ? {"data-block-font":attrs.font,style:`--block-font:"${attrs.font}"`} : {}},
+      size: {default:null,parseHTML:el=>el.dataset.blockSize ? Number(el.dataset.blockSize) : null,renderHTML:attrs=>
+        Number.isInteger(attrs.size) && attrs.size>=10 && attrs.size<=30
+          ? {"data-block-size":attrs.size,style:`--block-size:${attrs.size}px`} : {}},
+      exampleNumber: {default:null,parseHTML:el=>el.dataset.exampleNumber ?? null,renderHTML:attrs=>
+        typeof attrs.exampleNumber==="string" && /^[0-9٠-٩]{1,8}$/.test(attrs.exampleNumber)
+          ? {"data-example-number":attrs.exampleNumber} : {}},
       accent: {default:null,parseHTML:el=>el.dataset.blockAccent ?? null,renderHTML:attrs=>
         typeof attrs.accent==="string" && /^#[\da-f]{6}$/i.test(attrs.accent)
           ? {"data-block-accent":attrs.accent,style:`--block-accent:${attrs.accent}`} : {}}
@@ -28,8 +38,10 @@ export const CreativeBlock = Node.create({
   },
   parseHTML() { return [{tag:"section[data-education-block]",contentElement:".creative-block-content"}]; },
   renderHTML({node,HTMLAttributes}) {
+    const number=HTMLAttributes["data-example-number"];
+    const title=node.attrs.title || blockLabel(node.attrs.kind);
     return ["section",mergeAttributes(HTMLAttributes,{class:"creative-block"}),[
-      "div",{class:"creative-block-label",contenteditable:"false"}, node.attrs.title || blockLabel(node.attrs.kind)
+      "div",{class:"creative-block-label",contenteditable:"false"}, number ? `${title} ${number}` : title
     ],["div",{class:"creative-block-content"},0]];
   }
 });

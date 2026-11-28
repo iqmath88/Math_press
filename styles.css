@@ -1348,3 +1348,20 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .creative-block[data-education-block="ministerial-idea"] > .creative-block-label { text-decoration:underline double; text-underline-offset:3px; }
 .creative-block[data-education-block="homework"] { border-block-start:1px dashed var(--block-ink); }
 .creative-block[data-education-block="summary"] > .creative-block-label { letter-spacing:normal; border-block-end:1px solid var(--block-ink); }
+
+.creative-block[data-block-font] { font-family:var(--block-font),serif; }
+.creative-block[data-block-size] { font-size:var(--block-size); }
+.creative-block[data-block-frame="header"] { border:1px solid var(--block-ink); padding:0; }
+.creative-block[data-block-frame="header"] > .creative-block-label { color:#fff; background:var(--block-ink); padding:4px 12px; }
+.creative-block[data-block-frame="header"] > .creative-block-content { padding:6px 12px; }
+.creative-block[data-block-frame="side"] { border:0; border-inline-start:4px solid var(--block-ink); }
+.creative-block[data-block-frame="floating"] { border:1px solid var(--block-ink); }
+.creative-block[data-block-frame="floating"] > .creative-block-label { width:fit-content; padding-inline:6px; border-block-end:2px solid var(--block-ink); }
+.creative-block[data-block-frame="double"] { border:4px double var(--block-ink); }
+.creative-block[data-block-frame="steps"] { border-inline-start:4px double var(--block-ink); }
+.creative-block[data-block-frame="steps"] > .creative-block-content > :not(:last-child) { border-block-end:1px dotted var(--block-ink); padding-block-end:4px; }
+.creative-block[data-block-frame="comparison"] { border-block:2px solid var(--block-ink); }
+.creative-block[data-block-frame="comparison"] > .creative-block-content > :not(:last-child) { border-block-end:1px solid var(--block-ink); }
+.creative-block[data-block-frame="result"] { border:1px solid var(--block-ink); border-block-start:4px double var(--block-ink); }
+.creative-block[data-block-frame="alert"] { border:1px dashed var(--block-ink); border-inline-start:4px solid var(--block-ink); }
+.creative-block[data-block-padding] > .creative-block-content { padding:0; }

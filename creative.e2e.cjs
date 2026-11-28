@@ -209,12 +209,15 @@ async function verifyStyleLibrary(page, capture) {
   await library.getByText("تعريف المبرهنة",{exact:true}).waitFor();
   await library.getByRole("button",{name:"إدراج مثال محلول"}).click();
   const example = page.locator('.editor-source [data-education-block="example"]').last();
+  assert.equal(await example.getAttribute("data-example-number"),"1");
   const solution = example.locator('[data-education-block="solution"] p');
   assert.equal(await solution.textContent(),"اكتب خطوات الحل هنا.");
   await solution.click();
   await page.keyboard.press("End");
   await page.keyboard.insertText(" تعديل");
   assert.match(await solution.textContent(),/تعديل/);
+  await page.getByRole("group",{name:"خصائص الصندوق"}).getByLabel("حجم خط الصندوق").fill("18");
+  assert.equal(await solution.locator("xpath=../..").getAttribute("data-block-size"),"18");
   await example.getByText("النتيجة النهائية",{exact:true}).waitFor();
 }
 async function verifyLongBox(page) {
