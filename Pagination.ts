@@ -168,7 +168,7 @@ export const Pagination = Extension.create({
       const result = computeBreaks(items, usable);
       const footer = String(ext.storage.footerText ?? "");
       const sig = JSON.stringify([
-        result.breaks.map(b => [positions[b.index], Math.round(b.filler)]),
+        result.breaks.map(b => [b.index, Math.round(b.filler)]),
         result.pages,
         Math.round(result.lastFiller),
         footer,
@@ -177,7 +177,12 @@ export const Pagination = Extension.create({
       const current = paginationKey.getState(view.state);
       ext.storage.pages = result.pages;
       ext.storage.pageStarts = result.breaks.map(b => positions[b.index]);
-      if (current && current.sig === sig) return;
+      if (current?.sig === sig) {
+        const mapped = current.deco.find();
+        if (mapped.length === result.breaks.length + 1 &&
+            mapped.every((widget,index)=>widget.from ===
+              (index < result.breaks.length ? positions[result.breaks[index].index] : doc.content.size))) return;
+      }
       view.dispatch(view.state.tr.setMeta(paginationKey, { result, positions, sig, footer, layout }).setMeta("addToHistory", false));
       ext.storage.onPages?.(result.pages);
     };
@@ -191,7 +196,7 @@ export const Pagination = Extension.create({
             const meta = tr.getMeta(paginationKey) as Meta | undefined;
             if (meta && "result" in meta) return { ...value, deco: buildDecorations(tr.doc, meta), sig: meta.sig };
             if (meta && "refresh" in meta) return { ...value, sig: "", revision: value.revision + 1 };
-            if (tr.docChanged) return { ...value, deco: value.deco.map(tr.mapping, tr.doc), sig: "" };
+            if (tr.docChanged) return { ...value, deco: value.deco.map(tr.mapping, tr.doc) };
             return value;
           }
         },

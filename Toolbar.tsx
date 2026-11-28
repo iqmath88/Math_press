@@ -1,3 +1,4 @@
+import type {Transaction} from "@tiptap/pm/state";
 import { NodeSelection } from "@tiptap/pm/state";
 import { useEffect, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -116,8 +117,11 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
 
   // الشريط يحدّث نفسه عند كل تغيير في المحرر، فلا يحتاج المحرر إلى إعادة رسم كاملة مع كل ضغطة مفتاح.
   useEffect(() => {
-    editor.on("transaction", rerender);
-    return () => { editor.off("transaction", rerender); };
+    const refresh = ({transaction}:{transaction:Transaction}) => {
+      if (transaction.docChanged || transaction.selectionSet || transaction.storedMarksSet) rerender();
+    };
+    editor.on("transaction", refresh);
+    return () => { editor.off("transaction", refresh); };
   }, [editor]);
 
   const chain = () => editor.chain().focus();

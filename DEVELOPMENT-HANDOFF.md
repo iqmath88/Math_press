@@ -41,3 +41,7 @@ Continue with the failing CI step if present. Then measure comparable existing w
 - The floating geometry experiment is isolated under `experiments/`. See [architecture](FLOATING-ELEMENTS-ARCHITECTURE.md) for anchor and layout decisions.
 
 Still open: richer page chrome and presets, width controls in the table UI, full visual identity audit, direct float integration, WebKit completion and the performance gate.
+
+## Alpha.3 performance increment
+
+Previously green Alpha.2 CI: https://github.com/iqmath88/Math_press/actions/runs/46134384376. Alpha.3 preserves equivalent mapped pagination widgets and skips toolbar refresh on metadata-only transactions. See [profiling and benchmark evidence](PERFORMANCE-PROFILING.md). The 15% gate remains blocked; continue P0 before expanding publishing features. The isolated floating model remains outside the editor.
