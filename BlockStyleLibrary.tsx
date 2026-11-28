@@ -152,14 +152,14 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
       </ul>}
       <div className="block-style-actions">
         <label>بحث الصناديق <input type="search" value={query} onChange={event=>setQuery(event.target.value)}/></label>
-        <label>التصنيف <select value={category} onChange={event=>setCategory(event.target.value)}>
+        <label>التصنيف <select aria-label="التصنيف" value={category} onChange={event=>setCategory(event.target.value)}>
           <option value="">جميع الصناديق</option><option value="favorites">المفضلة</option>
           {categories.map(([name])=><option key={name}>{name}</option>)}
         </select></label>
-        <label>الإطار <select value={frame} onChange={event=>setFrame(event.target.value)}>
+        <label>الإطار <select aria-label="الإطار" value={frame} onChange={event=>setFrame(event.target.value)}>
           {["",...blockFrames].map((value,index)=><option key={value} value={value}>{frameLabels[index]}</option>)}
         </select></label>
-        <label>الإجراء <select value={mode} onChange={event=>setMode(event.target.value)}>
+        <label>الإجراء <select aria-label="الإجراء" value={mode} onChange={event=>setMode(event.target.value)}>
           <option value="insert">إدراج صندوق</option><option value="wrap">إحاطة التحديد</option>
           <option value="apply" disabled={!selected}>تغيير تصميم الصندوق الحالي</option>
         </select></label>
@@ -167,7 +167,7 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
       {!visible.length && <p>لا توجد صناديق تطابق البحث.</p>}
       <div className="block-style-grid">
         {visible.map(([kind,label]) => <div className="block-style-card" key={kind}>
-          <button type="button" aria-label={`إدراج ${blockLabel(kind)}`} onMouseDown={event=>event.preventDefault()} onClick={()=>{
+          <button type="button" aria-label={`${mode==="wrap"?"إحاطة التحديد بـ":mode==="apply"?"تطبيق":"إدراج"} ${blockLabel(kind)}`} onMouseDown={event=>event.preventDefault()} onClick={()=>{
             const attrs={frame:frame || null};
             if(mode==="wrap") wrap(kind,attrs);
             else if(mode==="apply") {
