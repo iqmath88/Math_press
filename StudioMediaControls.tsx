@@ -23,6 +23,24 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
       editor.view.dispatch(tr.setSelection(NodeSelection.create(tr.doc,current.from)));
     }
   };
+  const move = (direction: -1 | 1) => {
+    const current = editor.state.selection;
+    if (!(current instanceof NodeSelection) || current.node.type.name !== "studioShape") return;
+    const sibling = direction < 0 ? current.$from.nodeBefore : current.$to.nodeAfter;
+    if (!sibling) return onNotice("لا يوجد موضع مجاور في هذا الاتجاه.");
+    const target = direction < 0 ? current.from - sibling.nodeSize : current.to + sibling.nodeSize;
+    const tr = editor.state.tr.delete(current.from,current.to);
+    const pos = tr.mapping.map(target);
+    tr.insert(pos,current.node);
+    editor.view.dispatch(tr.setSelection(NodeSelection.create(tr.doc,pos)).scrollIntoView());
+    editor.view.focus();
+  };
+  const removeShape = () => {
+    const current = editor.state.selection;
+    if (!(current instanceof NodeSelection) || current.node.type.name !== "studioShape") return;
+    editor.view.dispatch(editor.state.tr.delete(current.from,current.to).scrollIntoView());
+    editor.view.focus();
+  };
   const number=(label:string,key:string,min:number,max:number,step=1)=><label>{label} <input type="number" min={min} max={max} step={step}
     value={attrs[key] ?? ""} onChange={event=>{
       const value=event.target.valueAsNumber;
@@ -106,7 +124,9 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
         <button type="button" onClick={()=>{
           if (selected) editor.chain().focus().insertContentAt(selection.to,selected.toJSON()).run();
         }}>تكرار الشكل</button>
-        <button type="button" onClick={()=>editor.chain().focus().deleteSelection().run()}>حذف الشكل</button>
+        <button type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>move(-1)}>نقل الشكل لأعلى</button>
+        <button type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>move(1)}>نقل الشكل لأسفل</button>
+        <button type="button" onMouseDown={event=>event.preventDefault()} onClick={removeShape}>حذف الشكل</button>
         <button type="button" onClick={()=>download(shapeBlob(),"shape.svg")}>تصدير SVG</button>
         <button type="button" onClick={()=>void png()}>تصدير PNG</button>
       </>}
