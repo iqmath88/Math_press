@@ -34,8 +34,14 @@ function openAssets() {
 }
 
 export async function storeImage(file: Blob) {
-  if (!types.has(file.type) || file.size > 20 * 1024 * 1024) throw new Error("اختر صورة PNG أو JPEG أو WebP أو SVG بحجم لا يزيد على 20 ميغابايت.");
-  const original = file.type === "image/svg+xml" ? new Blob([sanitizeVector(await file.text())],{type:file.type}) : file;
+  const name = file instanceof File ? file.name : "";
+  const extension = name.split(".").pop()?.toLowerCase();
+  const inferred = extension === "jpg" || extension === "jpeg" ? "image/jpeg"
+    : extension === "svg" ? "image/svg+xml" : extension ? `image/${extension}` : "";
+  const type = file.type && file.type !== "application/octet-stream" ? file.type : inferred;
+  if (!types.has(type) || file.size > 20 * 1024 * 1024) throw new Error("اختر صورة PNG أو JPEG أو WebP أو SVG بحجم لا يزيد على 20 ميغابايت.");
+  const original = type === "image/svg+xml" ? new Blob([sanitizeVector(await file.text())],{type})
+    : type === file.type ? file : file.slice(0, file.size, type);
   const url = URL.createObjectURL(original);
   try {
     await new Promise<void>((resolve,reject) => {

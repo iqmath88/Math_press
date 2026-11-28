@@ -77,8 +77,17 @@ async function lesson(page, capture) {
     name:"tangent.png", mimeType:"image/png", buffer:Buffer.from(png,"base64")
   });
   const image = editor.locator(".studio-image img");
-  await image.waitFor();
-  await image.evaluate(element=>element.decode());
+  try {
+    await editor.locator(".studio-image img[src]").waitFor({state:"attached"});
+    await image.evaluate(element=>element.decode());
+    await image.waitFor({state:"visible"});
+  } catch (error) {
+    const alerts = await page.locator('[role="status"],[role="alert"]').allTextContents();
+    const state = await image.evaluateAll(elements=>elements.map(element=>({
+      source: element.getAttribute("src")?.split(":")[0], alt: element.alt, width: element.naturalWidth
+    })));
+    throw new Error(`${engine.name()} image import: ${JSON.stringify({alerts,state})}`,{cause:error});
+  }
   assert.equal(await image.evaluate(element=>element.naturalWidth),2048);
   await image.click();
   await page.getByRole("group",{name:"خصائص الصورة"}).getByLabel("العرض (مم)").fill("64");
