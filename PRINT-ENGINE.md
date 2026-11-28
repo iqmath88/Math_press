@@ -294,3 +294,17 @@ A 50-page expanded workbook run measured 18.413 seconds after preview.
 This is above the 15-second gate. The 40% peak-memory target has not been
 demonstrated. Keep the existing raster and quality settings while profiling
 which work inside html2canvas scales with document size.
+
+Expanded-workbook alpha.11 samples at 300 DPI:
+
+| Pages | Export after preview | PDF bytes | Sampled JS heap peak |
+| ---: | ---: | ---: | ---: |
+| 50 | 18.41 s | 14,077,809 | 78.38 MB |
+| 100 | 65.58 s | 28,209,884 | 101.10 MB |
+| 200 | 139.81 s | 56,487,265 | 144.37 MB |
+
+All page counts and physical image dimensions passed. These are single
+Linux Chromium observations. The 100-page run overlapped template QA,
+so do not use it as a controlled before/after comparison. Content styling
+also changed since alpha.10. The 50/100/200 targets of 15/30/75 seconds
+remain open, as does a separate peak renderer memory gate.

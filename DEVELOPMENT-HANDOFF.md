@@ -205,3 +205,10 @@ The chapter-cover and answer-model templates use existing MathDoc node
 types. The app information dialog identifies independent raster Print
 Edition. Continue timing large PDF workloads separately from preview
 preparation, then profile equation editing against v0.6.1-rc.2.
+
+Single Chromium 300-DPI runs exported 50, 100 and 200 pages successfully.
+See the timing breakdown and limits in PRINT-ENGINE.md. The 100-page run
+overlapped template QA and requires a clean controlled rerun for comparison.
+Next isolate repeated html2canvas parsing/painting and measure equation
+editing before considering release. Verify the catalog and both templates
+on iPad, then test exporting, saving and printing the six-page sample.
