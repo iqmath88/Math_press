@@ -1640,3 +1640,13 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
   margin: 6px 0;
 }
 .print-diagnostics dd { margin: 0; }
+
+.creative-tools .studio-media-properties {
+  flex: 1 1 100%;
+  min-inline-size: 0;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.studio-media-properties input[type="number"] { inline-size: 5.5em; }
+.studio-media-properties input[type="file"] { max-inline-size: 100%; }
