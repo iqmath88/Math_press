@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useState, type CSSProperties } from "react";
 import { blockLabel, blockTypes, blockFonts, blockFrames } from "./creativeDesign";
 
@@ -43,8 +44,9 @@ const samples: Record<string,string> = {
 const frameLabels = ["حسب النوع","رأس ملوّن","شريط جانبي","عنوان عائم","إطار مزدوج","خطوات","مقارنة","نتيجة","تنبيه"];
 const favoritesKey = "mathpress:favorite-box-kinds";
 
-export default function BlockStyleLibrary({ open, setOpen, selected, insert, wrap, insertSolvedExample, apply, notice }: {
+export default function BlockStyleLibrary({ open, setOpen, dock, selected, insert, wrap, insertSolvedExample, apply, notice }: {
   open: boolean;
+  dock: HTMLElement | null;
   setOpen: (open:boolean) => void;
   wrap: (kind:string, attrs?:Record<string,unknown>) => void;
   selected?: Record<string, unknown>;
@@ -115,12 +117,27 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
   }
   return <>
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>مكتبة أنماط الصناديق</button>
-    {open && <section className="block-style-library" aria-label="مكتبة أنماط الصناديق">
+    {open && dock && createPortal(<section className="block-style-library no-print" aria-label="مكتبة أنماط الصناديق">
       <div className="block-style-actions block-style-heading">
         <strong style={{flex:"1 1 auto"}}>معرض الصناديق التعليمية</strong>
         <button type="button" aria-pressed={pinned} onClick={()=>setPinned(value=>!value)}>{pinned?"إلغاء التثبيت":"تثبيت"}</button>
         <button type="button" onClick={()=>{setFrame("");setOpen(false);}} aria-label="إغلاق معرض الصناديق">إغلاق ×</button>
       </div>
+      <div className="block-style-actions block-style-filters">
+        <label>بحث الصناديق <input type="search" value={query} onChange={event=>setQuery(event.target.value)}/></label>
+        <label>التصنيف <select aria-label="التصنيف" value={category} onChange={event=>setCategory(event.target.value)}>
+          <option value="">جميع الصناديق</option><option value="favorites">المفضلة</option>
+          {categories.map(([name])=><option key={name}>{name}</option>)}
+        </select></label>
+        <label>الإطار <select aria-label="الإطار" value={frame} onChange={event=>setFrame(event.target.value)}>
+          {["",...blockFrames].map((value,index)=><option key={value} value={value}>{frameLabels[index]}</option>)}
+        </select></label>
+        <label>الإجراء <select aria-label="الإجراء" value={mode} onChange={event=>setMode(event.target.value)}>
+          <option value="insert">إدراج صندوق</option><option value="wrap">إحاطة التحديد</option>
+          <option value="apply" disabled={!selected}>تغيير تصميم الصندوق الحالي</option>
+        </select></label>
+      </div>
+      <div className="block-style-scroll">
       <div className="block-style-actions">
         <button type="button" onClick={()=>{insertSolvedExample();finish();}}>إدراج مثال محلول</button>
         <button type="button" disabled={!styles.length} onClick={exportStyles}>تصدير أنماط الصناديق</button>
@@ -157,20 +174,6 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
           <button type="button" onClick={() => write(styles.filter(item => item.id !== style.id))}>إزالة النمط</button>
         </li>)}
       </ul>}
-      <div className="block-style-actions">
-        <label>بحث الصناديق <input type="search" value={query} onChange={event=>setQuery(event.target.value)}/></label>
-        <label>التصنيف <select aria-label="التصنيف" value={category} onChange={event=>setCategory(event.target.value)}>
-          <option value="">جميع الصناديق</option><option value="favorites">المفضلة</option>
-          {categories.map(([name])=><option key={name}>{name}</option>)}
-        </select></label>
-        <label>الإطار <select aria-label="الإطار" value={frame} onChange={event=>setFrame(event.target.value)}>
-          {["",...blockFrames].map((value,index)=><option key={value} value={value}>{frameLabels[index]}</option>)}
-        </select></label>
-        <label>الإجراء <select aria-label="الإجراء" value={mode} onChange={event=>setMode(event.target.value)}>
-          <option value="insert">إدراج صندوق</option><option value="wrap">إحاطة التحديد</option>
-          <option value="apply" disabled={!selected}>تغيير تصميم الصندوق الحالي</option>
-        </select></label>
-      </div>
       {!visible.length && <p>لا توجد صناديق تطابق البحث.</p>}
       <div className="block-style-grid">
         {visible.map(([kind,label]) => <div className="block-style-card" key={kind}>
@@ -191,6 +194,7 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
             aria-pressed={favorites.includes(kind)} onClick={()=>toggleFavorite(kind)}>{favorites.includes(kind)?"★":"☆"}</button>
         </div>)}
       </div>
-    </section>}
+      </div>
+    </section>, dock)}
   </>;
 }
