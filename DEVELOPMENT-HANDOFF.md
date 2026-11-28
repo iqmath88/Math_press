@@ -82,3 +82,9 @@ geometry controls unless the user expands the design toolbar. Explicitly
 opening design still provides the shape picker. Run creative browser tests
 when changing selection or inspector behavior. Investigate the remaining
 MathLive/style cost separately. The 15% threshold is still an acceptance gate.
+
+The media checkpoint adds a pointer resize handle for selected images and
+shapes. The document width is committed once on pointer release as an isolated
+Undo step. Existing width controls remain the keyboard-accessible path.
+Physical iPad touch and rotation-handle work are still pending. The focused
+performance rerun continues to fail the threshold at 10 and 50 pages.

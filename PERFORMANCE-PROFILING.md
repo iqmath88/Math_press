@@ -78,3 +78,18 @@ remaining difference. The large difference between alpha.4 and alpha.5 P95 at
 50 pages, despite near-identical trace medians, needs a controlled scheduling and
 outlier investigation. The performance gate is open. Cold starts, other user
 paths, memory retention, and component-by-component isolation are still pending.
+
+### Selection-context follow-up
+
+After suppressing unrelated selection renders, a new 20-round warm run on the
+prioritized sizes measured median / P95 (minimum–maximum) in milliseconds:
+
+| Pages | v0.6.1-rc.2 | alpha.4 | alpha.5 context changes | P95 change |
+| ---: | ---: | ---: | ---: | ---: |
+| 10 | 20.74 / 46.32 (9.38–55.55) | 29.79 / 47.23 (16.03–48.77) | 35.00 / 63.16 (18.81–64.86) | +16.84 ms (+36.4%) |
+| 50 | 42.94 / 73.23 (12.51–77.92) | 44.74 / 82.63 (21.28–139.57) | 47.92 / 115.42 (17.94–123.68) | +42.19 ms (+57.6%) |
+
+Skipping ordinary cursor updates addresses unnecessary React work. The
+end-to-end measurements do not establish a conversion improvement. Continue
+isolating MathLive connection/style work on an unminified build before changing
+the editor's transaction or autosave contract.

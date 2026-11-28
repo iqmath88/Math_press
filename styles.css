@@ -1649,3 +1649,26 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 }
 .studio-media-properties input[type="number"] { inline-size: 5.5em; }
 .studio-media-properties input[type="file"] { max-inline-size: 100%; }
+
+.studio-image, .studio-shape { position: relative; }
+.studio-resize-handle { display: none; }
+.editor-source .ProseMirror-selectednode > .studio-resize-handle {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  inset-inline-end: 0;
+  inset-block-end: 0;
+  inline-size: 32px;
+  block-size: 32px;
+  z-index: 1;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.studio-resize-handle::before {
+  content: "";
+  inline-size: 12px;
+  block-size: 12px;
+  border: 2px solid white;
+  border-radius: 3px;
+  background: var(--accent);
+}

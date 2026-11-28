@@ -1,3 +1,4 @@
+import { mediaResizeHandle } from "./mediaResize";
 import Image from "@tiptap/extension-image";
 import { Plugin } from "@tiptap/pm/state";
 import { assetReference, readImageAsset, storeImage } from "./imageAssets";
@@ -42,12 +43,14 @@ export const StudioImage = Image.extend({
     }})];
   },
   addNodeView() {
-    return ({node})=>{
+    return (props)=>{
+      const {node}=props;
       const dom=document.createElement("figure");
       dom.className="studio-image";
       const image=document.createElement("img");
       const caption=document.createElement("figcaption");
-      dom.append(image,caption);
+      const { handle, stopEvent } = mediaResizeHandle(props, dom, () => image);
+      dom.append(image,caption,handle);
       let previous="", url="", printUrl="", destroyed=false;
       const releaseImages = () => {
         studioPrintSources.delete(image);
@@ -94,7 +97,7 @@ export const StudioImage = Image.extend({
         image.style.clipPath=edges.some(Boolean) ? `inset(${edges.map(edge=>edge+"%").join(" ")})` : "";
       };
       put(node.attrs);
-      return {dom,update:updated=>{if(updated.type!==node.type)return false;put(updated.attrs);return true;},destroy:()=>{
+      return {dom,stopEvent,update:updated=>{if(updated.type!==node.type)return false;put(updated.attrs);return true;},destroy:()=>{
         destroyed=true;
         releaseImages();
       }};

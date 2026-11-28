@@ -121,3 +121,6 @@
 - Clarified unset media properties and enabled resolution checks for auto-sized images.
 - Added a short A4 regression with Arabic text, MathLive equations and an uploaded
   bitmap. Native Apple print reproduction and the full performance gate remain open.
+
+- Added contextual image and shape controls with an on-page width handle. Drag
+  release creates one reversible edit without changing the original media.
