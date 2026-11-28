@@ -276,3 +276,21 @@ These are single runs with the existing whole-page A4 fast path, not P95.
 The browser heap samples do not cover the canvas backing store, GPU, or
 total system peak. Improvements in PDF storage do not establish lower
 overall memory at 200 pages.
+
+## Alpha.11 raster stage measurements
+
+PDF generation still uses the established tiled exporter. One ten-page
+Chromium run at 300 DPI took 3.383 s end to end. Measured phases were
+60.7 ms for staging, 2,127.1 ms for tile rendering (including iframe cloning
+and style/font work), 580.8 ms for conversion/encoding and PDF embedding,
+and 8.1 ms for serialization. Canvas rendering dominates the measured
+phase totals. This does not isolate cloning from image or SVG rasterization
+and excludes time spent preparing the preview. Linked stylesheet nodes
+are skipped in the renderer's cloned iframe because the same-origin sheet
+rules are already snapshotted and injected. MathLive static markup is
+reused within one job using a bounded cache.
+
+A 50-page expanded workbook run measured 18.413 seconds after preview.
+This is above the 15-second gate. The 40% peak-memory target has not been
+demonstrated. Keep the existing raster and quality settings while profiling
+which work inside html2canvas scales with document size.

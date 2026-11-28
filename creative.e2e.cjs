@@ -14,7 +14,7 @@ async function choose(page, title) {
 async function lesson(page, capture) {
   page.setDefaultTimeout(10000);
   await page.goto(home);
-  await choose(page,/تطبيقات التفاضل/);
+  await choose(page,/^ملزمة تطبيقات التفاضل(?: |$)/);
   const editor = page.locator(".editor-source .tiptap");
   const def = editor.locator('[data-education-block="definition"]').first();
   await def.locator("p").click();
@@ -404,7 +404,8 @@ async function captureMediaDesign(browser) {
 async function captureTemplates(browser) {
   for (const [title, fileName] of [
     [/القطوع المخروطية/,"conics"], [/امتحان رياضيات/,"exam"],
-    [/غلاف الفصل الدراسي/,"cover"], [/ورقة قوانين التفاضل/,"formula-sheet"], [/تمارين على القيم القصوى/,"practice"], [/مراجعة مركزة/,"review"]
+    [/غلاف الفصل الدراسي/,"cover"], [/ورقة قوانين التفاضل/,"formula-sheet"], [/تمارين على القيم القصوى/,"practice"], [/مراجعة مركزة/,"review"],
+    [/غلاف فصل — التفاضل/,"chapter-calculus"], [/نموذج إجابة — تطبيقات التفاضل/,"answer-model"]
   ]) {
     const page = await browser.newPage({viewport:{width:1440,height:1000}});
     try {

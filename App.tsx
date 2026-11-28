@@ -259,7 +259,7 @@ export default function App() {
           <dt>إصدار MathPress</dt><dd><bdi>v{VERSION}</bdi></dd>
           <dt>معرّف الالتزام</dt><dd><bdi>{import.meta.env.VITE_APP_BUILD}</bdi></dd>
           <dt>تاريخ البناء</dt><dd><bdi>{import.meta.env.VITE_APP_BUILD_DATE}</bdi></dd>
-          <dt>محرك PDF</dt><dd>طباعة المتصفح</dd>
+          <dt>محرك PDF</dt><dd>Print Edition · تصدير نقطي مستقل</dd>
         </dl>
         <form method="dialog"><button type="submit">إغلاق</button></form>
       </dialog>

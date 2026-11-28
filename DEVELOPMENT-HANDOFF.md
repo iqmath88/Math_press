@@ -200,3 +200,8 @@ use MathPress's independent PDF export in color, gray, and economy. Graph
 numeric direction and vertex label offsets were adjusted. More sophisticated
 template variants, full inspector/Glass redesign, and the editing performance,
 long export and real-device paper print gates remain open.
+
+The chapter-cover and answer-model templates use existing MathDoc node
+types. The app information dialog identifies independent raster Print
+Edition. Continue timing large PDF workloads separately from preview
+preparation, then profile equation editing against v0.6.1-rc.2.
