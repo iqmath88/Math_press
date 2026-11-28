@@ -88,7 +88,14 @@ async function lesson(page, capture) {
       const chosen = page.waitForEvent("filechooser");
       await page.getByRole("button",{name:"إدراج صورة",exact:true}).click();
       await (await chosen).setFiles(diskImage);
-      await editor.locator(".studio-image img[src]").waitFor({state:"attached"});
+      try {
+        await editor.locator(".studio-image img[src]").waitFor({state:"attached"});
+      } catch (error) {
+        const notice = await page.locator(".statusbar").textContent();
+        const files = await page.locator('input[accept="image/*"]').evaluate(element=>
+          [...element.files].map(file=>({name:file.name,type:file.type,size:file.size})));
+        throw new Error(`WebKit file chooser: ${JSON.stringify({notice,files})}`,{cause:error});
+      }
     } finally { await rm(dir,{recursive:true,force:true}); }
   }
   const image = editor.locator(".studio-image img");

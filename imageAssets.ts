@@ -42,7 +42,7 @@ export async function storeImage(file: Blob) {
   const type = file.type && file.type !== "application/octet-stream" ? file.type : inferred;
   if (!types.has(type) || file.size > 20 * 1024 * 1024) throw new Error("اختر صورة PNG أو JPEG أو WebP أو SVG بحجم لا يزيد على 20 ميغابايت.");
   const original = type === "image/svg+xml" ? new Blob([sanitizeVector(await file.text())],{type})
-    : type === file.type ? file : file.slice(0, file.size, type);
+    : file instanceof File ? new Blob([await file.arrayBuffer()],{type}) : file.slice(0,file.size,type);
   const url = URL.createObjectURL(original);
   try {
     await new Promise<void>((resolve,reject) => {

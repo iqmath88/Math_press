@@ -155,7 +155,8 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
         return;
       }
       const target = selection instanceof NodeSelection ? selection.to : { from: selection.from, to: selection.to };
-      chain().insertContentAt(target, { type: "image", attrs: { src, alt: file.name } }).run();
+      if (!chain().insertContentAt(target, { type: "image", attrs: { src, alt: file.name } }).run())
+        onError("تعذر إدراج الصورة في الموضع المحدد.");
     } catch (e) {
       onError(e instanceof Error ? e.message : "تعذر إدراج الصورة");
     }
