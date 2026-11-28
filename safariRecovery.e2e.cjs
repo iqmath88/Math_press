@@ -30,9 +30,12 @@ async function run() {
     await page.getByRole("button", { name: "تصدير المستند كملف قابل للتحرير" }).click();
     const backup = await download;
     const reference = JSON.parse(await readFile(await backup.path(), "utf8"));
-    for (const n of [4, 1, 10, 50, 100]) {
-      const workbook = n === 10 ? JSON.parse(await readFile(join(__dirname, "experiments", "fixtures", "workbook-10.mathdoc"), "utf8")) : null;
-      const content = workbook ? workbook.content.content : n === 4 ? reference.content.content : Array.from({ length: n }, (_, i) => [
+    for (const n of engine === chromium ? [4, 1, 6, 10, 50, 100] : [4, 1, 10, 50, 100]) {
+      const workbook = n === 6 || n === 10 ? JSON.parse(await readFile(join(__dirname, "experiments", "fixtures", "workbook-10.mathdoc"), "utf8")) : null;
+      const chapter = workbook?.content.content;
+      const sixPageEnd = chapter?.map((node, index) => node.type === "pageBreak" ? index : null)
+        .filter(index => index !== null)[5];
+      const content = chapter ? n === 6 ? chapter.slice(0, sixPageEnd) : chapter : n === 4 ? reference.content.content : Array.from({ length: n }, (_, i) => [
         ...(i ? [{ type: "pageBreak" }] : []),
         { type: "paragraph", content: [{ type: "text", text: `PAGE-${i + 1} محتوى تعليمي` }] },
       ]).flat();
@@ -99,10 +102,56 @@ async function run() {
           const file = join(output, `cropped-rotated-${dpi}.pdf`);
           await (await save).saveAs(file);
           const embedded = execFileSync("pdfimages", ["-list", file], { encoding: "utf8" });
-          assert.match(embedded, new RegExp(`image\\s+${w}\\s+${h}\\b`));
+          if (dpi <= 300) assert.match(embedded, new RegExp(`image\\s+${w}\\s+${h}\\b`));
+          else {
+            const images = [...embedded.matchAll(/\bimage\s+(\d+)\s+(\d+)\s+.*?\s(\d+)\s+(\d+)\s+[\d.]+[BKM]\s+/g)];
+            assert.equal(images.length, Math.ceil(w / 2048) * Math.ceil(h / 2048));
+            assert.ok(images.every(([, width, height, xPpi, yPpi]) =>
+              +width <= 2064 && +height <= 2064 && +xPpi === dpi && +yPpi === dpi), embedded);
+          }
           console.log("cropped and rotated", dpi, w, h, Date.now() - start, "ms", (await readFile(file)).length, "bytes");
         }
         await dialog.getByRole("button", { name: "إغلاق" }).click();
+      }
+      if (n === 6) {
+        await writeFile(join(output, "calculus-6.mathdoc"), JSON.stringify(data, null, 2));
+        await page.evaluate(() => {
+          Object.defineProperty(navigator, "userAgent", { configurable: true, value: "iPad" });
+          const prototype = HTMLCanvasElement.prototype;
+          const { set, ...descriptor } = Object.getOwnPropertyDescriptor(prototype, "height");
+          window.maximumPrintCanvas = 0;
+          Object.defineProperty(prototype, "height", { ...descriptor, set(value) {
+            set.call(this, value);
+            window.maximumPrintCanvas = Math.max(window.maximumPrintCanvas, this.width * this.height);
+          } });
+        });
+        await preview.getByRole("button", { name: "تصدير PDF تجريبي" }).click();
+        const dialog = page.getByRole("dialog", { name: "تصدير PDF نقطي تجريبي" });
+        await dialog.getByLabel("الدقة").selectOption("600");
+        const start = Date.now();
+        await dialog.getByRole("button", { name: "إنشاء PDF" }).click();
+        const link = dialog.getByRole("link", { name: "تنزيل PDF" });
+        await link.or(dialog.getByRole("alert")).first().waitFor({ timeout: 150_000 });
+        assert.deepEqual(await dialog.getByRole("alert").allTextContents(), []);
+        const clickDownload = page.waitForEvent("download");
+        await link.click();
+        const file = join(output, "calculus-6-tiled-600.pdf");
+        await (await clickDownload).saveAs(file);
+        assert.match(execFileSync("pdfinfo", [file], { encoding: "utf8" }), /^Pages:\s+6$/m);
+        const embedded = execFileSync("pdfimages", ["-list", file], { encoding: "utf8" });
+        const images = [...embedded.matchAll(/\bimage\s+(\d+)\s+(\d+)\s+.*?\s(\d+)\s+(\d+)\s+[\d.]+[BKM]\s+/g)];
+        assert.equal(images.length, 6 * 35);
+        assert.ok(images.every(([, width, height, xPpi, yPpi]) =>
+          +width <= 1040 && +height <= 1040 && +xPpi === 600 && +yPpi === 600));
+        const maxCanvas = await page.evaluate(() => window.maximumPrintCanvas);
+        assert.ok(maxCanvas <= 9_000_000, String(maxCanvas));
+        const report = { pages: 6, dpi: 600, tiles: images.length, maxCanvasPixels: maxCanvas,
+          bytes: (await readFile(file)).length, elapsedMs: Date.now() - start };
+        await writeFile(join(output, "calculus-6-tiled-metrics.json"), JSON.stringify(report, null, 2));
+        console.log("six-page tiled PDF", report);
+        await page.screenshot({ path: join(output, "tiled-600-dialog.png") });
+        await dialog.getByRole("button", { name: "إغلاق" }).click();
+        await page.evaluate(() => { delete navigator.userAgent; });
       }
       if (n === 10 && engine === chromium) {
         await writeFile(join(output, "workbook-10.mathdoc"), JSON.stringify(data, null, 2));
@@ -164,7 +213,7 @@ async function run() {
         for (const [index, sheet] of pages.entries()) {
           assert.match(sheet, /FOOTERTEST/);
           assert.doesNotMatch(sheet, /https?:\/\//);
-          if (n !== 4 && n !== 10) assert.match(sheet, new RegExp(`PAGE-${index + 1}(?![0-9])`));
+          if (n !== 4 && !workbook) assert.match(sheet, new RegExp(`PAGE-${index + 1}(?![0-9])`));
         }
         if (n === 4) {
           assert.match(execFileSync("pdffonts", [file], { encoding: "utf8" }), /NotoNaskhArabic.*yes\s+yes\s+yes/);

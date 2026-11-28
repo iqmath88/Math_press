@@ -1,9 +1,9 @@
 import html2canvas from "html2canvas";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, clip, endPath, popGraphicsState, pushGraphicsState, rectangle } from "pdf-lib";
 import { convertLatexToMarkup } from "mathlive";
-import { canvasPixelLimit, pagePixels, PRINT_RESOLUTIONS } from "./printEditionQuality";
+import { canvasPixelLimit, pagePixels, PRINT_RESOLUTIONS, printTileEdge, printTiles } from "./printEditionQuality";
 
-function prepareImage(source: HTMLImageElement, clone: HTMLImageElement, scale: number) {
+function prepareImage(source: HTMLImageElement, clone: HTMLImageElement, scale: number, limit: number) {
   const css = getComputedStyle(source);
   const { clipPath, rotate } = css;
   if (rotate && rotate !== "none" && rotate !== "0deg") {
@@ -19,6 +19,8 @@ function prepareImage(source: HTMLImageElement, clone: HTMLImageElement, scale: 
   const [top, right = top, bottom = top, left = right] = edges.map(edge => parseFloat(edge) / 100);
   const width = source.offsetWidth;
   const height = source.offsetHeight;
+  if (Math.round(width * scale) * Math.round(height * scale) > limit)
+    throw new Error("الصورة المقصوصة تتجاوز ميزانية تجهيز الصور على هذا الجهاز. اختر دقة أقل.");
   const canvas = source.ownerDocument.createElement("canvas");
   canvas.width = Math.round(width * scale);
   canvas.height = Math.round(height * scale);
@@ -66,8 +68,13 @@ type ExportOptions = {
 export async function renderPrintEdition(paper: HTMLElement, options: ExportOptions) {
   const { widthMm, heightMm, first, last, dpi, grayscale, signal, onProgress } = options;
   const pixels = pagePixels(widthMm, heightMm, dpi);
-  if (!PRINT_RESOLUTIONS.includes(dpi) || pixels.width * pixels.height > canvasPixelLimit(navigator))
-    throw new Error("الدقة المختارة تتجاوز ميزانية الصفحة لهذا الجهاز. اختر دقة أقل.");
+  if (!PRINT_RESOLUTIONS.includes(dpi)) throw new Error("دقة التصدير غير صالحة.");
+  const pixelLimit = canvasPixelLimit(navigator);
+  const edge = printTileEdge(pixels.width, pixels.height, dpi, pixelLimit);
+  const tiles = [...printTiles(pixels.width, pixels.height, edge)];
+  const scale = dpi / 96;
+  const pxToX = widthMm * 72 / (25.4 * pixels.width);
+  const pxToY = heightMm * 72 / (25.4 * pixels.height);
   let compressedBytes = 0;
   const sheets = Array.from(paper.querySelectorAll<HTMLElement>(".print-sheet")).slice(first - 1, last);
   if (sheets.length !== last - first + 1) throw new Error("تغيّر عدد صفحات المعاينة.");
@@ -105,7 +112,7 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
     pages.className = "mp-editor print-pages";
     const clone = sheet.cloneNode(true) as HTMLElement;
     const sources = [...sheet.querySelectorAll("img")];
-    clone.querySelectorAll("img").forEach((image, i) => prepareImage(sources[i], image, dpi / 96));
+    clone.querySelectorAll("img").forEach((image, i) => prepareImage(sources[i], image, scale, Math.min(pixelLimit, 9_000_000)));
     for (const equation of clone.querySelectorAll<HTMLElement>(".math-node[data-latex]")) {
       const latex = equation.dataset.latex ?? "";
       const block = equation.classList.contains("math-block");
@@ -121,55 +128,61 @@ export async function renderPrintEdition(paper: HTMLElement, options: ExportOpti
     wrapper.append(pages);
     owner.body.append(wrapper);
     const canvas = owner.createElement("canvas");
-    canvas.width = pixels.width;
-    canvas.height = pixels.height;
+    const page = document.addPage([widthPt, heightPt]);
     try {
       await owner.fonts.ready;
       await Promise.all([...clone.querySelectorAll("img")].map(image => image.decode()));
-      await html2canvas(clone, {
-        canvas,
-        scale: dpi / 96,
-        width: widthMm * 96 / 25.4,
-        height: heightMm * 96 / 25.4,
-        backgroundColor: "#ffffff",
-        logging: false,
-        ignoreElements: element => element.id === "root",
-        onclone: async cloned => {
-          cloned.head.append(cloned.importNode(stylesheet, true));
-          await cloned.fonts.ready;
-        },
-      });
-    } catch (error) {
-      canvas.width = canvas.height = 0;
-      throw error;
+      for (const [tileIndex, tile] of tiles.entries()) {
+        signal.throwIfAborted();
+        canvas.width = tile.width;
+        canvas.height = tile.height;
+        await html2canvas(clone, {
+          canvas, scale,
+          x: tile.x / scale, y: tile.y / scale,
+          width: tile.width / scale, height: tile.height / scale,
+          backgroundColor: "#ffffff",
+          logging: false,
+          ignoreElements: element => element.id === "root",
+          onclone: async cloned => {
+            cloned.head.append(cloned.importNode(stylesheet, true));
+            await cloned.fonts.ready;
+          },
+        });
+        signal.throwIfAborted();
+        if (grayscale) {
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("تعذر تجهيز التدرج الرمادي.");
+          const image = context.getImageData(0, 0, canvas.width, canvas.height);
+          for (let i = 0; i < image.data.length; i += 4) {
+            const gray = Math.round(image.data[i] * .2126 + image.data[i + 1] * .7152 + image.data[i + 2] * .0722);
+            image.data[i] = image.data[i + 1] = image.data[i + 2] = gray;
+          }
+          context.putImageData(image, 0, 0);
+        }
+        const payload = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر ترميز جزء من صفحة PDF.")), "image/jpeg", .95);
+        });
+        compressedBytes += payload.size;
+        if (compressedBytes > 96 * 1024 * 1024)
+          throw new Error("تجاوزت الصفحات ميزانية PDF. صدّر نطاقاً أقصر أو اختر دقة أقل.");
+        const image = await document.embedJpg(await payload.arrayBuffer());
+        if (tiles.length > 1) page.pushOperators(pushGraphicsState(), rectangle(
+          tile.left * pxToX, heightPt - tile.bottom * pxToY,
+          (tile.right - tile.left) * pxToX, (tile.bottom - tile.top) * pxToY,
+        ), clip(), endPath());
+        page.drawImage(image, {
+          x: tile.x * pxToX, y: heightPt - (tile.y + tile.height) * pxToY,
+          width: tile.width * pxToX, height: tile.height * pxToY,
+        });
+        if (tiles.length > 1) page.pushOperators(popGraphicsState());
+        canvas.width = canvas.height = 0;
+        onProgress(index + (tileIndex + 1) / tiles.length);
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+      }
     } finally {
+      canvas.width = canvas.height = 0;
       wrapper.remove();
     }
-    try {
-      signal.throwIfAborted();
-      if (grayscale) {
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error("تعذر تجهيز التدرج الرمادي.");
-        const image = context.getImageData(0, 0, canvas.width, canvas.height);
-        for (let i = 0; i < image.data.length; i += 4) {
-          const gray = Math.round(image.data[i] * .2126 + image.data[i + 1] * .7152 + image.data[i + 2] * .0722);
-          image.data[i] = image.data[i + 1] = image.data[i + 2] = gray;
-        }
-        context.putImageData(image, 0, 0);
-      }
-      const payload = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر ترميز صفحة PDF.")), "image/jpeg", .95);
-      });
-      compressedBytes += payload.size;
-      if (compressedBytes > 96 * 1024 * 1024)
-        throw new Error("تجاوزت الصفحات ميزانية PDF. صدّر نطاقاً أقصر أو اختر دقة أقل.");
-      const image = await document.embedJpg(await payload.arrayBuffer());
-      document.addPage([widthPt, heightPt]).drawImage(image, { x: 0, y: 0, width: widthPt, height: heightPt });
-    } finally {
-      canvas.width = canvas.height = 0;
-    }
-    onProgress(index + 1);
-    await new Promise<void>(resolve => setTimeout(resolve, 0));
   }
   signal.throwIfAborted();
   return new Blob([new Uint8Array(await document.save())], { type: "application/pdf" });

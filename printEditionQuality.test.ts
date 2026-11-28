@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canvasPixelLimit, pagePixels } from "./printEditionQuality";
+import { canvasPixelLimit, pagePixels, printTileEdge, printTiles } from "./printEditionQuality";
 
 describe("physical PDF raster resolution", () => {
   it.each([
@@ -9,11 +9,22 @@ describe("physical PDF raster resolution", () => {
     expect(pagePixels(297, 210, dpi)).toEqual({ width: height, height: width });
   });
 
-  it("leaves high resolutions visible but enforces a lower tablet allocation budget", () => {
-    const a4 = pagePixels(210, 297, 450);
-    const desktop = canvasPixelLimit({ userAgent: "Macintosh", maxTouchPoints: 0 });
-    const ipad = canvasPixelLimit({ userAgent: "Macintosh", maxTouchPoints: 5 });
-    expect(a4.width * a4.height).toBeLessThan(desktop);
-    expect(a4.width * a4.height).toBeGreaterThan(ipad);
+  it("covers A4 at 600 DPI with bounded overlapping tiles on touch Apple devices", () => {
+    const { width, height } = pagePixels(210, 297, 600);
+    const limit = canvasPixelLimit({ userAgent: "Macintosh", maxTouchPoints: 5 });
+    const edge = printTileEdge(width, height, 600, limit);
+    const tiles = [...printTiles(width, height, edge)];
+    expect(edge).toBe(1024);
+    expect(tiles.length).toBe(35);
+    expect(tiles.reduce((sum, t) => sum + (t.right - t.left) * (t.bottom - t.top), 0))
+      .toBe(width * height);
+    for (const t of tiles) {
+      expect(t.width).toBeLessThanOrEqual(1040);
+      expect(t.height).toBeLessThanOrEqual(1040);
+      expect(t.x).toBeLessThanOrEqual(t.left);
+      expect(t.y).toBeLessThanOrEqual(t.top);
+      expect(t.x + t.width).toBeGreaterThanOrEqual(t.right);
+      expect(t.y + t.height).toBeGreaterThanOrEqual(t.bottom);
+    }
   });
 });

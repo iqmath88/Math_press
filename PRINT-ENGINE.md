@@ -229,3 +229,21 @@ series does not measure canvas or whole-process peak memory. Do not
 interpret these single desktop runs as mobile acceptance or equation
 performance comparisons. Use smaller export ranges until the large
 iPad workload is independently verified.
+
+## Alpha.10 high-resolution tiled raster
+
+A4 at 450 and 600 DPI uses overlapping raster tiles. The normal A4 path up to
+300 DPI still uses a single buffer for speed. The PDF page is created once and
+each JPEG is embedded in physical coordinates, clipped to its nominal tile
+rectangle; eight extra source pixels per internal edge provide codec bleed.
+The renderer reuses one output canvas and clears it between tiles. Apple
+mobile/tablet-like clients use a 1024-pixel tile core; desktop uses 2048.
+The 96 MiB cumulative encoded budget remains. An oversized transformed
+source image still reports an explicit error rather than silently downsampling.
+html2canvas can allocate auxiliary canvases for image and gradient backgrounds.
+
+A Chromium run using the tablet budget generated six calculus pages at 600 DPI.
+Poppler verified 210 tile images at 600 pixels per inch. The file was
+4,893,364 bytes and the end-to-end export took 32.58 s. Instrumentation recorded
+a maximum single canvas of 1,343,544 pixels in this workload. This is the
+largest observed canvas allocation, not total browser or device memory.

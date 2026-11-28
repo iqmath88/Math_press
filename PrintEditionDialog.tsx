@@ -1,4 +1,4 @@
-import { DEFAULT_PRINT_DPI, PRINT_RESOLUTIONS, canvasPixelLimit, pagePixels } from "./printEditionQuality";
+import { DEFAULT_PRINT_DPI, PRINT_RESOLUTIONS, canvasPixelLimit, pagePixels, printTileEdge } from "./printEditionQuality";
 import type { PrintOptions } from "./PrintPreview";
 import { useEffect, useRef, useState } from "react";
 
@@ -31,7 +31,8 @@ export default function PrintEditionDialog({ paper, pages, widthMm, heightMm, pa
   const valid = Number.isInteger(first) && Number.isInteger(last) && first >= 1 && last >= first && last <= pages;
 
   const pixels = pagePixels(widthMm, heightMm, dpi);
-  const overBudget = pixels.width * pixels.height > canvasPixelLimit(navigator);
+  const edge = printTileEdge(pixels.width, pixels.height, dpi, canvasPixelLimit(navigator));
+  const tiled = edge < Math.max(pixels.width, pixels.height);
   const mode = options.economical ? "economy" : options.grayscale ? "gray" : "color";
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function PrintEditionDialog({ paper, pages, widthMm, heightMm, pa
   useEffect(() => () => { if (result) URL.revokeObjectURL(result.url); }, [result]);
 
   async function generate() {
-    if (!valid || blocked || overBudget || job.current) return;
+    if (!valid || blocked || job.current) return;
     const controller = new AbortController();
     job.current = controller;
     setProgress(0);
@@ -92,13 +93,12 @@ export default function PrintEditionDialog({ paper, pages, widthMm, heightMm, pa
         disabled={busy || options.economical} onChange={e => onOptions({ ...options, watermark: e.target.checked })} /> العلامة المائية</label>}
     </div>
     <p><bdi>{pixels.width} × {pixels.height}</bdi> بكسل لكل صفحة
-      {" · "}{(pixels.width * pixels.height * 4 / 1048576).toFixed(1)} ميبيبايت لمخزن الصفحة الخام</p>
+      {" · "}{(Math.min(pixels.width, edge + 16) * Math.min(pixels.height, edge + 16) * 4 / 1048576).toFixed(1)} ميبيبايت لمخزن الرسم {tiled ? "المجزّأ" : "للصفحة"}</p>
     {result && <p>حجم الملف الناتج: {(result.file.size / 1024).toFixed(0)} كيلوبايت</p>}
-    {overBudget && <p role="alert">الدقة المختارة تتجاوز ميزانية الصفحة لهذا الجهاز. اختر دقة أقل.</p>}
     {busy && <progress max={last - first + 1} value={progress} aria-label="تقدم التصدير" />}
     {error && <p role="alert">{error}</p>}
     <div className="grow-row">
-      <button type="button" onClick={() => void generate()} disabled={busy || !valid || blocked || overBudget}>إنشاء PDF</button>
+      <button type="button" onClick={() => void generate()} disabled={busy || !valid || blocked}>إنشاء PDF</button>
       {busy && <button type="button" onClick={() => job.current?.abort()}>إلغاء التصدير</button>}
       {result && <>
         <a href={result.url} download={result.file.name}>تنزيل PDF</a>

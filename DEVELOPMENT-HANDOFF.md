@@ -158,3 +158,13 @@ required a longer preview wait and took 145.68 seconds to export.
 PRINT-ENGINE.md records timing, files and sampled memory separately from
 iPad/real Safari acceptance. The 23-box redesign and editor performance
 comparison remain pending.
+
+### Alpha.10 tiled PDF checkpoint
+
+High DPI and pages over the single-buffer limit use overlapping tiles embedded
+directly in one PDF sheet. The lower-DPI A4 path is preserved. A six-page
+calculus MathDoc exported in Chromium with the Apple tablet budget selected:
+210 image tiles at 600 DPI, 4,893,364 bytes, 32.58 s, largest observed canvas
+1,343,544 pixels. Keep this tolerance and compare with actual iPad hardware.
+Next optimize repeated tile rendering and encoded memory, then validate the
+workspace and box redesign. The physical-device and performance gates are open.

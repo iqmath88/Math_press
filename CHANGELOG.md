@@ -149,3 +149,8 @@
 - Defaulted independent PDF to 300 DPI and exposed five physical resolutions.
 - Added cropped and rotated image rendering and explicit memory safeguards.
 - Brought range, ink mode, page furniture and watermark settings into export.
+
+## 0.8.0-alpha.10 — معاينة التصدير المجزأ
+
+- أضيف رسم مجزأ للدقات العالية مع تداخل عند الحواف وقص داخل PDF.
+- يعاد استخدام Canvas صغير مع تقدم وإلغاء على مستوى الأجزاء.
