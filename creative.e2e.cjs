@@ -32,9 +32,9 @@ async function lesson(page, capture) {
   await page.getByRole("button",{name:"تصدير المستند كملف قابل للتحرير"}).click();
   const download = await file;
   const persisted = JSON.parse(await readFile(await download.path(),"utf8"));
-  assert.equal(persisted.schemaVersion,4);
+  assert.equal(persisted.schemaVersion,5);
   assert.equal(persisted.creativeDesign,"emerald");
-  assert.equal(persisted.content.content.find(node=>node.type==="educationBlock").attrs.title,"تعريف محرّر");
+  assert.equal(persisted.content.content.find(node=>node.attrs?.kind==="definition").attrs.title,"تعريف محرّر");
   if (capture) await download.saveAs(join(output,"applied-derivatives.mathdoc"));
   await editor.locator("p").last().click();
   await page.keyboard.press("End");
@@ -149,7 +149,7 @@ async function lesson(page, capture) {
     await page.pdf({path:join(output,"applied-derivatives.pdf"),preferCSSPageSize:true});
     await page.screenshot({path:join(output,"creative-preview.png")});
   }
-  assert.equal(await page.locator(".print-sheet").count(),5);
+  assert.equal(await page.locator(".print-sheet").count(),6);
   const restored = await page.context().browser().newPage();
   try {
     await restored.goto(home);
@@ -244,7 +244,7 @@ async function verifyLongBox(page) {
 async function captureTemplates(browser) {
   for (const [title, fileName] of [
     [/القطوع المخروطية/,"conics"], [/امتحان رياضيات/,"exam"],
-    [/غلاف الفصل الدراسي/,"cover"], [/ورقة قوانين التفاضل/,"formula-sheet"]
+    [/غلاف الفصل الدراسي/,"cover"], [/ورقة قوانين التفاضل/,"formula-sheet"], [/تمارين على القيم القصوى/,"practice"], [/مراجعة مركزة/,"review"]
   ]) {
     const page = await browser.newPage({viewport:{width:1440,height:1000}});
     try {

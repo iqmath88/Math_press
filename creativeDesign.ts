@@ -55,12 +55,23 @@ const conicGraph = (caption: string, branches: string[], from = "", to = ""): JS
     items:branches.map((expr,index)=>({id:`conic-${index}`,type:"function",expr,color:"#193c6b",dashed:false,from,to}))}}
 });
 
-export const creativeTemplates: { id: string; name: string; category: string; design: string; content: JSONContent[] }[] = [
-  {id:"lesson", name:"تطبيقات التفاضل", category:"ملزمة", design:"academic", content:[
+export const creativeTemplates: { id: string; name: string; category: string; design: string; schemaVersion?: 5; content: JSONContent[] }[] = [
+  {id:"lesson", name:"تطبيقات التفاضل", category:"ملزمة", design:"academic", schemaVersion:5, content:[
+    educationBlock("chapter",[heading("تطبيقات التفاضل"),paragraph("ملزمة الرياضيات"),
+      paragraph("الصف: ______    إعداد: ______    العام الدراسي: ______")]),
+    educationBlock("summary",[paragraph("اختبارا المشتقتين، القيم القصوى، ومسائل التحسين.")]),
+    {type:"pageBreak"},
     heading("تطبيقات التفاضل"), educationBlock("definition",[paragraph("النقطة الحرجة تقع في مجال الدالة وتكون المشتقة عندها صفرًا أو غير موجودة.")]),
     educationBlock("law",[paragraph("نبحث عن تبدّل إشارة المشتقة لتصنيف النقطة الحرجة."),equation("f'(x)=0")]),
-    educationBlock("example",[paragraph("أوجد القيمة الصغرى للدالة التربيعية."),equation("f(x)=x^2-4x+5")]),
-    educationBlock("solution",[equation("f'(x)=2x-4"),paragraph("تتغير إشارة المشتقة من سالبة إلى موجبة عند ٢. إذن القيمة الصغرى هي ١.")]),
+    {type:"educationBlock",attrs:{kind:"example",exampleNumber:"1"},content:[
+      {type:"educationBlock",attrs:{kind:"custom",title:"السؤال",accent:"#9e2431",frame:"floating"},
+        content:[paragraph("أوجد القيمة الصغرى للدالة التربيعية."),equation("f(x)=x^2-4x+5")]},
+      {type:"educationBlock",attrs:{kind:"solution",accent:"#193c6b",frame:"steps"},
+        content:[equation("f'(x)=2x-4"),paragraph("نحل المعادلة ٢س − ٤ = ٠ فنحصل على س = ٢."),
+          paragraph("تتغير إشارة المشتقة من سالبة إلى موجبة عند ٢.")]},
+      {type:"educationBlock",attrs:{kind:"summary",title:"النتيجة النهائية",frame:"result"},
+        content:[equation("f(2)=1")]}
+    ]},
     {type:"pageBreak"}, educationBlock("lesson",[heading("٢. اختبار المشتقة الأولى")]),
     educationBlock("example",[paragraph("صنّف النقاط الحرجة للدالة التكعيبية."),equation("g(x)=x^3-3x")]),
     educationBlock("solution",[equation("g'(x)=3(x-1)(x+1)"),paragraph("المشتقة موجبة خارج الفترة من −١ إلى ١، وسالبة داخلها. عند −١ عظمى محلية، وعند ١ صغرى محلية.")]),
@@ -114,6 +125,22 @@ export const creativeTemplates: { id: string; name: string; category: string; de
     educationBlock("chapter",[heading("ملزمة الرياضيات"),paragraph("الفصل الدراسي: ______")]),
     educationBlock("subtitle",[paragraph("الصف: ______     إعداد: ______     العام الدراسي: ______")])
   ]},
+  {id:"practice",name:"تمارين على القيم القصوى",category:"تمارين",design:"minimal",content:[
+    heading("ورقة تمارين: القيم القصوى"),paragraph("الاسم: ______  الصف: ______"),
+    educationBlock("exercise",[paragraph("حدّد النقاط الحرجة وصنّفها."),equation("f(x)=x^3-12x")]),
+    educationBlock("exercise",[paragraph("أوجد القيم القصوى المطلقة على الفترة المغلقة [٠، ٣]."),equation("g(x)=x^2-4x+1")]),
+    educationBlock("check",[paragraph("متى يجب فحص طرفي الفترة؟ وضّح بمثال.")])
+  ]},
+  {id:"review",name:"مراجعة مركزة في التفاضل",category:"مراجعة",design:"classic",schemaVersion:5,content:[
+    heading("مراجعة مركزة في التفاضل"),
+    {type:"educationBlock",attrs:{kind:"law",frame:"comparison"},content:[
+      paragraph("المشتقة الأولى: راقب اتجاه تغيّر الإشارة عند النقطة الحرجة."),
+      paragraph("المشتقة الثانية: افحص إشارتها عند النقطة الساكنة، إن كانت غير صفرية.")
+    ]},
+    educationBlock("warning",[paragraph("يشترط اختبار المشتقة الثانية أن تكون المشتقة الأولى صفرًا عند النقطة محل الدراسة.")]),
+    conicGraph("منحنى الدالة التربيعية",["x^2-4*x+5"],"-1","5"),
+    educationBlock("exercise",[paragraph("قارن بين ناتجَي الاختبارين عند رأس المنحنى."),equation("f(x)=x^2-4x+5")])
+  ]},
   {id:"rules",name:"ورقة قوانين التفاضل",category:"ورقة عمل",design:"emerald",content:[
     heading("قوانين التفاضل"),educationBlock("law",[paragraph("قاعدة القوة"),equation("\\frac{d}{dx}x^n=nx^{n-1}")]),
     educationBlock("law",[paragraph("قاعدة حاصل الضرب"),equation("(uv)'=u'v+uv'")]),
@@ -125,6 +152,6 @@ export type SavedCreativeTemplate = { name: string; content: JSONContent; design
 export function makeTemplate(doc: MathPressDocument, id: string): MathPressDocument {
   const template = creativeTemplates.find(item => item.id === id);
   if (!template) return doc;
-  return {...doc, title:template.name, schemaVersion:4,
+  return {...doc, title:template.name, schemaVersion:template.schemaVersion ?? 4,
     creativeDesign:template.design, content:{type:"doc",content:structuredClone(template.content)}};
 }
