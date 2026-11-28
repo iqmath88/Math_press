@@ -207,6 +207,7 @@ async function verifyStyleLibrary(page, capture) {
   await page.getByRole("button",{name:"تطبيق الهوية على الملزمة",exact:true}).click();
   assert.equal(await page.locator(".paper").getAttribute("data-creative-design"),"custom");
   await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).click();
+  await page.getByRole("button",{name:"تثبيت",exact:true}).click();
   const library = page.getByRole("region",{name:"مكتبة أنماط الصناديق"});
   assert.equal(await library.locator(".block-style-card").count(),23);
   await library.getByRole("button",{name:"المفضلة: تعريف",exact:true}).click();
@@ -230,6 +231,7 @@ async function verifyStyleLibrary(page, capture) {
     await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
   await showStudio.click();
   await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).click();
+  await page.getByRole("button",{name:"تثبيت",exact:true}).click();
   await library.getByText("تعريف المبرهنة",{exact:true}).waitFor();
   await library.getByRole("button",{name:"إدراج",exact:true}).click();
   const inserted = block.last();
@@ -286,6 +288,7 @@ async function captureEducationalDesign(browser) {
     await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
     await page.getByRole("tab",{name:"أنماط",exact:true}).click();
     await page.getByRole("button",{name:"معرض الصناديق التعليمية"}).click();
+    await page.getByRole("button",{name:"تثبيت",exact:true}).click();
     const library=page.getByRole("region",{name:"مكتبة أنماط الصناديق"});
     const root=page.locator(".editor-source .tiptap");
     const heading=page.locator(".document-title-input");
