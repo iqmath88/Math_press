@@ -2,6 +2,10 @@
 
 ## v0.7.0-rc.1 — Professional Publishing Studio
 
+- Reuse portable templates and identities across installations.
+- Preserve the selected image when inserting a geometric shape beside it.
+- Guard the MathLive-to-text focus handoff and expand the visual acceptance samples.
+
 - Store image bytes in IndexedDB while retaining access to older Blob records.
 - Use compact raster previews during editing where available and restore originals for print and MathDoc backups.
 - Add individual crop edges and persist reusable document palettes and fonts.

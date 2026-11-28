@@ -137,6 +137,7 @@ async function verifyCommands(page) {
   await exam.locator("p").first().click();
   await button("إضافة فروع").click();
   assert.equal(await exam.locator('ol[data-educational-list="branches"] > li').count(), 3);
+  await page.getByText("أنماط الفقرات البسيطة",{exact:true}).click();
   await button("إدارة الأنماط").click();
   const dialog = page.getByRole("dialog", { name: "إدارة الأنماط التعليمية" });
   await dialog.getByLabel("النمط الحالي").selectOption("note");

@@ -86,8 +86,6 @@ npm run build
 - خلفية الصفحة: تُستخرج صورة الرأس (الإطار/الورق الرسمي) تلقائيًا عند استيراد Word، أو تُرفع من «إعدادات الصفحة»؛ تتكرر في كل صفحة وتُطبع.
 - ترقيم الصفحات يُطفأ تلقائيًا عند وجود خلفية مستوردة (يمكن تشغيله من الإعدادات).
 
-### Creative Studio preview
+### Professional Publishing Studio release candidate
 
-The preview adds an editable educational block system, document design presets and
-an offline template gallery. See [Creative Studio](CREATIVE-STUDIO.md) for usage,
-MathDoc compatibility and the current acceptance checklist.
+The release candidate combines editable educational boxes, publishing identities and an offline template gallery. Personal templates export as MathDoc with original images embedded. Publishing identities can also be transferred as JSON. See [Creative Studio](CREATIVE-STUDIO.md) for MathDoc compatibility and [release checks](GLASS-STUDIO-FOLLOWUP.md) for upgrade and manual acceptance.
