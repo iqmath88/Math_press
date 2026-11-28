@@ -65,7 +65,11 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
   };
   return <>
     <label>الأشكال الهندسية <select value="" onChange={event=>{
-      if(event.target.value)editor.chain().focus().insertContent({type:"studioShape",attrs:{kind:event.target.value}}).run();
+      if (!event.target.value) return;
+      const shape = {type:"studioShape",attrs:{kind:event.target.value}};
+      const chain = editor.chain().focus();
+      if (selection instanceof NodeSelection) chain.insertContentAt(selection.to,shape).run();
+      else chain.insertContent(shape).run();
     }}><option value="">اختر شكلًا</option>{shapeOptions.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
     {(image || shape) && <fieldset>
       <legend>{image ? "خصائص الصورة" : "خصائص الشكل"}</legend>
