@@ -1,5 +1,12 @@
 # سجل تغييرات MathPress
 
+## v0.7.0-rc.1 — Professional Publishing Studio
+
+- Store image bytes in IndexedDB while retaining access to older Blob records.
+- Use compact raster previews during editing where available and restore originals for print and MathDoc backups.
+- Add individual crop edges and persist reusable document palettes and fonts.
+- Add SVG measurement lines and editable names to selected basic shapes.
+
 ## v0.7.0-preview.4 — Professional Publishing Studio
 
 - Add eight publication frames, per-section typography, editable example numbers and reorderable solved-example sections.

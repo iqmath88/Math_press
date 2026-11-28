@@ -1,4 +1,4 @@
-# Glass Creative Studio preview.4 follow-up
+# Glass Creative Studio rc.1 follow-up
 
 The working branch is `feature/v0.7.0-creative-studio`, tracked by draft PR #15. Start from the latest commit on that branch and compare against preview.3 commit `158e5d5caa29fdfaddf71e00229812b8be21df24`.
 
@@ -12,6 +12,14 @@ The working branch is `feature/v0.7.0-creative-studio`, tracked by draft PR #15.
 ## Work still open
 
 - Full-document reusable style groups, dynamic example renumbering after moves and deletions, and remaining Style Studio controls. Current example numbers are assigned at insertion and remain editable.
-- Lightweight image derivatives with an original-resolution print path, arbitrary crop rectangles, editable geometry points and measurements.
+- Crop handles, interactive geometry construction, formula labels, and angle measurement are still open. Raster previews and original-resolution printing are implemented, along with basic dimension and point labels.
 - Complete the template catalog and verify additional print fixtures. The derivatives chapter now includes a cover and a multi-step example.
 - End-to-end WebKit and performance gates before promotion from preview.
+
+
+## Manual release checklist
+
+- On physical iPad Safari, choose a large image, edit its crop within a box, reopen the MathDoc offline, and print with the original image.
+- On the iPad and Windows, edit a MathLive equation between Arabic words and verify the caret, Undo and Redo.
+- Print the derivatives lesson and exam on A4, then repeat a page on A3 or A5. Verify margins, page numbers and grayscale readability.
+- Open a MathDoc 3 or 4 backup, then export and reopen the current MathDoc 5 sample. Compare the text, images, shape annotations and page styles.

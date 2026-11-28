@@ -48,6 +48,8 @@ async function lesson(page, capture) {
   await shape.click();
   await page.getByRole("group",{name:"خصائص الشكل"}).getByLabel("التسمية").fill("مثلث المماس");
   await shape.getByText("مثلث المماس").waitFor();
+  await page.getByRole("group",{name:"خصائص الشكل"}).getByLabel("قياس خط البُعد").fill("٦ سم");
+  await shape.getByText("٦ سم",{exact:true}).waitFor();
   await page.getByRole("group",{name:"خصائص الشكل"}).getByLabel("العرض (مم)").fill("32");
   const png = await editor.evaluate(async (el, paste)=>{
     const canvas = document.createElement("canvas");
@@ -111,9 +113,13 @@ async function lesson(page, capture) {
     throw new Error(`${engine.name()} image import: ${JSON.stringify({alerts,state})}`,{cause:error});
   }
   assert.equal(await image.evaluate(element=>Number(element.dataset.originalWidth) || element.naturalWidth),2048);
+  if (engine===chromium) assert.equal(await image.evaluate(element=>element.naturalWidth),1200);
   await image.click();
   await page.getByRole("group",{name:"خصائص الصورة"}).getByLabel("العرض (مم)").fill("64");
   await page.getByRole("group",{name:"خصائص الصورة"}).getByLabel("القص من كل حافة (%)").fill("3");
+  await page.getByText("قص كل حافة على حدة",{exact:true}).click();
+  await page.getByLabel("القص من الأعلى (%)").fill("7");
+  assert.match(await image.evaluate(el=>el.style.clipPath),/7%/);
   await page.getByText("محفوظ محليًا",{exact:true}).waitFor();
   await page.getByRole("tab",{name:"ملف",exact:true}).click();
   const mediaFile = page.waitForEvent("download");
@@ -125,6 +131,8 @@ async function lesson(page, capture) {
   assert.match(serialized,/data:image\/png;base64,/);
   assert.doesNotMatch(serialized,/mathpress-asset:/);
   assert.match(serialized,/مثلث المماس/);
+  assert.match(serialized,/"cropTop":7/);
+  assert.match(serialized,/٦ سم/);
   if (capture) await media.saveAs(join(output,"applied-derivatives.mathdoc"));
   await page.reload();
   await page.getByRole("tab",{name:"ملف",exact:true}).click();
@@ -193,6 +201,11 @@ async function verifyStyleLibrary(page, capture) {
   await page.goto(home);
   await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
   await page.getByRole("button",{name:"التصميم والصناديق"}).click();
+  await page.getByText("هوية مخصصة للملزمة",{exact:true}).click();
+  await page.getByLabel("اسم الهوية").fill("هوية مدرس الرياضيات");
+  await page.getByRole("button",{name:"حفظ الهوية",exact:true}).click();
+  await page.getByRole("button",{name:"تطبيق الهوية على الملزمة",exact:true}).click();
+  assert.equal(await page.locator(".paper").getAttribute("data-creative-design"),"custom");
   await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).click();
   const library = page.getByRole("region",{name:"مكتبة أنماط الصناديق"});
   assert.equal(await library.locator(".block-style-grid button").count(),23);
