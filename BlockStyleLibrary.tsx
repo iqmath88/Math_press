@@ -57,6 +57,8 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
   const [category,setCategory] = useState("");
   const [frame,setFrame] = useState("");
   const [mode,setMode] = useState("insert");
+  const [pinned,setPinned] = useState(false);
+  const finish = () => { if (!pinned) { setFrame(""); setOpen(false); } };
   const [favorites,setFavorites] = useState<string[]>(()=>{
     try {
       const values:unknown=JSON.parse(localStorage.getItem(favoritesKey) ?? "[]");
@@ -116,10 +118,11 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
     {open && <section className="block-style-library" aria-label="مكتبة أنماط الصناديق">
       <div className="block-style-actions block-style-heading">
         <strong style={{flex:"1 1 auto"}}>معرض الصناديق التعليمية</strong>
-        <button type="button" onClick={()=>setOpen(false)} aria-label="إغلاق معرض الصناديق">إغلاق ×</button>
+        <button type="button" aria-pressed={pinned} onClick={()=>setPinned(value=>!value)}>{pinned?"إلغاء التثبيت":"تثبيت"}</button>
+        <button type="button" onClick={()=>{setFrame("");setOpen(false);}} aria-label="إغلاق معرض الصناديق">إغلاق ×</button>
       </div>
       <div className="block-style-actions">
-        <button type="button" onClick={insertSolvedExample}>إدراج مثال محلول</button>
+        <button type="button" onClick={()=>{insertSolvedExample();finish();}}>إدراج مثال محلول</button>
         <button type="button" disabled={!styles.length} onClick={exportStyles}>تصدير أنماط الصناديق</button>
         <label>استيراد أنماط الصناديق <input type="file" accept=".json,application/json" onChange={event => {
           void importStyles(event.target.files?.[0]);
@@ -149,7 +152,7 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
             } as CSSProperties}>
             <span className="creative-block-label">{style.name}</span>
           </span>
-          <button type="button" onClick={() => insert(String(style.attrs.kind), style.attrs)}>إدراج</button>
+          <button type="button" onClick={() => {insert(String(style.attrs.kind), style.attrs);finish();}}>إدراج</button>
           {selected && <button type="button" onClick={() => apply(style.attrs)}>تطبيق</button>}
           <button type="button" onClick={() => write(styles.filter(item => item.id !== style.id))}>إزالة النمط</button>
         </li>)}
@@ -177,7 +180,7 @@ export default function BlockStyleLibrary({ open, setOpen, selected, insert, wra
             else if(mode==="apply") {
               if(selected) apply({kind,...attrs});
               else notice("حدد صندوقًا لتغيير تصميمه.");
-            } else insert(kind,attrs);
+            } else { insert(kind,attrs); finish(); }
           }}>
             <span className="creative-block" data-education-block={kind} data-block-frame={frame || undefined}>
               <span className="creative-block-label">{label}</span>
