@@ -498,7 +498,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
         onChange={onStyles} onApply={id => applyEducationalStyle(editor, id)} onClose={() => setShowStyles(false)} />}
       {!focusMode && !printOptions && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
         <button type="button" onClick={() => setShowCreative(value => !value)} aria-expanded={showCreative}>التصميم والصناديق</button>
-        {showCreative && <>
+        {(showCreative || selected) && <>
           <StudioMediaControls editor={editor} onNotice={onNotice}/>
           <label>هوية المستند <select value={doc.creativeDesign ?? ""} onChange={event =>
             onDesign(event.target.value || undefined)}>
@@ -532,7 +532,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
               if(target) edit.insertContentAt(target.pos+target.node.nodeSize,next).run();
               else edit.insertContent(next).run();
             }} />
-          {selected && <fieldset>
+          {selected && <fieldset className="selected-box-properties">
             <legend>خصائص الصندوق</legend>
             <label>النوع <select value={selected.node.attrs.kind} onChange={event=>editBlock({kind:event.target.value})}>
               {blockTypes.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
