@@ -1451,3 +1451,23 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .creative-block[data-education-block="law"]:not([data-block-frame]) > .creative-block-label { display:block; background:var(--block-ink); color:white; padding:4px 10px; }
 .creative-block[data-education-block="law"]:not([data-block-frame]) > .creative-block-content { padding:5px 10px; }
 .creative-block[data-education-block="note"]:not([data-block-frame]) { border:0; border-inline-start:3px solid var(--block-ink); background:var(--block-background,var(--creative-tint,#eef4fa)); }
+
+
+/* Keep gallery controls reachable on tablet Safari. */
+@media screen {
+  .app-shell .block-style-library {
+    inset-block-start:auto; inset-block-end:max(12px, env(safe-area-inset-bottom));
+    max-height:min(72vh, 72dvh); width:min(360px,calc(100vw - 24px));
+    padding:10px; scroll-padding-block-start:58px;
+  }
+  .block-style-library .block-style-heading {
+    position:sticky; top:-10px; z-index:2; padding:10px 0;
+    background:var(--studio-glass,#f8fbff);
+    border-block-end:1px solid var(--studio-rule,#bfcde0);
+  }
+  .block-style-library .block-style-heading button { min-height:44px; }
+  .block-style-library .block-style-card > button:first-child {
+    min-height:88px; padding-block:6px;
+  }
+  .block-style-library .block-style-grid { gap:6px; }
+}
