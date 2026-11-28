@@ -87,6 +87,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
 
   const [pageLabels, setPageLabels] = useState<string[]>([]);
   const [showCreative, setShowCreative] = useState(false);
+  const [showBoxGallery, setShowBoxGallery] = useState(false);
   const [, refreshCreativeSelection] = useState(0);
   const [properties, setProperties] = useState(false);
   const [showMargins, setShowMargins] = useState(false);
@@ -329,9 +330,10 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
     setGraph(null);
   };
 
-  const findBlock = () => {
+  const findBlock = (outermost = false) => {
     const head = editor.state.selection.$from;
-    for (let depth = head.depth; depth > 0; depth--) {
+    for (let index = 1; index <= head.depth; index++) {
+      const depth = outermost ? index : head.depth - index + 1;
       const node = head.node(depth);
       if (node.type.name === "educationBlock") return {node, pos:head.before(depth)};
     }
@@ -467,7 +469,13 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
         </section>}
         mathTools={<MathTools editor={editor} onSource={openNewLatex} />}
         educationalTools={<>
-          <section className="rb-group" aria-label="الأنماط التعليمية">
+          <button type="button" className="primary-action" onClick={()=>{
+            setShowCreative(true);
+            setShowBoxGallery(true);
+          }}>معرض الصناديق التعليمية</button>
+          <details className="rb-group">
+            <summary>أنماط الفقرات البسيطة</summary>
+            <section aria-label="الأنماط التعليمية">
             <div className="rb-line">
               <select aria-label="تطبيق نمط تعليمي" value="" onChange={e => applyEducationalStyle(editor, e.target.value || null)}>
                 <option value="" disabled>تطبيق نمط…</option>
@@ -476,7 +484,8 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
               <button type="button" onClick={() => applyEducationalStyle(editor, null)}>إزالة النمط</button>
               <button type="button" onClick={() => setShowStyles(true)}>إدارة الأنماط</button>
             </div>
-          </section>
+            </section>
+          </details>
           <EducationalInsert editor={editor} styles={styles} numberStart={doc.numberingStart ?? 1} onNumberStart={onNumberStart} />
         </>}
         onOpenLatex={() => openNewLatex()}
@@ -497,18 +506,31 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
             {designs.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
           </select></label>
           <DocumentIdentity current={doc.publishingIdentity} apply={onIdentity} notice={onNotice} />
-          <BlockStyleLibrary selected={selected?.node.attrs} apply={editBlock} notice={onNotice}
+          <BlockStyleLibrary open={showBoxGallery} setOpen={setShowBoxGallery} selected={selected?.node.attrs}
+            apply={editBlock} notice={onNotice}
+            wrap={(kind,attrs) => {
+              if (editor.state.selection.empty) return onNotice("حدد فقرة أو أكثر أولًا.");
+              if (!editor.chain().focus().wrapIn("educationBlock",{kind,...attrs}).run())
+                onNotice("تعذر إحاطة هذا التحديد. اختر فقرات من المستوى نفسه.");
+            }}
             insertSolvedExample={() => {
               let number=0;
               editor.state.doc.descendants(node=>{
                 if (node.type.name==="educationBlock" && node.attrs.kind==="example" && /^[0-9]+$/.test(node.attrs.exampleNumber ?? ""))
                   number=Math.max(number,Number(node.attrs.exampleNumber));
               });
-              editor.chain().focus().insertContent(solvedExample(number+1)).run();
+              const target=findBlock(true);
+              const edit=editor.chain().focus();
+              if(target) edit.insertContentAt(target.pos+target.node.nodeSize,solvedExample(number+1)).run();
+              else edit.insertContent(solvedExample(number+1)).run();
             }}
             insert={(kind, attrs) => {
               const block = educationBlock(kind);
-              editor.chain().focus().insertContent({ ...block, attrs: { ...block.attrs, ...attrs } }).run();
+              const next={...block,attrs:{...block.attrs,...attrs}};
+              const target=findBlock(true);
+              const edit=editor.chain().focus();
+              if(target) edit.insertContentAt(target.pos+target.node.nodeSize,next).run();
+              else edit.insertContent(next).run();
             }} />
           {selected && <fieldset>
             <legend>خصائص الصندوق</legend>

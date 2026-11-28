@@ -388,7 +388,7 @@ export function paginateForPrint(
     }
     if (index > 0 && index === blocks.length - 1 && child.tagName === "P"
       && child.matches(":has(> .ProseMirror-trailingBreak:only-child)") && !child.textContent?.trim()) continue;
-    const placement = child.matches("[data-educational-style], [data-paragraph-format]") ? getComputedStyle(child) : null;
+    const placement = child.matches("[data-educational-style], [data-paragraph-format], [data-education-block]") ? getComputedStyle(child) : null;
     if (body!.childElementCount && (pendingBreak || placement?.getPropertyValue("--break-before").trim() === "1")) newSheet();
     pendingBreak = false;
     const block = printableClone(child);

@@ -26,14 +26,53 @@ function readStyles(): Style[] {
   } catch { return []; }
 }
 
-export default function BlockStyleLibrary({ selected, insert, insertSolvedExample, apply, notice }: {
+const categories = [
+  ["العناوين","chapter lesson subtitle"],
+  ["المفاهيم والقواعد","definition concept law theorem property rule"],
+  ["الأمثلة والحلول","example solution proof illustration"],
+  ["التقويم","ministerial-question exercise check homework"],
+  ["الملاحظات والمراجعة","note warning idea ministerial-idea summary custom"]
+] as const;
+const samples: Record<string,string> = {
+  chapter:"التفاضل وتطبيقاته", lesson:"القيم القصوى المحلية", subtitle:"اختبار المشتقة الأولى",
+  definition:"النقطة الحرجة تنتمي إلى مجال الدالة.", law:"مشتقة س² تساوي ٢س.",
+  theorem:"تغيّر الإشارة يحدد نوع النقطة الحرجة.", example:"صنّف القيمة القصوى للدالة.",
+  proof:"نقارن إشارة المشتقة على جانبي النقطة.", note:"افحص طرفي الفترة المغلقة.",
+  warning:"الصفر وحده لا يكفي للحكم.", "ministerial-question":"أوجد القيمة الصغرى.", exercise:"اشتق الدالة وصنّف نقاطها."
+};
+const frameLabels = ["حسب النوع","رأس ملوّن","شريط جانبي","عنوان عائم","إطار مزدوج","خطوات","مقارنة","نتيجة","تنبيه"];
+const favoritesKey = "mathpress:favorite-box-kinds";
+
+export default function BlockStyleLibrary({ open, setOpen, selected, insert, wrap, insertSolvedExample, apply, notice }: {
+  open: boolean;
+  setOpen: (open:boolean) => void;
+  wrap: (kind:string, attrs?:Record<string,unknown>) => void;
   selected?: Record<string, unknown>;
   insert: (kind: string, attrs?: Record<string, unknown>) => void;
   insertSolvedExample: () => void;
   apply: (attrs: Record<string, unknown>) => void;
   notice: (message: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [query,setQuery] = useState("");
+  const [category,setCategory] = useState("");
+  const [frame,setFrame] = useState("");
+  const [mode,setMode] = useState("insert");
+  const [favorites,setFavorites] = useState<string[]>(()=>{
+    try {
+      const values:unknown=JSON.parse(localStorage.getItem(favoritesKey) ?? "[]");
+      return Array.isArray(values) ? values.filter(value=>blockTypes.some(([kind])=>kind===value)) : [];
+    } catch { return []; }
+  });
+  const toggleFavorite = (kind:string) => {
+    const next=favorites.includes(kind) ? favorites.filter(value=>value!==kind) : [...favorites,kind];
+    try { localStorage.setItem(favoritesKey,JSON.stringify(next)); } catch { /* Session-only preference. */ }
+    setFavorites(next);
+  };
+  const visible = blockTypes.filter(([kind,label])=>
+    (!category || (category==="favorites" ? favorites.includes(kind) :
+      categories.find(([name])=>name===category)?.[1].split(" ").includes(kind))) &&
+    `${label} ${kind}`.includes(query.trim().toLowerCase()));
+
   const [name, setName] = useState("");
   const [styles, setStyles] = useState(readStyles);
   function write(next: Style[]) {
@@ -111,13 +150,39 @@ export default function BlockStyleLibrary({ selected, insert, insertSolvedExampl
           <button type="button" onClick={() => write(styles.filter(item => item.id !== style.id))}>إزالة النمط</button>
         </li>)}
       </ul>}
+      <div className="block-style-actions">
+        <label>بحث الصناديق <input type="search" value={query} onChange={event=>setQuery(event.target.value)}/></label>
+        <label>التصنيف <select value={category} onChange={event=>setCategory(event.target.value)}>
+          <option value="">جميع الصناديق</option><option value="favorites">المفضلة</option>
+          {categories.map(([name])=><option key={name}>{name}</option>)}
+        </select></label>
+        <label>الإطار <select value={frame} onChange={event=>setFrame(event.target.value)}>
+          {["",...blockFrames].map((value,index)=><option key={value} value={value}>{frameLabels[index]}</option>)}
+        </select></label>
+        <label>الإجراء <select value={mode} onChange={event=>setMode(event.target.value)}>
+          <option value="insert">إدراج صندوق</option><option value="wrap">إحاطة التحديد</option>
+          <option value="apply" disabled={!selected}>تغيير تصميم الصندوق الحالي</option>
+        </select></label>
+      </div>
+      {!visible.length && <p>لا توجد صناديق تطابق البحث.</p>}
       <div className="block-style-grid">
-        {blockTypes.map(([kind]) => <button type="button" key={kind} aria-label={`إدراج ${blockLabel(kind)}`} onClick={() => insert(kind)}>
-          <span className="creative-block" data-education-block={kind}>
-            <span className="creative-block-label">{blockLabel(kind)}</span>
-            <span className="creative-block-content" aria-hidden="true"><i /><i /></span>
-          </span>
-        </button>)}
+        {visible.map(([kind,label]) => <div className="block-style-card" key={kind}>
+          <button type="button" aria-label={`إدراج ${blockLabel(kind)}`} onMouseDown={event=>event.preventDefault()} onClick={()=>{
+            const attrs={frame:frame || null};
+            if(mode==="wrap") wrap(kind,attrs);
+            else if(mode==="apply") {
+              if(selected) apply({kind,...attrs});
+              else notice("حدد صندوقًا لتغيير تصميمه.");
+            } else insert(kind,attrs);
+          }}>
+            <span className="creative-block" data-education-block={kind} data-block-frame={frame || undefined}>
+              <span className="creative-block-label">{label}</span>
+              <span dir="rtl" className="creative-block-content">{samples[kind] ?? "مثال على تنسيق المحتوى."}</span>
+            </span>
+          </button>
+          <button type="button" className="block-style-favorite" aria-label={`المفضلة: ${label}`}
+            aria-pressed={favorites.includes(kind)} onClick={()=>toggleFavorite(kind)}>{favorites.includes(kind)?"★":"☆"}</button>
+        </div>)}
       </div>
     </section>}
   </>;

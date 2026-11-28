@@ -208,7 +208,14 @@ async function verifyStyleLibrary(page, capture) {
   assert.equal(await page.locator(".paper").getAttribute("data-creative-design"),"custom");
   await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).click();
   const library = page.getByRole("region",{name:"مكتبة أنماط الصناديق"});
-  assert.equal(await library.locator(".block-style-grid button").count(),23);
+  assert.equal(await library.locator(".block-style-card").count(),23);
+  await library.getByRole("button",{name:"المفضلة: تعريف",exact:true}).click();
+  await library.getByLabel("التصنيف",{exact:true}).selectOption("favorites");
+  assert.equal(await library.locator(".block-style-card").count(),1);
+  await library.getByLabel("التصنيف",{exact:true}).selectOption("");
+  await library.getByLabel("بحث الصناديق").fill("قانون");
+  assert.equal(await library.locator(".block-style-card").count(),1);
+  await library.getByLabel("بحث الصناديق").fill("");
   if (capture) await page.screenshot({path:join(output,"glass-box-library.png")});
   await library.getByRole("button",{name:"إدراج تعريف",exact:true}).click();
   const block = page.locator('.editor-source [data-education-block="definition"]');
@@ -272,6 +279,58 @@ async function verifyLongBox(page) {
   assert.ok(await fragments.count() >= 2);
   assert.deepEqual((await fragments.allTextContents()).join("").match(/BLOCK\d{3}/g),markers);
 }
+async function captureEducationalDesign(browser) {
+  const page = await browser.newPage({viewport:{width:1536,height:1320}});
+  try {
+    await page.goto(home);
+    await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
+    await page.getByRole("tab",{name:"أنماط",exact:true}).click();
+    await page.getByRole("button",{name:"معرض الصناديق التعليمية"}).click();
+    const library=page.getByRole("region",{name:"مكتبة أنماط الصناديق"});
+    const root=page.locator(".editor-source .tiptap");
+    const heading=page.locator(".document-title-input");
+    await heading.fill("نماذج الإخراج التعليمي");
+    const entries=[
+      ["chapter","عنوان الفصل","التفاضل وتطبيقاته"],
+      ["lesson","عنوان الدرس","اختبار المشتقة الأولى"],
+      ["definition","تعريف","عند النقطة الحرجة تكون المشتقة صفرًا أو غير موجودة."],
+      ["law","قانون","مشتقة مربع المتغير تساوي ضعفه."],
+      ["theorem","نظرية","تغيّر إشارة المشتقة من السالب إلى الموجب يدل على قيمة صغرى محلية."]
+    ];
+    const insert=async ([kind,label,content])=>{
+      await library.getByRole("button",{name:`إدراج ${label}`,exact:true}).click();
+      const paragraph=root.locator(`:scope > [data-education-block="${kind}"] p`).last();
+      await paragraph.click();
+      await page.keyboard.insertText(content);
+    };
+    for(const entry of entries) await insert(entry);
+    await library.getByRole("button",{name:"إدراج مثال محلول",exact:true}).click();
+    const example=root.locator(':scope > [data-education-block="example"]');
+    for (const [kind,text] of [["custom","أوجد القيمة الصغرى للدالة س²."],["solution","تتغيّر إشارة المشتقة عند الصفر من سالبة إلى موجبة."],["summary","القيمة الصغرى تساوي صفرًا."]]) {
+      const p=example.locator(`[data-education-block="${kind}"] p`);
+      await p.click();
+      await page.keyboard.press("Home");
+      await page.keyboard.press("Shift+End");
+      await page.keyboard.insertText(text);
+    }
+    await example.locator(":scope > .creative-block-label").click();
+    for(const entry of [
+      ["proof","برهان","نقارن إشارة المشتقة على جانبي النقطة."],
+      ["note","ملاحظة","افحص طرفي الفترة المغلقة."],
+      ["warning","تنبيه","لا يكفي انعدام المشتقة للحكم وحده."],
+      ["ministerial-question","سؤال وزاري","حدّد القيمة الصغرى للدالة ومكان تحققها."],
+      ["exercise","تمرين","طبّق الاختبار على دالة تربيعية أخرى."]
+    ]) await insert(entry);
+    await page.getByRole("button",{name:"التصميم والصناديق",exact:true}).click();
+    assert.equal(await root.locator(":scope > .creative-block").count(),11);
+    await page.screenshot({path:join(output,"educational-design-editor.png"),fullPage:true});
+    await page.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
+    await page.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A4/).waitFor();
+    assert.equal(await page.locator(".print-sheet").count(),1);
+    assert.equal(await page.locator(".print-sheet-content > .creative-block").count(),11);
+    await page.pdf({path:join(output,"educational-design.pdf"),preferCSSPageSize:true});
+  } finally { await page.close(); }
+}
 async function captureTemplates(browser) {
   for (const [title, fileName] of [
     [/القطوع المخروطية/,"conics"], [/امتحان رياضيات/,"exam"],
@@ -313,7 +372,7 @@ async function captureTemplates(browser) {
     const stylePage = await browser.newPage();
     try { await verifyStyleLibrary(stylePage, !!output && engine===chromium); }
     finally { await stylePage.close(); }
-    if (output && engine===chromium) await captureTemplates(browser);
+    if (output && engine===chromium) { await captureTemplates(browser); await captureEducationalDesign(browser); }
     console.log(engine.name(),"creative lesson editor, IndexedDB and print verified on desktop and iPad emulation");
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1});

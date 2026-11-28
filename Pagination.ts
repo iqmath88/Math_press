@@ -157,7 +157,7 @@ export const Pagination = Extension.create({
           return;
         }
         const height = isBreak ? 0 : dom.getBoundingClientRect().height / zoom;
-        const placement = dom.matches("[data-educational-style], [data-paragraph-format]") ? getComputedStyle(dom) : null;
+        const placement = dom.matches("[data-educational-style], [data-paragraph-format], [data-education-block]") ? getComputedStyle(dom) : null;
         const item = {
           height, breakAfter: isBreak,
           breakBefore: placement?.getPropertyValue("--break-before").trim() === "1",

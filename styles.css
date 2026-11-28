@@ -1365,3 +1365,54 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .creative-block[data-block-frame="result"] { border:1px solid var(--block-ink); border-block-start:4px double var(--block-ink); }
 .creative-block[data-block-frame="alert"] { border:1px dashed var(--block-ink); border-inline-start:4px solid var(--block-ink); }
 .creative-block[data-block-padding] > .creative-block-content { padding:0; }
+
+/* Publishing defaults apply equally to the editor, gallery and cloned print DOM. */
+.creative-block {
+  margin-block:clamp(3px,var(--creative-spacing,6px),7px);
+  padding:4px 9px;
+  background:var(--block-background, var(--creative-tint,#eef4fa));
+}
+.creative-block-label { margin-block-end:2px; line-height:1.25; }
+.creative-block-content > p { margin-block:2px; }
+.creative-block-content > :first-child { margin-block-start:0; }
+.creative-block-content > :last-child { margin-block-end:0; }
+.creative-block-content > .creative-block { margin-block:3px; }
+.creative-block:not([data-block-frame]):is([data-education-block="chapter"],[data-education-block="lesson"],[data-education-block="subtitle"]) {
+  --keep-with-next:1;
+  background:var(--block-background,transparent);
+  border:0;
+  padding:var(--block-padding,3px) var(--block-padding,0);
+}
+.creative-block[data-education-block="chapter"]:not([data-block-frame]) { border-block-end:3px double var(--block-ink); }
+.creative-block[data-education-block="chapter"]:not([data-block-frame]) > .creative-block-label { font-size:1.3em; letter-spacing:0; }
+.creative-block[data-education-block="lesson"]:not([data-block-frame]) { border-block-end:1px solid var(--block-ink); }
+.creative-block[data-education-block="lesson"]:not([data-block-frame]) > .creative-block-label { font-size:1.12em; }
+.creative-block[data-education-block="subtitle"]:not([data-block-frame]) { border-inline-start:2px solid var(--block-ink); padding-inline-start:7px; }
+.creative-block[data-education-block="definition"]:not([data-block-frame]) { border-radius:0 5px 5px 0; }
+.creative-block[data-education-block="law"]:not([data-block-frame]) { border:0; border-block:1px solid var(--block-ink); background:var(--block-background,#fff); }
+.creative-block[data-education-block="law"]:not([data-block-frame]) > .creative-block-label { display:table; padding-inline:6px; background:var(--creative-tint,#eef4fa); }
+.creative-block[data-education-block="theorem"]:not([data-block-frame]) { border:0; border-inline-start:4px double var(--block-ink); background:var(--block-background,#fff); }
+.creative-block[data-education-block="proof"]:not([data-block-frame]) { border:0; border-inline-start:1px solid var(--block-ink); }
+.creative-block[data-education-block="note"]:not([data-block-frame]) { background:var(--block-background,transparent); border:0; border-block-start:1px dotted var(--block-ink); }
+.creative-block[data-education-block="note"]:not([data-block-frame]) > .creative-block-label::before { content:"◆"; font-size:.65em; margin-inline-end:.55em; }
+.creative-block[data-education-block="warning"]:not([data-block-frame]) { border:0; border-inline-start:4px double var(--block-ink); background:var(--block-background,#fff); }
+.creative-block[data-education-block="warning"]:not([data-block-frame]) > .creative-block-label::before { content:"!"; display:inline-block; border:1px solid currentColor; border-radius:50%; inline-size:1em; text-align:center; margin-inline-end:.5em; }
+.creative-block[data-education-block="exercise"]:not([data-block-frame]) { border:0; border-inline-start:2px solid var(--block-ink); padding:4px 9px; }
+.creative-block[data-education-block="exercise"]:not([data-block-frame]) > .creative-block-label { background:none; color:var(--block-ink); padding:0; }
+.creative-block[data-education-block="exercise"]:not([data-block-frame]) > .creative-block-content { padding:0; }
+.creative-block[data-education-block="ministerial-question"]:not([data-block-frame]) { border:0; border-block-end:2px solid var(--block-ink); }
+.creative-block[data-education-block="solution"]:not([data-block-frame]) > .creative-block-label { border-block-end:1px solid var(--block-ink); }
+.creative-block[data-education-block="check"]:not([data-block-frame]) { border-style:dashed; }
+.creative-block[data-education-block="rule"]:not([data-block-frame]) { border-width:0 0 1px; }
+.creative-block[data-education-block="property"]:not([data-block-frame]) { border-inline-start-style:dotted; }
+.creative-block[data-education-block="idea"]:not([data-block-frame]) { border-inline-start:0; border-block-end:1px dashed var(--block-ink); }
+.creative-block[data-education-block="custom"]:not([data-block-frame]) { border:1px solid var(--block-ink); border-radius:var(--block-radius,5px); }
+.block-style-card { position:relative; display:grid; align-items:stretch; }
+.block-style-card > button:first-child { padding-inline-end:2rem; }
+.block-style-card > .block-style-favorite { position:absolute; inset-inline-end:2px; inset-block-start:2px; min-inline-size:28px; min-block-size:32px; padding:0; }
+.block-style-card .creative-block { --creative-tint:#eef4fa; }
+.creative-block { line-height:1.4; }
+.creative-block-content > p { padding-block:0; }
+.creative-block:is([data-education-block="example"],[data-education-block="ministerial-question"]):not([data-block-frame]) > .creative-block-label { padding-block:3px; }
+.creative-block:is([data-education-block="example"],[data-education-block="ministerial-question"]):not([data-block-frame]) > .creative-block-content { padding-block:4px; }
+.creative-block[data-education-block="proof"]:not([data-block-frame]) > .creative-block-content > p:last-child::after { content:"□"; margin-inline-start:.5em; }
