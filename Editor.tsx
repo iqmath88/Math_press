@@ -124,11 +124,11 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
   }, [editor]);
 
   useEffect(() => {
-    if (!editor || !showCreative) return;
+    if (!editor) return;
     const refresh = () => refreshCreativeSelection(value => value + 1);
     editor.on("selectionUpdate", refresh);
     return () => { editor.off("selectionUpdate", refresh); };
-  }, [editor, showCreative]);
+  }, [editor]);
 
   // إعدادات الصفحة تصل إلى مقسّم الصفحات عبر تخزين الإضافة ثم يُعاد القياس.
   useEffect(() => {
@@ -341,6 +341,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
     return null;
   };
   const selected = findBlock();
+  const mediaSelected = ["studioShape","image"].includes(editor.state.selection.$from.nodeAfter?.type.name ?? "") && editor.state.selection.to > editor.state.selection.from;
   const editBlock = (attrs: Record<string, unknown>) => {
     const block = findBlock();
     if (block) editor.view.dispatch(editor.state.tr.setNodeMarkup(block.pos, undefined, {...block.node.attrs,...attrs}));
@@ -499,7 +500,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
         onChange={onStyles} onApply={id => applyEducationalStyle(editor, id)} onClose={() => setShowStyles(false)} />}
       {!focusMode && !printOptions && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
         <button type="button" onClick={() => setShowCreative(value => !value)} aria-expanded={showCreative}>التصميم والصناديق</button>
-        {(showCreative || selected || showBoxGallery) && <>
+        {(showCreative || selected || showBoxGallery || mediaSelected) && <>
           <StudioMediaControls editor={editor} onNotice={onNotice}/>
           <label>هوية المستند <select value={doc.creativeDesign ?? ""} onChange={event =>
             onDesign(event.target.value || undefined)}>
