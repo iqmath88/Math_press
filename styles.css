@@ -986,19 +986,18 @@ button.primary:hover:not(:disabled),
   height: auto;
   min-height: calc(var(--ph) - var(--pt) - var(--pb) - var(--print-rounding));
 }
+.print-sheet:not(.print-sheet-overflow) {
+  block-size: calc(var(--ph) - var(--print-rounding));
+}
+.print-sheet:not(.print-sheet-overflow) > .pg-footer {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+}
 @media print {
   .preview-paper .editor-source { display: none; }
   .paper.preview-paper { min-height:0 !important; }
-  .print-sheet:not(.print-sheet-overflow) {
-    block-size: calc(var(--ph) - var(--print-rounding));
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  .print-sheet:not(.print-sheet-overflow) > .pg-footer {
-    position: absolute;
-    inset-inline: 0;
-    inset-block-end: 0;
-  }
+  .print-sheet:not(.print-sheet-overflow) { break-inside:avoid; page-break-inside:avoid; }
   .print-sheet + .print-sheet { margin-block-start:0; }
   .print-sheet .pg-footer { break-before:avoid; }
 
