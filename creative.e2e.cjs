@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
-const { readFile, mkdir } = require("node:fs/promises");
+const { readFile, mkdir, mkdtemp, writeFile, rm } = require("node:fs/promises");
 const { join } = require("node:path");
+const { tmpdir } = require("node:os");
 const { chromium, webkit, devices } = require("playwright-core");
 
 const engine = process.argv[2] === "webkit" ? webkit : chromium;
@@ -73,16 +74,26 @@ async function lesson(page, capture) {
     data.items.add(new File([blob],"tangent.png",{type:"image/png"}));
     el.dispatchEvent(new ClipboardEvent("paste",{clipboardData:data,bubbles:true,cancelable:true}));
   }, engine === chromium);
-  if (png) await page.locator('input[accept="image/*"]').setInputFiles({
-    name:"tangent.png", mimeType:"image/png", buffer:Buffer.from(png,"base64")
-  });
+  if (engine === webkit) {
+    assert.ok(png,"WebKit must generate a PNG fixture");
+    const dir = await mkdtemp(join(tmpdir(),"mathpress-image-"));
+    try {
+      const diskImage = join(dir,"tangent.png");
+      await writeFile(diskImage,Buffer.from(png,"base64"));
+      await page.getByRole("tab",{name:"إدراج",exact:true}).click();
+      const chosen = page.waitForEvent("filechooser");
+      await page.getByRole("button",{name:"إدراج صورة",exact:true}).click();
+      await (await chosen).setFiles(diskImage);
+      await editor.locator(".studio-image img[src]").waitFor({state:"attached"});
+    } finally { await rm(dir,{recursive:true,force:true}); }
+  }
   const image = editor.locator(".studio-image img");
   try {
     await editor.locator(".studio-image img[src]").waitFor({state:"attached"});
     await image.evaluate(element=>element.decode());
     await image.waitFor({state:"visible"});
   } catch (error) {
-    const alerts = await page.locator('[role="status"],[role="alert"]').allTextContents();
+    const alerts = await page.locator('[role="status"],[role="alert"],.statusbar').allTextContents();
     const state = await image.evaluateAll(elements=>elements.map(element=>({
       source: element.getAttribute("src")?.split(":")[0], alt: element.alt, width: element.naturalWidth
     })));
