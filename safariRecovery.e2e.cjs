@@ -31,7 +31,8 @@ async function run() {
     const backup = await download;
     const reference = JSON.parse(await readFile(await backup.path(), "utf8"));
     for (const n of [4, 1, 10, 50, 100]) {
-      const content = n === 4 ? reference.content.content : Array.from({ length: n }, (_, i) => [
+      const workbook = n === 10 ? JSON.parse(await readFile(join(__dirname, "experiments", "fixtures", "workbook-10.mathdoc"), "utf8")) : null;
+      const content = workbook ? workbook.content.content : n === 4 ? reference.content.content : Array.from({ length: n }, (_, i) => [
         ...(i ? [{ type: "pageBreak" }] : []),
         { type: "paragraph", content: [{ type: "text", text: `PAGE-${i + 1} محتوى تعليمي` }] },
       ]).flat();
@@ -39,7 +40,7 @@ async function run() {
         src: "data:image/png;base64," + (await readFile(join(__dirname, "icon-512.png"))).toString("base64"),
         widthMm: 48, rotation: 25, cropTop: 18, cropLeft: 25, opacity: .85, align: "center",
       } });
-      const data = { ...reference, schemaVersion: 6, id: randomUUID(), title: `مرجع القطوع ${n}`, footerText: "FOOTERTEST",
+      const data = { ...reference, schemaVersion: 6, id: randomUUID(), title: workbook?.title ?? `مرجع القطوع ${n}`, footerText: "FOOTERTEST",
         showPageNumbers: true, watermark: { kind: "text", value: "معاينة", opacity: .12, rotation: -35, size: 52, position: "center", pages: "all", repeat: false, color: "#193c6b" }, content: { type: "doc", content } };
       if (n === 4 && engine === chromium)
         await writeFile(join(output, "conics-reference.mathdoc"), JSON.stringify(data, null, 2));
@@ -103,6 +104,43 @@ async function run() {
         }
         await dialog.getByRole("button", { name: "إغلاق" }).click();
       }
+      if (n === 10 && engine === chromium) {
+        await writeFile(join(output, "workbook-10.mathdoc"), JSON.stringify(data, null, 2));
+        await preview.getByRole("button", { name: "تصدير PDF تجريبي" }).click();
+        const dialog = page.getByRole("dialog", { name: "تصدير PDF نقطي تجريبي" });
+        const metrics = [];
+        const client = await page.context().newCDPSession(page);
+        const measure = async () => metrics.push((await client.send("Runtime.getHeapUsage")).usedSize);
+        await measure();
+        const sampler = setInterval(() => void measure().catch(() => {}), 200);
+        const start = Date.now();
+        try {
+          await dialog.getByRole("button", { name: "إنشاء PDF" }).click();
+          const link = dialog.getByRole("link", { name: "تنزيل PDF" });
+          await link.or(dialog.getByRole("alert")).first().waitFor({ timeout: 120_000 });
+          assert.deepEqual(await dialog.getByRole("alert").allTextContents(), []);
+          const download = page.waitForEvent("download");
+          await link.click();
+          const file = join(output, "workbook-10-300.pdf");
+          await (await download).saveAs(file);
+          assert.match(execFileSync("pdfinfo", [file], { encoding: "utf8" }), /^Pages:\s+10$/m);
+          const embedded = execFileSync("pdfimages", ["-list", file], { encoding: "utf8" });
+          assert.equal((embedded.match(/\bimage\s+2480\s+3508\b/g) ?? []).length, 10);
+          const report = { pages: 10, dpi: 300, elapsedMs: Date.now() - start, bytes: (await readFile(file)).length,
+            sampledJsHeapBeforeBytes: metrics[0], sampledJsHeapPeakBytes: Math.max(...metrics) };
+          await writeFile(join(output, "workbook-10-metrics.json"), JSON.stringify(report, null, 2));
+          console.log("10-page workbook", report);
+        } finally {
+          clearInterval(sampler);
+          await client.detach();
+        }
+        await dialog.getByRole("button", { name: "إنشاء PDF" }).click();
+        await dialog.getByRole("button", { name: "إلغاء التصدير" }).click();
+        await dialog.getByRole("alert").getByText("أُلغي التصدير.").waitFor();
+        assert.equal(await dialog.getByRole("link", { name: "تنزيل PDF" }).count(), 0);
+        assert.equal(await sheets.count(), 10);
+        await dialog.getByRole("button", { name: "إغلاق" }).click();
+      }
       await page.emulateMedia({ media: "print" });
       const physicalGeometry = await sheets.evaluateAll(nodes => nodes.every(sheet => {
         const rect = sheet.getBoundingClientRect();
@@ -126,7 +164,7 @@ async function run() {
         for (const [index, sheet] of pages.entries()) {
           assert.match(sheet, /FOOTERTEST/);
           assert.doesNotMatch(sheet, /https?:\/\//);
-          if (n !== 4) assert.match(sheet, new RegExp(`PAGE-${index + 1}(?![0-9])`));
+          if (n !== 4 && n !== 10) assert.match(sheet, new RegExp(`PAGE-${index + 1}(?![0-9])`));
         }
         if (n === 4) {
           assert.match(execFileSync("pdffonts", [file], { encoding: "utf8" }), /NotoNaskhArabic.*yes\s+yes\s+yes/);

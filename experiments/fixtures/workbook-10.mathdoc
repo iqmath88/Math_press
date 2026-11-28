@@ -1,0 +1,1274 @@
+{
+  "format": "mathpress",
+  "schemaVersion": 6,
+  "id": "892c0e36-f80a-443f-b38a-9916d4962253",
+  "title": "ملزمة تطبيقات التفاضل والقطوع",
+  "language": "ar",
+  "direction": "rtl",
+  "page": {
+    "size": "A4",
+    "orientation": "portrait",
+    "marginsMm": {
+      "top": 20,
+      "right": 18,
+      "bottom": 20,
+      "left": 18
+    }
+  },
+  "headerText": "",
+  "footerText": "FOOTERTEST",
+  "showPageNumbers": true,
+  "background": null,
+  "content": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "chapter",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "heading",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "paragraphFormat": null,
+              "level": 1
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "تطبيقات التفاضل"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "ملزمة الرياضيات"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "الصف: ______    إعداد: ______    العام الدراسي: ______"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "summary",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "اختبارا المشتقتين، القيم القصوى، ومسائل التحسين."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "pageBreak"
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "textAlign": null,
+          "dir": null,
+          "templateHeading": false,
+          "educationalSequence": null,
+          "educationalStyle": null,
+          "paragraphFormat": null,
+          "level": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "تطبيقات التفاضل"
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "definition",
+          "title": "تعريف محرّر",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "النقطة الحرجة تقع في مجال الدالة وتكون المشتقة عندها صفرًا أو غير موجودة. "
+              },
+              {
+                "type": "mathInline",
+                "attrs": {
+                  "color": null,
+                  "size": null,
+                  "align": null,
+                  "latex": "x^2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "law",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "نبحث عن تبدّل إشارة المشتقة لتصنيف النقطة الحرجة."
+              }
+            ]
+          },
+          {
+            "type": "mathBlock",
+            "attrs": {
+              "color": null,
+              "size": null,
+              "align": null,
+              "latex": "f'(x)=0"
+            }
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "example",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "exampleNumber": "1",
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "educationBlock",
+            "attrs": {
+              "kind": "custom",
+              "title": "السؤال",
+              "hideTitle": false,
+              "background": null,
+              "padding": null,
+              "radius": null,
+              "frame": "floating",
+              "accent": "#9e2431"
+            },
+            "content": [
+              {
+                "type": "paragraph",
+                "attrs": {
+                  "textAlign": null,
+                  "dir": null,
+                  "templateHeading": false,
+                  "educationalSequence": null,
+                  "educationalStyle": null,
+                  "solutionRelation": null,
+                  "paragraphFormat": null
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "أوجد القيمة الصغرى للدالة التربيعية."
+                  }
+                ]
+              },
+              {
+                "type": "mathBlock",
+                "attrs": {
+                  "color": null,
+                  "size": null,
+                  "align": null,
+                  "latex": "f(x)=x^2-4x+5"
+                }
+              }
+            ]
+          },
+          {
+            "type": "educationBlock",
+            "attrs": {
+              "kind": "solution",
+              "title": "",
+              "hideTitle": false,
+              "background": null,
+              "padding": null,
+              "radius": null,
+              "frame": "steps",
+              "accent": "#193c6b"
+            },
+            "content": [
+              {
+                "type": "mathBlock",
+                "attrs": {
+                  "color": null,
+                  "size": null,
+                  "align": null,
+                  "latex": "f'(x)=2x-4"
+                }
+              },
+              {
+                "type": "paragraph",
+                "attrs": {
+                  "textAlign": null,
+                  "dir": null,
+                  "templateHeading": false,
+                  "educationalSequence": null,
+                  "educationalStyle": null,
+                  "solutionRelation": null,
+                  "paragraphFormat": null
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "نحل المعادلة ٢س − ٤ = ٠ فنحصل على س = ٢."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "attrs": {
+                  "textAlign": null,
+                  "dir": null,
+                  "templateHeading": false,
+                  "educationalSequence": null,
+                  "educationalStyle": null,
+                  "solutionRelation": null,
+                  "paragraphFormat": null
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "تتغير إشارة المشتقة من سالبة إلى موجبة عند ٢."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "educationBlock",
+            "attrs": {
+              "kind": "summary",
+              "title": "النتيجة النهائية",
+              "hideTitle": false,
+              "background": null,
+              "padding": null,
+              "radius": null,
+              "frame": "result",
+              "accent": null
+            },
+            "content": [
+              {
+                "type": "mathBlock",
+                "attrs": {
+                  "color": null,
+                  "size": null,
+                  "align": null,
+                  "latex": "f(2)=1"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "pageBreak"
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "lesson",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "heading",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "paragraphFormat": null,
+              "level": 1
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "٢. اختبار المشتقة الأولى"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "example",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "صنّف النقاط الحرجة للدالة التكعيبية."
+              }
+            ]
+          },
+          {
+            "type": "mathBlock",
+            "attrs": {
+              "color": null,
+              "size": null,
+              "align": null,
+              "latex": "g(x)=x^3-3x"
+            }
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "solution",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "mathBlock",
+            "attrs": {
+              "color": null,
+              "size": null,
+              "align": null,
+              "latex": "g'(x)=3(x-1)(x+1)"
+            }
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "المشتقة موجبة خارج الفترة من −١ إلى ١، وسالبة داخلها. عند −١ عظمى محلية، وعند ١ صغرى محلية."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "attrs": {
+          "spec": {
+            "xmin": -3,
+            "xmax": 3,
+            "ymin": -4,
+            "ymax": 4,
+            "axes": true,
+            "grid": true,
+            "equal": false,
+            "widthPct": 64,
+            "caption": "منحنى يوضح القيمتين القصويين المحليتين",
+            "items": [
+              {
+                "id": "derivative-cubic",
+                "type": "function",
+                "expr": "x^3-3*x",
+                "color": "#193c6b",
+                "dashed": false,
+                "from": "",
+                "to": ""
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "pageBreak"
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "lesson",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "heading",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "paragraphFormat": null,
+              "level": 1
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "٣. اختبار المشتقة الثانية"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "law",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "عند نقطة حرجة داخلية: إذا كانت المشتقة الثانية موجبة فهي نقطة صغرى محلية؛ وإذا كانت سالبة فهي نقطة عظمى محلية."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "warning",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "إذا كانت المشتقة الثانية صفرًا فلا يمكن الحكم بهذا الاختبار وحده."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "example",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "mathBlock",
+            "attrs": {
+              "color": null,
+              "size": null,
+              "align": null,
+              "latex": "h(x)=x^4"
+            }
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "المشتقة الثانية تساوي صفرًا عند الصفر، ومع ذلك توجد قيمة صغرى مطلقة عنده."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "pageBreak"
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "lesson",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "heading",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "paragraphFormat": null,
+              "level": 1
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "٤. مسألة المساحة العظمى"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "attrs": {
+          "spec": {
+            "xmin": -1,
+            "xmax": 9,
+            "ymin": -1,
+            "ymax": 6,
+            "axes": false,
+            "grid": false,
+            "equal": true,
+            "widthPct": 58,
+            "caption": "مستطيل يوضح متغيرَي المسألة",
+            "items": [
+              {
+                "id": "max-area-rectangle",
+                "type": "polygon",
+                "pts": "A(0,0) B(8,0) C(8,4) D(0,4)",
+                "color": "#135643",
+                "fill": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "definition",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "مستطيل محيطه ٢٠ مترًا. أوجد بُعديه عندما تكون المساحة عظمى."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "solution",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "mathBlock",
+            "attrs": {
+              "color": null,
+              "size": null,
+              "align": null,
+              "latex": "A(x)=x(10-x)"
+            }
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "تتغير إشارة المشتقة من موجبة إلى سالبة عند ٥. الشكل المطلوب مربع ضلعُه ٥ أمتار ومساحتُه ٢٥ مترًا مربعًا."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "pageBreak"
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "lesson",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "heading",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "paragraphFormat": null,
+              "level": 1
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "٥. مراجعة وتمارين"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "summary",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "حدّد المجال أولًا ثم النقاط الحرجة. افحص تغير إشارة المشتقة، وقارن قيم الأطراف إذا كان المجال مغلقًا."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "exercise",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "أوجد القيمتين العظمى والصغرى المطلقَتين للدالة على الفترة [٠، ٤]."
+              }
+            ]
+          },
+          {
+            "type": "mathBlock",
+            "attrs": {
+              "color": null,
+              "size": null,
+              "align": null,
+              "latex": "f(x)=x^2-4x+3"
+            }
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "homework",
+          "title": "",
+          "hideTitle": false,
+          "background": null,
+          "padding": null,
+          "radius": null,
+          "accent": null
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null,
+              "templateHeading": false,
+              "educationalSequence": null,
+              "educationalStyle": null,
+              "solutionRelation": null,
+              "paragraphFormat": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "اكتب مثالًا تكون فيه قيمة قصوى عند طرف الفترة، وفسّر لماذا يجب فحص الطرفين."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "data:image/png;base64,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",
+              "alt": "tangent.png",
+              "title": null,
+              "width": null,
+              "widthMm": 64,
+              "crop": 3,
+              "cropTop": 7
+            }
+          },
+          {
+            "type": "studioShape",
+            "attrs": {
+              "kind": "triangle",
+              "label": "مثلث المماس",
+              "dimension": "٦ سم",
+              "pointNames": "",
+              "widthMm": 32,
+              "rotation": 0,
+              "stroke": "#193c6b",
+              "fill": "#dbeafe",
+              "filled": false,
+              "weight": 2,
+              "opacity": 1,
+              "dashed": false
+            }
+          }
+        ]
+      },
+      {
+        "type": "pageBreak"
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "القطوع المخروطية"
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "definition"
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "الدائرة مجموعة نقاط المستوى التي تبعد مسافة ثابتة عن المركز."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "law"
+        },
+        "content": [
+          {
+            "type": "mathBlock",
+            "attrs": {
+              "latex": "x^2+y^2=4"
+            }
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "المركز عند الأصل ونصف القطر ٢."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "attrs": {
+          "spec": {
+            "xmin": -5,
+            "xmax": 5,
+            "ymin": -5,
+            "ymax": 5,
+            "axes": true,
+            "grid": true,
+            "equal": true,
+            "widthPct": 65,
+            "caption": "دائرة نصف قطرها ٢",
+            "items": [
+              {
+                "id": "conic-0",
+                "type": "function",
+                "expr": "sqrt(4-x^2)",
+                "color": "#193c6b",
+                "dashed": false,
+                "from": "-2",
+                "to": "2"
+              },
+              {
+                "id": "conic-1",
+                "type": "function",
+                "expr": "-sqrt(4-x^2)",
+                "color": "#193c6b",
+                "dashed": false,
+                "from": "-2",
+                "to": "2"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "pageBreak"
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "القطع المكافئ"
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "example"
+        },
+        "content": [
+          {
+            "type": "mathBlock",
+            "attrs": {
+              "latex": "x^2=4y"
+            }
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "رأس القطع عند الأصل وبؤرته عند (٠، ١)."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "attrs": {
+          "spec": {
+            "xmin": -5,
+            "xmax": 5,
+            "ymin": -5,
+            "ymax": 5,
+            "axes": true,
+            "grid": true,
+            "equal": true,
+            "widthPct": 65,
+            "caption": "قطع مكافئ مفتوح نحو الأعلى",
+            "items": [
+              {
+                "id": "conic-0",
+                "type": "function",
+                "expr": "x^2/4",
+                "color": "#193c6b",
+                "dashed": false,
+                "from": "",
+                "to": ""
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "pageBreak"
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "القطع الناقص"
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "example"
+        },
+        "content": [
+          {
+            "type": "mathBlock",
+            "attrs": {
+              "latex": "\\frac{x^2}{9}+\\frac{y^2}{4}=1"
+            }
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "نصف المحور الأفقي ٣ ونصف المحور الرأسي ٢."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "attrs": {
+          "spec": {
+            "xmin": -5,
+            "xmax": 5,
+            "ymin": -5,
+            "ymax": 5,
+            "axes": true,
+            "grid": true,
+            "equal": true,
+            "widthPct": 65,
+            "caption": "قطع ناقص بمحور أكبر أفقي",
+            "items": [
+              {
+                "id": "conic-0",
+                "type": "function",
+                "expr": "2*sqrt(1-x^2/9)",
+                "color": "#193c6b",
+                "dashed": false,
+                "from": "-3",
+                "to": "3"
+              },
+              {
+                "id": "conic-1",
+                "type": "function",
+                "expr": "-2*sqrt(1-x^2/9)",
+                "color": "#193c6b",
+                "dashed": false,
+                "from": "-3",
+                "to": "3"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "pageBreak"
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "القطع الزائد"
+          }
+        ]
+      },
+      {
+        "type": "educationBlock",
+        "attrs": {
+          "kind": "example"
+        },
+        "content": [
+          {
+            "type": "mathBlock",
+            "attrs": {
+              "latex": "y^2-x^2=1"
+            }
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "رأسا القطع عند (٠، ١) و(٠، −١). المستقيمان ص = س وص = −س مقاربان."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "attrs": {
+          "spec": {
+            "xmin": -5,
+            "xmax": 5,
+            "ymin": -5,
+            "ymax": 5,
+            "axes": true,
+            "grid": true,
+            "equal": true,
+            "widthPct": 65,
+            "caption": "فرعا قطع زائد بمحور رأسي",
+            "items": [
+              {
+                "id": "conic-0",
+                "type": "function",
+                "expr": "sqrt(1+x^2)",
+                "color": "#193c6b",
+                "dashed": false,
+                "from": "",
+                "to": ""
+              },
+              {
+                "id": "conic-1",
+                "type": "function",
+                "expr": "-sqrt(1+x^2)",
+                "color": "#193c6b",
+                "dashed": false,
+                "from": "",
+                "to": ""
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "updatedAt": "2026-11-28T17:45:37.853Z",
+  "creativeDesign": "classic",
+  "watermark": {
+    "kind": "text",
+    "value": "معاينة",
+    "opacity": 0.12,
+    "rotation": -35,
+    "size": 52,
+    "position": "center",
+    "pages": "all",
+    "repeat": false,
+    "color": "#193c6b"
+  }
+}

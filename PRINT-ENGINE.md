@@ -203,3 +203,10 @@ single elapsed samples (including automation and download), not P95 values.
 The 300-DPI conics case used all four 2480×3508 image pages, including the first
 lazy render offline. Artwork from the real iPad described in the brief was
 not separately attached to this turn; it was not used as a pixel baseline.
+
+The ten-page workbook combined the existing calculus and conics teaching
+documents. The 300-DPI Chromium run measured 3.87 s end to end and
+2,814,425 output bytes. CDP sampled JavaScript heap at 24,613,116 bytes
+before export and 54,517,248 bytes maximum at 200-ms sampling. These do not
+include Canvas process memory or establish iPad headroom. Cancelling a
+second export produced no download and kept all ten sheets.

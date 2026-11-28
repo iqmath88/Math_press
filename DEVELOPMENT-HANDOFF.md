@@ -144,3 +144,10 @@ part of the browser regression. Physical dimensions are checked using PDF
 image metadata. On devices over the per-page allocation budget the dialog
 blocks explicitly. Continue with long real documents and peak memory,
 real iPad testing, and the remaining Glass Studio, boxes and performance work.
+
+The next checkpoint archives a ten-page teaching workbook (calculus and
+conics) with real equations, boxed content, plots and an image. Chromium
+downloads and inspects the integrated PDF and checks cancelled export
+leaves all sheets in place. The sampled JavaScript heap and output
+metrics are published with print-compatibility evidence. Next measure
+50/100/200-page independent raster workloads and true device memory.
