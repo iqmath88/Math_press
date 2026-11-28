@@ -5,7 +5,7 @@ import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw, Moon, Sun, La
 import type { EducationalStyle } from "./educationalStyles";
 import type { MathPressDocument } from "./types";
 import { createDocument, parseDocument, protectEducationalDocument } from "./document";
-import { creativeTemplates, makeTemplate, type SavedCreativeTemplate } from "./creativeDesign";
+import { creativeTemplates, makeTemplate, readDocumentIdentity, type SavedCreativeTemplate } from "./creativeDesign";
 import { deleteDocument, loadLibrary, saveDocument } from "./storage";
 import DocumentEditor from "./Editor";
 import PageSettingsDialog from "./PageSettingsDialog";
@@ -230,14 +230,14 @@ export default function App() {
             </button>)}
           {savedTemplates.filter(item=>item.name.includes(templateQuery)).map(item=>
             <button type="button" key={item.name} onClick={()=>{
-              replaceDocument(protectEducationalDocument({...createDocument(item.name),content:structuredClone(item.content),creativeDesign:item.design}));
+              replaceDocument(protectEducationalDocument({...createDocument(item.name),content:structuredClone(item.content),creativeDesign:item.design,publishingIdentity:readDocumentIdentity(item.identity)}));
               setShowTemplates(false);
             }}>{item.name}</button>)}
         </div>
         <button type="button" onClick={()=>{
           const name = window.prompt("اسم القالب",doc.title)?.trim();
           if (!name) return;
-          const next = [...savedTemplates.filter(item=>item.name!==name),{name,content:doc.content,design:doc.creativeDesign}];
+          const next = [...savedTemplates.filter(item=>item.name!==name),{name,content:doc.content,design:doc.creativeDesign,identity:doc.publishingIdentity}];
           try {
             localStorage.setItem("mathpress-creative-templates",JSON.stringify(next));
             setSavedTemplates(next);
@@ -266,7 +266,8 @@ export default function App() {
 
       <main className="editor-area">
         <DocumentEditor
-          key={editorRevision} doc={doc} onDesign={creativeDesign => setDoc(old=>({...old,creativeDesign}))} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onNotice={setNotice}
+          key={editorRevision} doc={doc} onDesign={creativeDesign => setDoc(old=>({...old,creativeDesign,publishingIdentity:undefined}))}
+          onIdentity={publishingIdentity => setDoc(old=>({...old,publishingIdentity}))} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onNotice={setNotice}
           actions={{
             onNew: () => { replaceDocument(createDocument()); setNotice("تم إنشاء مستند جديد."); },
             onNewBlank: () => {

@@ -1,3 +1,4 @@
+import DocumentIdentity from "./DocumentIdentity";
 import { Fragment } from "@tiptap/pm/model";
 import { Selection } from "@tiptap/pm/state";
 import BlockStyleLibrary from "./BlockStyleLibrary";
@@ -8,7 +9,7 @@ import type { JSONContent } from "@tiptap/core";
 import type { MathfieldElement } from "mathlive";
 import { paperDimensions, type MathPressDocument } from "./types";
 import StudioMediaControls from "./StudioMediaControls";
-import { blockTypes, blockFonts, blockFrames, designVariables, designs, educationBlock, solvedExample } from "./creativeDesign";
+import { blockTypes, blockFonts, blockFrames, designVariables, designs, educationBlock, solvedExample, type PublishingIdentity } from "./creativeDesign";
 import { createEditorSnapshot } from "./editorSnapshot";
 import { SmartMathInput } from "./SmartMathInput";
 import { buildExtensions } from "./extensions";
@@ -31,6 +32,7 @@ type Props = {
   doc: MathPressDocument;
   onChange: (content: JSONContent) => void;
   onDesign: (design?: string) => void;
+  onIdentity: (identity?: PublishingIdentity) => void;
   onStyles: (styles: EducationalStyle[]) => void;
   onNumberStart: (numberingStart: number) => void;
   onNotice: (message: string) => void;
@@ -39,7 +41,7 @@ type Props = {
 
 type ZoomMode = number | "width" | "page";
 
-export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNumberStart, onNotice, actions }: Props) {
+export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, onStyles, onNumberStart, onNotice, actions }: Props) {
   const m = doc.page.marginsMm;
   const landscape = doc.page.orientation === "landscape";
   const [paperWidth,paperHeight] = paperDimensions(doc.page.size,landscape);
@@ -360,7 +362,9 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
     editor.view.focus();
   };
   const paperStyle = {
-    ...designVariables(doc.creativeDesign),
+    ...designVariables(doc.creativeDesign ?? (doc.publishingIdentity ? "academic" : undefined)),
+    ...(doc.publishingIdentity ? {"--creative-accent":doc.publishingIdentity.accent,
+      "--creative-tint":doc.publishingIdentity.tint,"--creative-font":doc.publishingIdentity.font} : {}),
     "--editor-zoom": zoom,
     "--numbering-start": (doc.numberingStart ?? 1) - 1,
     "--pt": `${m.top}mm`,
@@ -492,6 +496,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
             <option value="">الافتراضية</option>
             {designs.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
           </select></label>
+          <DocumentIdentity current={doc.publishingIdentity} apply={onIdentity} notice={onNotice} />
           <BlockStyleLibrary selected={selected?.node.attrs} apply={editBlock} notice={onNotice}
             insertSolvedExample={() => {
               let number=0;
@@ -575,7 +580,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
           <button type="button" onClick={() => setShowParagraphFormat(true)}>خصائص الفقرة</button>
         </aside>}
         <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}`}
-          id="print-document" data-creative-design={doc.creativeDesign} style={paperStyle}>
+          id="print-document" data-creative-design={doc.publishingIdentity ? "custom" : doc.creativeDesign} style={paperStyle}>
           <div className={`editor-source${showMargins && !printOptions ? " studio-margins" : ""}`}>
             <div className="paper-header" aria-hidden="true"><span>{doc.headerText}</span></div>
             <EditorContent editor={editor} />

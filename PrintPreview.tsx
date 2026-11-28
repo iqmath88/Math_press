@@ -1,4 +1,4 @@
-import { pendingStudioImages } from "./StudioImage";
+import { pendingStudioImages, studioPrintSources } from "./StudioImage";
 import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
 import type { Editor } from "@tiptap/core";
 import { paginateForPrint } from "./PrintPagination";
@@ -62,7 +62,12 @@ export default function PrintPreview({ paper, editor, options, onChange, paperSi
         ...(graph ? [loadJXG()] : []),
         ...images.map(async image => {
           await pendingStudioImages.get(image);
-          await image.decode();
+          const original = studioPrintSources.get(image);
+          if (original) {
+            const full = new Image();
+            full.src = original;
+            await full.decode();
+          } else await image.decode();
         })
       ]);
       if (!active || editor.isDestroyed) return;

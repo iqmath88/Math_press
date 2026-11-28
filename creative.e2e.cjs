@@ -110,7 +110,7 @@ async function lesson(page, capture) {
     })));
     throw new Error(`${engine.name()} image import: ${JSON.stringify({alerts,state})}`,{cause:error});
   }
-  assert.equal(await image.evaluate(element=>element.naturalWidth),2048);
+  assert.equal(await image.evaluate(element=>Number(element.dataset.originalWidth) || element.naturalWidth),2048);
   await image.click();
   await page.getByRole("group",{name:"خصائص الصورة"}).getByLabel("العرض (مم)").fill("64");
   await page.getByRole("group",{name:"خصائص الصورة"}).getByLabel("القص من كل حافة (%)").fill("3");
@@ -153,7 +153,9 @@ async function lesson(page, capture) {
   }
   await page.getByRole("button",{name:"طباعة / PDF",exact:true}).click();
   await page.getByRole("region",{name:"معاينة الطباعة"}).getByText(/صفحة A4/).waitFor();
-  await page.locator(".print-sheet .studio-image img").waitFor();
+  const printImage = page.locator(".print-sheet .studio-image img");
+  await printImage.waitFor();
+  assert.equal(await printImage.evaluate(async image=>{await image.decode();return image.naturalWidth;}),2048);
   await page.locator(".print-sheet .studio-shape").getByText("مثلث المماس").waitFor();
   assert.equal(await page.locator(".print-sheet .creative-block-label").filter({hasText:"تعريف محرّر"}).count(),1);
   if (capture) {
@@ -177,7 +179,7 @@ async function lesson(page, capture) {
     const restoredImage = restored.locator(".editor-source .studio-image img");
     await restoredImage.waitFor();
     await restoredImage.evaluate(element=>element.decode());
-    assert.equal(await restoredImage.evaluate(element=>element.naturalWidth),2048);
+    assert.equal(await restoredImage.evaluate(element=>Number(element.dataset.originalWidth) || element.naturalWidth),2048);
     await restored.locator(".editor-source .studio-shape").getByText("مثلث المماس").waitFor();
     await restored.getByRole("tab",{name:"الصفحة",exact:true}).click();
     await restored.getByRole("button",{name:"هوامش مخصصة، الرأس والتذييل، الترقيم"}).click();

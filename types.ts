@@ -1,3 +1,4 @@
+import type { PublishingIdentity } from "./creativeDesign";
 import type { JSONContent } from "@tiptap/core";
 
 import type { EducationalStyle } from "./educationalStyles";
@@ -23,6 +24,7 @@ export type MathPressDocument = {
   background: string | null;
   numberingStart?: number;
   creativeDesign?: string;
+  publishingIdentity?: PublishingIdentity;
   educationalStyles?: EducationalStyle[];
   content: JSONContent;
   updatedAt: string;

@@ -1,13 +1,14 @@
 import Image from "@tiptap/extension-image";
 import { Plugin } from "@tiptap/pm/state";
-import { assetReference, readImage, storeImage } from "./imageAssets";
+import { assetReference, readImageAsset, storeImage } from "./imageAssets";
 
+export const studioPrintSources = new WeakMap<HTMLImageElement, string>();
 export const pendingStudioImages = new WeakMap<HTMLImageElement, Promise<void>>();
 
 export const StudioImage = Image.extend({
   addAttributes() {
     const attrs = {...this.parent?.()};
-    for (const name of ["width","widthMm","rotation","opacity","border","align","crop","caption"]) {
+    for (const name of ["width","widthMm","rotation","opacity","border","align","crop","cropTop","cropRight","cropBottom","cropLeft","caption"]) {
       attrs[name] = {default:null,parseHTML:el=>{
         const raw = el.getAttribute("data-image-"+name);
         try { return raw === null ? (name==="width" ? el.style.width || null : null) : JSON.parse(raw); }
@@ -47,17 +48,26 @@ export const StudioImage = Image.extend({
       const image=document.createElement("img");
       const caption=document.createElement("figcaption");
       dom.append(image,caption);
-      let previous="", url="", destroyed=false;
+      let previous="", url="", printUrl="", destroyed=false;
+      const releaseImages = () => {
+        studioPrintSources.delete(image);
+        if(url) URL.revokeObjectURL(url);
+        if(printUrl) URL.revokeObjectURL(printUrl);
+        url=printUrl="";
+        delete image.dataset.originalWidth;
+      };
       const put = (attrs: Record<string,unknown>)=>{
         if(typeof attrs.src==="string" && previous!==attrs.src) {
           previous=attrs.src;
           const src=previous;
-          if(url) URL.revokeObjectURL(url);
-          url="";
+          releaseImages();
           if(assetReference.test(src)) {
             image.removeAttribute("src");
-            const ready = readImage(src).then(blob=>{
-              if(!destroyed && previous===src) image.src=url=URL.createObjectURL(blob);
+            const ready = readImageAsset(src).then(({original,preview,width})=>{
+              if(destroyed || previous!==src) return;
+              if(width) image.dataset.originalWidth=String(width);
+              image.src=url=URL.createObjectURL(preview ?? original);
+              if(preview) studioPrintSources.set(image,printUrl=URL.createObjectURL(original));
             });
             pendingStudioImages.set(image,ready);
             void ready.catch(()=>{if(!destroyed && previous===src) image.alt="أصل الصورة غير موجود";});
@@ -79,12 +89,14 @@ export const StudioImage = Image.extend({
         image.style.opacity=attrs.opacity==null ? "" : String(Math.max(0,Math.min(1,Number(attrs.opacity))));
         image.style.border=typeof attrs.border==="number" ? Math.max(0,Math.min(12,attrs.border))+"px solid currentColor" : "";
         const crop=typeof attrs.crop==="number" ? Math.max(0,Math.min(45,attrs.crop)) : 0;
-        image.style.clipPath=crop ? `inset(${crop}%)` : "";
+        const edges=["cropTop","cropRight","cropBottom","cropLeft"].map(key=>
+          typeof attrs[key]==="number" ? Math.max(0,Math.min(45,attrs[key])) : crop);
+        image.style.clipPath=edges.some(Boolean) ? `inset(${edges.map(edge=>edge+"%").join(" ")})` : "";
       };
       put(node.attrs);
       return {dom,update:updated=>{if(updated.type!==node.type)return false;put(updated.attrs);return true;},destroy:()=>{
         destroyed=true;
-        if(url) URL.revokeObjectURL(url);
+        releaseImages();
       }};
     };
   }

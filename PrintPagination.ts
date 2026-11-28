@@ -1,3 +1,4 @@
+import { studioPrintSources } from "./StudioImage";
 import type { MathfieldElement } from "mathlive";
 
 type Boundary = { node: Node; offset: number };
@@ -69,6 +70,11 @@ function isolateGraphIds(clone: HTMLElement) {
 
 function printableClone(source: HTMLElement): HTMLElement {
   const clone = source.cloneNode(true) as HTMLElement;
+  const originalImages = source.querySelectorAll("img");
+  clone.querySelectorAll("img").forEach((image,index) => {
+    const original = studioPrintSources.get(originalImages[index]);
+    if (original) image.src = original;
+  });
   const originalFields = source.querySelectorAll<MathfieldElement>("math-field");
   clone.querySelectorAll("math-field").forEach((field, index) => {
     field.textContent = originalFields[index].closest<HTMLElement>(".math-node")?.dataset.latex ?? originalFields[index].value;

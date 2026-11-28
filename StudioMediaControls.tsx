@@ -58,7 +58,9 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
     const dom=editor.view.nodeDOM(selection.from);
     const element=dom instanceof Element ? dom.querySelector("img") : null;
     if(!element?.naturalWidth) return onNotice("لم تكتمل قراءة أبعاد الصورة.");
-    const value=Math.round(element.naturalWidth * 25.4 / Number(attrs.widthMm));
+    const width=element.getBoundingClientRect().width;
+    const pixels=Number(element.dataset.originalWidth) || element.naturalWidth;
+    const value=Math.round(pixels * 96 / (element.offsetWidth || width));
     onNotice(`الدقة الأفقية عند العرض المحدد: ${value} DPI${value<300 ? " · أقل من 300 DPI" : ""}`);
   };
   return <>
@@ -73,6 +75,12 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
       <label>التسمية <input value={attrs[image?"caption":"label"] ?? ""} onChange={event=>edit({[image?"caption":"label"]:event.target.value})}/></label>
       {image ? <>
         {number("القص من كل حافة (%)","crop",0,45)}
+        <details><summary>قص كل حافة على حدة</summary>
+          {number("القص من الأعلى (%)","cropTop",0,45)}
+          {number("القص من اليمين (%)","cropRight",0,45)}
+          {number("القص من الأسفل (%)","cropBottom",0,45)}
+          {number("القص من اليسار (%)","cropLeft",0,45)}
+        </details>
         {number("سماكة الإطار","border",0,12)}
         <label>محاذاة الصورة <select value={attrs.align ?? "start"} onChange={event=>edit({align:event.target.value})}>
           <option value="start">البداية</option><option value="center">وسط</option><option value="end">النهاية</option>
@@ -83,6 +91,10 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
         <button type="button" disabled={!attrs.widthMm} onClick={dpi}>فحص الدقة النقطية</button>
       </> : <>
         {number("سماكة خط الشكل","weight",1,10)}
+        {["triangle","rectangle","square","circle"].includes(attrs.kind) && <>
+          <label>قياس خط البُعد <input maxLength={50} value={attrs.dimension ?? ""} onChange={event=>edit({dimension:event.target.value})}/></label>
+          <label>أسماء النقاط، مفصولة بفاصلة <input maxLength={60} value={attrs.pointNames ?? ""} onChange={event=>edit({pointNames:event.target.value})}/></label>
+        </>}
         <label>لون الحدود <input type="color" value={attrs.stroke} onChange={event=>edit({stroke:event.target.value})}/></label>
         <label>لون التعبئة <input type="color" value={attrs.fill} onChange={event=>edit({fill:event.target.value,filled:true})}/></label>
         <label><input type="checkbox" checked={attrs.filled===true} onChange={event=>edit({filled:event.target.checked})}/> تعبئة</label>

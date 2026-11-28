@@ -44,15 +44,30 @@ export async function storeImage(file: Blob) {
   const original = type === "image/svg+xml" ? new Blob([sanitizeVector(await file.text())],{type})
     : file instanceof File ? new Blob([await file.arrayBuffer()],{type}) : file.slice(0,file.size,type);
   const url = URL.createObjectURL(original);
+  let width = 0;
+  let preview: ArrayBuffer | undefined;
   try {
+    const image = new Image();
     await new Promise<void>((resolve,reject) => {
-      const image = new Image();
       image.onload = () => resolve();
       image.onerror = () => reject(new Error("تعذر قراءة الصورة."));
       image.src = url;
     });
+    width = image.naturalWidth;
+    const longestEdge = Math.max(width,image.naturalHeight);
+    if (type !== "image/svg+xml" && longestEdge > 1200) {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1,Math.round(width*1200/longestEdge));
+      canvas.height = Math.max(1,Math.round(image.naturalHeight*1200/longestEdge));
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(image,0,0,canvas.width,canvas.height);
+        const thumbnail = await new Promise<Blob | null>(resolve=>canvas.toBlob(resolve,"image/webp",.85));
+        if (thumbnail?.type==="image/webp" && thumbnail.size<original.size) preview = await thumbnail.arrayBuffer();
+      }
+    }
   } finally { URL.revokeObjectURL(url); }
-  const record = {type, bytes: await original.arrayBuffer()};
+  const record = {type, bytes: await original.arrayBuffer(), width, preview};
   const id = "mathpress-asset:" + crypto.randomUUID();
   const db = await openAssets();
   try {
@@ -66,21 +81,27 @@ export async function storeImage(file: Blob) {
   return id;
 }
 
-export async function readImage(id: string) {
+export async function readImageAsset(id: string) {
   const db = await openAssets();
   try {
-    return await new Promise<Blob>((resolve,reject) => {
+    return await new Promise<{original: Blob; preview?: Blob; width?: number}>((resolve,reject) => {
       const req = db.transaction("images").objectStore("images").get(id);
       req.onsuccess = () => {
         const value = req.result;
-        if (value instanceof Blob) resolve(value);
-        else if (value?.bytes instanceof ArrayBuffer && types.has(value.type)) resolve(new Blob([value.bytes],{type:value.type}));
+        if (value instanceof Blob) resolve({original:value});
+        else if (value?.bytes instanceof ArrayBuffer && types.has(value.type)) resolve({
+          original:new Blob([value.bytes],{type:value.type}),
+          preview:value.preview instanceof ArrayBuffer ? new Blob([value.preview],{type:"image/webp"}) : undefined,
+          width:typeof value.width==="number" ? value.width : undefined
+        });
         else reject(new Error("أصل الصورة غير موجود في التخزين المحلي."));
       };
       req.onerror = () => reject(req.error);
     });
   } finally { db.close(); }
 }
+
+export async function readImage(id: string) { return (await readImageAsset(id)).original; }
 
 function dataUrl(blob: Blob) {
   return new Promise<string>((resolve,reject) => {
@@ -100,7 +121,7 @@ export async function portableImages(node: JSONContent, cache = new Map<string,P
   }
   if ((node.type === "image" || node.type === "educationBlock") && attrs) {
     attrs = {...attrs};
-    for (const key of node.type === "image" ? ["widthMm","rotation","opacity","border","align","crop","caption"] : publishingBoxFields) {
+    for (const key of node.type === "image" ? ["widthMm","rotation","opacity","border","align","crop","cropTop","cropRight","cropBottom","cropLeft","caption"] : publishingBoxFields) {
       if (attrs[key] == null) delete attrs[key];
     }
   }

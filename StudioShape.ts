@@ -22,6 +22,13 @@ const svgNS="http://www.w3.org/2000/svg";
 const paint=(value:unknown,fallback:string)=>typeof value==="string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
 const bounded=(value:unknown,min:number,max:number,fallback:number)=>typeof value==="number" && Number.isFinite(value) ? Math.min(max,Math.max(min,value)) : fallback;
 
+const measurementGeometry: Record<string,{ span: [number,number,number]; points: [number,number][] }> = {
+  triangle:{span:[25,175,105],points:[[100,13],[178,108],[21,108]]},
+  rectangle:{span:[25,175,95],points:[[21,24],[179,24],[179,96],[21,96]]},
+  square:{span:[55,145,105],points:[[51,14],[149,14],[149,106],[51,106]]},
+  circle:{span:[56,144,104],points:[[100,59]]},
+};
+
 export function drawShape(attrs:Record<string,unknown>) {
   const svg=document.createElementNS(svgNS,"svg");
   svg.setAttribute("xmlns",svgNS);
@@ -39,6 +46,34 @@ export function drawShape(attrs:Record<string,unknown>) {
   path.setAttribute("opacity",String(bounded(attrs.opacity,0,1,1)));
   if(attrs.dashed===true) path.setAttribute("stroke-dasharray","5 4");
   group.append(path);
+  const geometry=measurementGeometry[String(attrs.kind)];
+  const measure=typeof attrs.dimension==="string" ? attrs.dimension.trim().slice(0,50) : "";
+  const names=typeof attrs.pointNames==="string" ? attrs.pointNames.split(/[,،]/).map(name=>name.trim().slice(0,12)) : [];
+  if(geometry && (measure || names.some(Boolean))) {
+    const ink=paint(attrs.stroke,"#193c6b");
+    if(measure) {
+      const [left,right,base]=geometry.span;
+      const y=base+13;
+      const marks=document.createElementNS(svgNS,"path");
+      marks.setAttribute("d",`M${left} ${base}v17 M${right} ${base}v17 M${left} ${y}H${right}
+        m-5 -3 5 3 -5 3 M${left+5} ${y-3}l-5 3 5 3`);
+      marks.setAttribute("fill","none");
+      marks.setAttribute("stroke",ink);
+      group.append(marks);
+      const text=document.createElementNS(svgNS,"text");
+      text.setAttribute("x",String((left+right)/2));text.setAttribute("y",String(y-3));
+      text.setAttribute("text-anchor","middle");text.setAttribute("font-size","9");
+      text.setAttribute("stroke","white");text.setAttribute("stroke-width","2");text.setAttribute("paint-order","stroke");
+      text.textContent=measure;group.append(text);
+    }
+    geometry.points.forEach(([x,y],index)=>{
+      if(!names[index]) return;
+      const text=document.createElementNS(svgNS,"text");
+      text.setAttribute("x",String(x));text.setAttribute("y",String(y));
+      text.setAttribute("text-anchor","middle");text.setAttribute("font-size","10");text.setAttribute("fill",ink);
+      text.textContent=names[index];group.append(text);
+    });
+  }
   svg.append(group);
   const label=document.createElementNS(svgNS,"text");
   label.setAttribute("x","100"); label.setAttribute("y","132"); label.setAttribute("text-anchor","middle");
@@ -53,7 +88,7 @@ export const StudioShape = Node.create({
   name:"studioShape", group:"block", atom:true, draggable:true,
   addAttributes:()=>{
     const attrs:Record<string,{default:unknown;parseHTML:(el:HTMLElement)=>unknown}>={};
-    for(const [key,value] of Object.entries({kind:"triangle",label:"",widthMm:55,rotation:0,stroke:"#193c6b",fill:"#dbeafe",filled:false,weight:2,opacity:1,dashed:false})) {
+    for(const [key,value] of Object.entries({kind:"triangle",label:"",dimension:"",pointNames:"",widthMm:55,rotation:0,stroke:"#193c6b",fill:"#dbeafe",filled:false,weight:2,opacity:1,dashed:false})) {
       attrs[key]={default:value,parseHTML:el=>{
         try {return JSON.parse(el.dataset.studioShape || "{}")[key] ?? value;} catch {return value;}
       }};

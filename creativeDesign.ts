@@ -36,6 +36,18 @@ export const educationBlock = (kind: string, content = [paragraph("")]): JSONCon
   ({type:"educationBlock",attrs:{kind},content});
 
 export const blockFonts = ["Cairo", "Amiri", "Noto Naskh Arabic"] as const;
+export type PublishingIdentity = {name:string;accent:string;tint:string;font:typeof blockFonts[number]};
+
+export function readDocumentIdentity(input: unknown): PublishingIdentity | undefined {
+  if (!input || typeof input!=="object") return;
+  const {name,accent,tint,font} = input as Record<string,unknown>;
+  const color = /^#[0-9a-f]{6}$/i;
+  const validFont=blockFonts.find(value=>value===font);
+  if (typeof name!=="string" || !name.trim() || name.trim().length>60 || !validFont ||
+      typeof accent!=="string" || !color.test(accent) || typeof tint!=="string" || !color.test(tint)) return;
+  return {name:name.trim(),accent,tint,font:validFont};
+}
+
 export const blockFrames = ["header", "side", "floating", "double", "steps", "comparison", "result", "alert"] as const;
 
 export function solvedExample(number?: number): JSONContent {
@@ -148,7 +160,7 @@ export const creativeTemplates: { id: string; name: string; category: string; de
   ]}
 ];
 
-export type SavedCreativeTemplate = { name: string; content: JSONContent; design?: string };
+export type SavedCreativeTemplate = { name: string; content: JSONContent; design?: string; identity?: PublishingIdentity };
 export function makeTemplate(doc: MathPressDocument, id: string): MathPressDocument {
   const template = creativeTemplates.find(item => item.id === id);
   if (!template) return doc;

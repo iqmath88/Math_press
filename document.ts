@@ -1,4 +1,4 @@
-import { designs } from "./creativeDesign";
+import { designs, readDocumentIdentity } from "./creativeDesign";
 import type { JSONContent } from "@tiptap/core";
 import type { MathPressDocument, PageSettings } from "./types";
 
@@ -102,6 +102,8 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
   const m = page?.marginsMm;
   const margins = m && [m.top, m.right, m.bottom, m.left].every(n => typeof n === "number" && n >= 0 && n < 60)
     ? m : DEFAULT_PAGE.marginsMm;
+  const identity = readDocumentIdentity(d.publishingIdentity);
+  if (d.publishingIdentity !== undefined && !identity) return null;
   return {
     format: "mathpress",
     schemaVersion: d.schemaVersion === 5 ? 5 : d.schemaVersion === 4 ? 4 : 3,
@@ -121,6 +123,7 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
     ...(typeof d.numberingStart === "number" && Number.isInteger(d.numberingStart) && d.numberingStart >= 1 && d.numberingStart <= 9999
       ? { numberingStart: d.numberingStart } : {}),
     ...(typeof d.creativeDesign === "string" && designs.some(([id])=>id===d.creativeDesign) ? {creativeDesign:d.creativeDesign} : {}),
+    ...(identity ? {publishingIdentity:identity} : {}),
     ...(d.educationalStyles === undefined ? {} : { educationalStyles: readEducationalStyles(d.educationalStyles) }),
     content: d.content,
     updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : new Date().toISOString()
@@ -133,14 +136,14 @@ export const publishingBoxFields = ["frame","font","size","exampleNumber"] as co
 /** Protect additions from readers that cannot preserve their attributes. */
 export function protectEducationalDocument(doc: MathPressDocument): MathPressDocument {
   if (doc.schemaVersion === 5) return doc;
-  if (doc.page.size !== "A4") return {...doc,schemaVersion:5};
+  if (doc.publishingIdentity || doc.page.size !== "A4") return {...doc,schemaVersion:5};
   const nodes = [doc.content];
   while(nodes.length) {
     const node = nodes.pop()!;
     if (node.type === "studioShape" ||
       (node.type === "educationBlock" && publishingBoxFields.some(key=>node.attrs?.[key]!=null)) || node.type === "image" &&
       (String(node.attrs?.src ?? "").startsWith("mathpress-asset:") ||
-        ["widthMm","rotation","opacity","border","align","crop","caption"].some(key=>node.attrs?.[key]!=null)))
+        ["widthMm","rotation","opacity","border","align","crop","cropTop","cropRight","cropBottom","cropLeft","caption"].some(key=>node.attrs?.[key]!=null)))
       return {...doc,schemaVersion:5};
     if(node.content) for(const child of node.content) nodes.push(child);
   }
