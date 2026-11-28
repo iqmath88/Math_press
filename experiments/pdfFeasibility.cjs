@@ -24,16 +24,41 @@ const fixture = [
 ];
 const svg = data => `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><path d="${data}" stroke="#245989" stroke-width="2" fill="none"/></svg>`;
 
-function pdfkit(file, actualText = false) {
+// This fixture contains BMP scalars only. Reorder runs, never Arabic characters.
+function bidiRuns(line) {
+  const levels = bidi.getEmbeddingLevels(line, "rtl");
+  const runs = [];
+  for (const index of bidi.getReorderedIndices(line, levels)) {
+    const level = levels.levels[index];
+    const last = runs.at(-1);
+    if (last?.level === level && index === last.previous + (level % 2 ? -1 : 1)) {
+      last.start = Math.min(last.start, index);
+      last.end = Math.max(last.end, index);
+      last.previous = index;
+    } else runs.push({ level, start: index, end: index, previous: index });
+  }
+  return runs.map(run => line.slice(run.start, run.end + 1));
+}
+
+function pdfkit(file, mode = "direct") {
   const doc = new PDFKit({ size: "A4", margin: 48 });
   const stream = doc.pipe(fs.createWriteStream(file));
   doc.font(font).fontSize(15);
   fixture.forEach(([title, equation, plot], i) => {
     if (i) doc.addPage();
     for (const line of [title, arabic, mixed]) {
-      if (actualText) doc.markContent("Span", { actual: line });
-      doc.text(line, { align: "right" });
-      if (actualText) doc.endMarkedContent();
+      if (mode === "actualtext") doc.markContent("Span", { actual: line });
+      if (mode === "bidi-runs") {
+        const y = doc.y;
+        const runs = bidiRuns(line).map(text => ({ text, width: doc.widthOfString(text) }));
+        let x = doc.page.width - 48 - runs.reduce((sum, run) => sum + run.width, 0);
+        for (const run of runs) {
+          doc.text(run.text, x, y, { lineBreak: false });
+          x += run.width;
+        }
+        doc.y = y + doc.currentLineHeight(true);
+      } else doc.text(line, { align: "right" });
+      if (mode === "actualtext") doc.endMarkedContent();
     }
     doc.text(equation, 48, 160);
     doc.rect(48, 194, 90, 28).stroke().rect(138, 194, 90, 28).stroke();
@@ -113,7 +138,11 @@ async function run() {
   fs.mkdirSync(output, { recursive: true });
   const levels = bidi.getEmbeddingLevels(mixed, "rtl");
   const report = { fixture: mixed, bidiVisual: bidi.getReorderedString(mixed, levels), engines: {} };
-  const engines = { pdfkit, "pdf-lib": pdflib, pdfmake: make, "pdfkit-actualtext": file => pdfkit(file, true) };
+  const engines = {
+    pdfkit, "pdf-lib": pdflib, pdfmake: make,
+    "pdfkit-actualtext": file => pdfkit(file, "actualtext"),
+    "pdfkit-bidi-runs": file => pdfkit(file, "bidi-runs"),
+  };
   if (process.env.PDF_PROBE_CHROMIUM) engines["pdf-lib-offline-browser"] = browserPdfLib;
   for (const [engine, generate] of Object.entries(engines)) {
     const file = path.join(output, `${engine}.pdf`);

@@ -114,3 +114,10 @@ Set `NODE_PATH` to that directory's node_modules, then run
 Optionally set `PDF_PROBE_CHROMIUM` to a local Chromium executable to exercise
 the disconnected browser Blob path. CI publishes the PDFs and JSON report
 under the independent-pdf-feasibility artifact.
+
+A follow-up rendered the Unicode BiDi runs separately, preserving logical
+characters within each same-level run and positioning the runs in visual
+order. The four-page PDFKit sample remained readable as PDF and embedded
+its font. The plain and mixed logical extraction checks still failed. The
+fixture requires cluster-aware text placement and a better logical mapping
+than this run-only approach.
