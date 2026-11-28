@@ -46,7 +46,8 @@ export function drawShape(attrs:Record<string,unknown>) {
   path.setAttribute("opacity",String(bounded(attrs.opacity,0,1,1)));
   if(attrs.dashed===true) path.setAttribute("stroke-dasharray","5 4");
   group.append(path);
-  const geometry=measurementGeometry[String(attrs.kind)];
+  const kind=String(attrs.kind);
+  const geometry=Object.hasOwn(measurementGeometry,kind) ? measurementGeometry[kind] : undefined;
   const measure=typeof attrs.dimension==="string" ? attrs.dimension.trim().slice(0,50) : "";
   const names=typeof attrs.pointNames==="string" ? attrs.pointNames.split(/[,،]/).map(name=>name.trim().slice(0,12)) : [];
   if(geometry && (measure || names.some(Boolean))) {
