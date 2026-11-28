@@ -179,6 +179,24 @@ const TrailingParagraph = Extension.create({
   }
 });
 
+const tableCellDesign = {
+  fill: {
+    default:null, parseHTML:(el:HTMLElement)=>el.dataset.cellFill ?? null,
+    renderHTML:(attrs:Record<string,unknown>)=>typeof attrs.fill==="string" && /^#[0-9a-f]{6}$/i.test(attrs.fill)
+      ? {"data-cell-fill":attrs.fill,style:`background-color:${attrs.fill}`} : {}
+  },
+  borderInk: {
+    default:null, parseHTML:(el:HTMLElement)=>el.dataset.cellBorder ?? null,
+    renderHTML:(attrs:Record<string,unknown>)=>typeof attrs.borderInk==="string" && /^#[0-9a-f]{6}$/i.test(attrs.borderInk)
+      ? {"data-cell-border":attrs.borderInk,style:`border-color:${attrs.borderInk}`} : {}
+  },
+  cellAlign: {
+    default:null, parseHTML:(el:HTMLElement)=>el.dataset.cellAlign ?? null,
+    renderHTML:(attrs:Record<string,unknown>)=>["start","center","end"].includes(String(attrs.cellAlign))
+      ? {"data-cell-align":attrs.cellAlign,style:`text-align:${attrs.cellAlign}`} : {}
+  }
+};
+
 export function buildExtensions() {
   return [
     StarterKit.configure({ document: false, heading: { levels: [1, 2, 3] }, codeBlock: false }),
@@ -198,7 +216,7 @@ export function buildExtensions() {
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,
-    TableCell,
+    TableCell.extend({addAttributes(){return {...this.parent?.(),...tableCellDesign};}}),
     Placeholder.configure({ placeholder: "ابدأ الكتابة هنا…" }),
     MathInline,
     MathBlock,

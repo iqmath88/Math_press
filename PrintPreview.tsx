@@ -6,7 +6,7 @@ import type { Editor } from "@tiptap/core";
 import { paginateForPrint } from "./PrintPagination";
 import { loadJXG } from "./graph";
 
-export type PrintOptions = { backgrounds: boolean; numbers: boolean; economical: boolean };
+export type PrintOptions = { backgrounds: boolean; numbers: boolean; economical: boolean; grayscale?: boolean };
 
 function nextFrame() {
   return new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -126,6 +126,8 @@ export default function PrintPreview({ paper, editor, options, onChange, waterma
           onChange={e => onChange({ ...options, numbers: e.target.checked })} /> ترقيم الصفحات</label>
         <label className="check"><input type="checkbox" checked={options.economical}
           onChange={e => onChange({ ...options, economical: e.target.checked })} /> حبر اقتصادي</label>
+        <label className="check"><input type="checkbox" checked={options.grayscale ?? false}
+          onChange={e=>onChange({...options,grayscale:e.target.checked})}/> تدرج رمادي</label>
         <span className="muted">اختر نطاق الصفحات من نافذة الطباعة.</span>
       </div>
       {issues.length > 0 && <ul className="print-issues" aria-live="polite">{issues.map(issue => <li key={issue}>{issue}</li>)}</ul>}

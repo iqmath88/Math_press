@@ -53,7 +53,7 @@ function buildBreak(
   root.appendChild(f);
 
   const foot = el("div", "pg-footer", mb);
-  applyFurniture(foot,footer,layout.furniture?.footerEnd,layout.furniture?.rule);
+  applyFurniture(foot,footer,layout.furniture?.footerEnd,layout.furniture?.rule,layout.furniture?.footerCenter);
   const right = el("span", "pg-footer-num");
   right.textContent = layout.showPageNumbers ? pageNumber(page,total,layout.furniture) : "";
   foot.append(right);
@@ -62,7 +62,7 @@ function buildBreak(
   if (!last) {
     root.appendChild(el("div", "pg-gap"));
     const head = el("div", "pg-header", mt);
-    applyFurniture(head,layout.headerText,layout.furniture?.headerEnd,layout.furniture?.rule);
+    applyFurniture(head,layout.headerText,layout.furniture?.headerEnd,layout.furniture?.rule,layout.furniture?.headerCenter);
     root.appendChild(head);
   }
   return root;

@@ -121,6 +121,8 @@ export default function PageSettingsDialog({ doc, onApply, onClose }: Props) {
 
         <details className="setting-block">
           <summary>خيارات الرأس والتذييل</summary>
+          <label>وسط الرأس <input maxLength={140} value={furniture?.headerCenter ?? ""} onChange={e=>setFurniture({...defaultFurniture,...furniture,headerCenter:e.target.value})}/></label>
+          <label>وسط التذييل <input maxLength={140} value={furniture?.footerCenter ?? ""} onChange={e=>setFurniture({...defaultFurniture,...furniture,footerCenter:e.target.value})}/></label>
           <label>النص المقابل في الرأس <input maxLength={140} value={furniture?.headerEnd ?? ""} onChange={e=>setFurniture({...defaultFurniture,...furniture,headerEnd:e.target.value})}/></label>
           <label>النص المقابل في التذييل <input maxLength={140} value={furniture?.footerEnd ?? ""} onChange={e=>setFurniture({...defaultFurniture,...furniture,footerEnd:e.target.value})}/></label>
           <label>بداية ترقيم الصفحات <input type="number" min="1" max="9999" value={furniture?.numberStart ?? 1}

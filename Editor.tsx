@@ -575,6 +575,11 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
               const value = event.target.valueAsNumber;
               editBlock({padding:Number.isInteger(value) ? Math.max(0,Math.min(48,value)) : null});
             }}/></label>
+            <label>كثافة الخلفية <input type="number" min={20} max={100} value={selected.node.attrs.surface ?? ""}
+              onChange={event=>{const n=event.target.valueAsNumber;editBlock({surface:Number.isInteger(n)?Math.max(20,Math.min(100,n)):null});}} /></label>
+            <label>ظل الصندوق <select value={selected.node.attrs.shadow ?? ""} onChange={event=>editBlock({shadow:event.target.value || null})}>
+              <option value="">الافتراضي</option><option value="none">بلا ظل</option><option value="soft">ظل خفيف</option>
+            </select></label>
             <label>استدارة الحواف <input type="number" min={0} max={30} value={selected.node.attrs.radius ?? ""} onChange={event=> {
               const value = event.target.valueAsNumber;
               editBlock({radius:Number.isInteger(value) ? Math.max(0,Math.min(30,value)) : null});
@@ -588,7 +593,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
                 editor.chain().focus().insertContentAt(exampleSection.pos+exampleSection.parent.content.size,note).run();
               }}>إضافة ملاحظة للمثال</button>
             </>}
-            <button type="button" onClick={() => editBlock({title:"",accent:null,background:null,padding:null,radius:null,hideTitle:false,frame:null,font:null,size:null})}>استعادة التنسيق</button>
+            <button type="button" onClick={() => editBlock({title:"",accent:null,background:null,padding:null,radius:null,hideTitle:false,frame:null,font:null,size:null,surface:null,shadow:null})}>استعادة التنسيق</button>
             <button type="button" onClick={() => {
               const block = findBlock();
               if (block) editor.chain().focus().insertContentAt(block.pos + block.node.nodeSize,block.node.toJSON()).run();
@@ -622,11 +627,11 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
           <button type="button" onClick={actions.onPageSettings}>إعدادات الهوامش والصفحة</button>
           <button type="button" onClick={() => setShowParagraphFormat(true)}>خصائص الفقرة</button>
         </aside>}
-        <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}`}
+        <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}${printOptions?.grayscale ? " grayscale-paper" : ""}`}
           id="print-document" data-creative-design={doc.publishingIdentity ? "custom" : doc.creativeDesign} style={paperStyle}>
           <div className={`editor-source${showMargins && !printOptions ? " studio-margins" : ""}`}>
             <div className="paper-header" aria-hidden="true" data-furniture-rule={doc.pageFurniture?.rule || undefined}>
-              <span>{doc.headerText}</span>{doc.pageFurniture?.headerEnd && <span>{doc.pageFurniture.headerEnd}</span>}
+              <span>{doc.headerText}</span>{doc.pageFurniture?.headerCenter && <span className="furniture-center">{doc.pageFurniture.headerCenter}</span>}{doc.pageFurniture?.headerEnd && <span>{doc.pageFurniture.headerEnd}</span>}
             </div>
             <EditorContent editor={editor} />
           </div>

@@ -139,24 +139,28 @@ export function parseDocument(raw: unknown): MathPressDocument | null {
 }
 
 
-export const publishingBoxFields = ["frame","font","size","exampleNumber"] as const;
+export const advancedGlassFields = ["surface","shadow"] as const;
+export const publishingBoxFields = ["frame","font","size","exampleNumber",...advancedGlassFields] as const;
 
 /** Protect additions from readers that cannot preserve their attributes. */
 export function protectEducationalDocument(doc: MathPressDocument): MathPressDocument {
   if (doc.schemaVersion === 6) return doc;
   if (doc.watermark || doc.pageFurniture) return {...doc,schemaVersion:6};
-  if (doc.schemaVersion === 5) return doc;
-  if (doc.publishingIdentity || doc.page.size !== "A4") return {...doc,schemaVersion:5};
+
+  let version = doc.publishingIdentity || doc.page.size !== "A4" ? 5 : doc.schemaVersion;
   const nodes = [doc.content];
   while(nodes.length) {
     const node = nodes.pop()!;
+    if ((node.type==="tableCell" || node.type==="tableHeader") && ["fill","borderInk","cellAlign"].some(key=>node.attrs?.[key]!=null)) return {...doc,schemaVersion:6};
+    if (node.type==="educationBlock" && advancedGlassFields.some(key=>node.attrs?.[key]!=null)) return {...doc,schemaVersion:6};
     if (node.type === "studioShape" ||
       (node.type === "educationBlock" && publishingBoxFields.some(key=>node.attrs?.[key]!=null)) || node.type === "image" &&
       (String(node.attrs?.src ?? "").startsWith("mathpress-asset:") ||
         ["widthMm","rotation","opacity","border","align","crop","cropTop","cropRight","cropBottom","cropLeft","caption"].some(key=>node.attrs?.[key]!=null)))
-      return {...doc,schemaVersion:5};
+      version=5;
     if(node.content) for(const child of node.content) nodes.push(child);
   }
+  if (version===5) return doc.schemaVersion===5 ? doc : {...doc,schemaVersion:5};
   if (doc.schemaVersion === 4) return doc;
   if (doc.creativeDesign) return { ...doc, schemaVersion: 4 };
   if (doc.educationalStyles?.some(style => style.templateTitle || style.templateTitleColor ||

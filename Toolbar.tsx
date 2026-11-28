@@ -377,8 +377,16 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
               <Btn wide label="إضافة عمود بعد" onClick={() => chain().addColumnAfter().run()}>+ عمود بعد</Btn>
               <Btn wide label="حذف الصف" onClick={() => chain().deleteRow().run()}>حذف صف</Btn>
               <Btn wide label="حذف العمود" onClick={() => chain().deleteColumn().run()}>حذف عمود</Btn>
-              <Btn wide label="دمج أو فصل الخلايا" onClick={() => chain().mergeOrSplit().run()}>دمج/فصل</Btn>
               <Btn wide label="صف العناوين" onClick={() => chain().toggleHeaderRow().run()}>صف العناوين</Btn>
+              <Btn wide label="دمج الخلايا المحددة" disabled={!editor.can().mergeCells()} onClick={() => chain().mergeCells().run()}>دمج</Btn>
+              <Btn wide label="تقسيم الخلية" disabled={!editor.can().splitCell()} onClick={() => chain().splitCell().run()}>تقسيم</Btn>
+              <label>خلفية الخلايا <input type="color" aria-label="خلفية الخلايا" defaultValue="#ffffff"
+                onChange={event=>chain().setCellAttribute("fill",event.target.value).run()} /></label>
+              <label>حدود الخلايا <input type="color" aria-label="حدود الخلايا" defaultValue="#94a3b8"
+                onChange={event=>chain().setCellAttribute("borderInk",event.target.value).run()} /></label>
+              <select aria-label="محاذاة الخلايا" value="" onChange={event=>chain().setCellAttribute("cellAlign",event.target.value || null).run()}>
+                <option value="">محاذاة الخلايا</option><option value="start">البداية</option><option value="center">الوسط</option><option value="end">النهاية</option>
+              </select>
               <Btn wide label="حذف الجدول" onClick={() => chain().deleteTable().run()}>حذف الجدول</Btn>
             </Group>
           )}

@@ -119,9 +119,9 @@ export async function portableImages(node: JSONContent, cache = new Map<string,P
     if (!cache.has(id)) cache.set(id,readImage(id).then(dataUrl));
     attrs = {...attrs,src:await cache.get(id)!};
   }
-  if ((node.type === "image" || node.type === "educationBlock") && attrs) {
+  if ((["image","educationBlock","tableCell","tableHeader"].includes(String(node.type))) && attrs) {
     attrs = {...attrs};
-    for (const key of node.type === "image" ? ["widthMm","rotation","opacity","border","align","crop","cropTop","cropRight","cropBottom","cropLeft","caption"] : publishingBoxFields) {
+    for (const key of node.type === "image" ? ["widthMm","rotation","opacity","border","align","crop","cropTop","cropRight","cropBottom","cropLeft","caption"] : node.type==="educationBlock" ? publishingBoxFields : ["fill","borderInk","cellAlign"]) {
       if (attrs[key] == null) delete attrs[key];
     }
   }

@@ -9,6 +9,8 @@ function styleAttributes(attrs: Record<string, unknown>) {
   const color = (value: unknown) => typeof value === "string" && /^#[\da-f]{6}$/i.test(value) ? value : null;
   const length = (value: unknown, max: number) => typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max ? value : null;
   return {
+    surface: typeof attrs.surface==="number" && attrs.surface>=20 ? length(attrs.surface,100) : null,
+    shadow: attrs.shadow==="soft" || attrs.shadow==="none" ? attrs.shadow : null,
     frame: blockFrames.find(frame=>frame===attrs.frame) ?? null,
     font: blockFonts.find(font=>font===attrs.font) ?? null,
     size: typeof attrs.size==="number" && attrs.size>=10 ? length(attrs.size,30) : null,
@@ -160,8 +162,11 @@ export default function BlockStyleLibrary({ open, setOpen, dock, selected, inser
           <span className="creative-block" data-education-block={String(style.attrs.kind)}
             data-block-background={style.attrs.background ?? undefined}
             data-block-padding={style.attrs.padding ?? undefined}
-            data-block-frame={String(style.attrs.frame ?? "")}
+            data-block-frame={style.attrs.frame ? String(style.attrs.frame) : undefined}
+            data-block-surface={style.attrs.surface ?? undefined}
+            data-block-shadow={style.attrs.shadow ?? undefined}
             style={{
+              "--block-surface": style.attrs.surface != null ? `${style.attrs.surface}%` : undefined,
               "--block-accent": style.attrs.accent ?? undefined,
               "--block-background": style.attrs.background ?? undefined,
               "--block-padding": style.attrs.padding != null ? `${style.attrs.padding}px` : undefined,

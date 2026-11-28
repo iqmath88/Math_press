@@ -1,5 +1,7 @@
 export type PageFurniture = {
   headerEnd:string;
+  headerCenter?:string;
+  footerCenter?:string;
   footerEnd:string;
   numberStart:number;
   arabicDigits:boolean;
@@ -15,7 +17,12 @@ export function readPageFurniture(input:unknown):PageFurniture | undefined {
   if(typeof headerEnd!=="string" || headerEnd.length>140 || typeof footerEnd!=="string" || footerEnd.length>140 ||
     typeof numberStart!=="number" || !Number.isInteger(numberStart) || numberStart<1 || numberStart>9999 ||
     typeof arabicDigits!=="boolean" || typeof rule!=="boolean") return;
-  return {headerEnd,footerEnd,numberStart,arabicDigits,rule};
+  const {headerCenter,footerCenter}=data;
+  if ((headerCenter!==undefined && (typeof headerCenter!=="string" || headerCenter.length>140)) ||
+      (footerCenter!==undefined && (typeof footerCenter!=="string" || footerCenter.length>140))) return;
+  return {headerEnd,footerEnd,numberStart,arabicDigits,rule,
+    ...(typeof headerCenter==="string" ? {headerCenter} : {}),
+    ...(typeof footerCenter==="string" ? {footerCenter} : {})};
 }
 
 export function pageNumber(page:number,total:number,furniture?:PageFurniture) {
@@ -23,10 +30,16 @@ export function pageNumber(page:number,total:number,furniture?:PageFurniture) {
   return furniture?.arabicDigits ? label.replace(/[0-9]/g,value=>"٠١٢٣٤٥٦٧٨٩"[Number(value)]) : label;
 }
 
-export function applyFurniture(container: HTMLElement, text:string, end?:string, rule=false) {
+export function applyFurniture(container: HTMLElement, text:string, end?:string, rule=false, center?:string) {
   const lead=document.createElement("span");
   lead.textContent=text;
   container.append(lead);
+  if(center) {
+    const middle=document.createElement("span");
+    middle.className="furniture-center";
+    middle.textContent=center;
+    container.append(middle);
+  }
   if(end){
     const trail=document.createElement("span");
     trail.textContent=end;

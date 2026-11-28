@@ -31,3 +31,13 @@ Code checkpoint `d7976e6c2b405b55e024777e49fc3c6ef640d277`. Files of interest ar
 - [Draft PR #16](https://github.com/iqmath88/Math_press/pull/16), [CI for the code checkpoint](https://github.com/iqmath88/Math_press/actions/runs/46133567345) and [Vercel preview build](https://vercel.com/iqmath88s-projects/math-press/Vi1qKbPA4nv3eqGyD74UHutqUZvA).
 
 Continue with the failing CI step if present. Then measure comparable existing workflows before introducing wrapping and layers. Implement and validate these together so they cannot introduce editor/print page disagreements. A document supports one selected watermark, text or image. Section-specific and simultaneous marks are deferred.
+
+## Alpha.2 increment
+
+- Glass box surface strength and optional shadows, solid print fallback, and optional grayscale print. The existing six identities remain available.
+- Text center zones for header and footer. The existing leading/trailing zones and numbering still apply.
+- Separate cell merge/split controls and saved cell colors and alignment.
+- Text and image watermark backups exercised via the Page Studio browser scenario. The same scenario creates the 23-box PDF catalog and a table PDF when Chromium artifacts are enabled.
+- The floating geometry experiment is isolated under `experiments/`. See [architecture](FLOATING-ELEMENTS-ARCHITECTURE.md) for anchor and layout decisions.
+
+Still open: richer page chrome and presets, width controls in the table UI, full visual identity audit, direct float integration, WebKit completion and the performance gate.
