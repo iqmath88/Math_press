@@ -142,3 +142,13 @@ that threshold in this run; the 112.06 ms maximum at 50 pages warrants
 more sessions. Separately, the 100-page editing smoke verifies the
 inspector, MathLive identity, edit, Undo and Redo. It is a correctness
 test and gives no latency or physical-device guarantee.
+
+Use `node experiments/benchmarkConversion.cjs OUTPUT.json VERSION=URL VERSION=URL`
+with prebuilt local apps on an idle host to reproduce the same test category.
+It records individual wall times and summary statistics. A second run using
+this portable command again missed the 10-page gate: rc.2 20.31/41.86 ms,
+alpha.11 28.33/54.22 ms, alpha.12 36.77/57.40 ms (median/P95). At 50
+pages the corresponding results were 40.92/69.87, 43.49/80.64 and
+39.22/59.51 ms. At 100 pages they were 43.04/82.50, 37.63/70.48 and
+46.13/89.78 ms. These are separate observations and should not be pooled
+with the preceding trace or the earlier instrumented run.

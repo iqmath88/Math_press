@@ -229,3 +229,9 @@ grayscale readback is now bounded in 128-row bands. Next isolate
 MathLive/style dispatch cost in small documents and time real existing
 equation editing. Revalidate six-page 600 DPI save and paper print on
 the device, long export speed, and any remaining design gates before release.
+
+The portable conversion benchmark records 20 samples at each of 10, 50
+and 100 pages. The second run again failed the 10-page gate. The six-page
+600-DPI regression and a local alpha.11 → alpha.12 offline PWA upgrade
+preserving IndexedDB passed. PAPER print and existing-equation latency
+still need dedicated evidence.
