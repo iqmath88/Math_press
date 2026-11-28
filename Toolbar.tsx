@@ -1,3 +1,4 @@
+import { NodeSelection } from "@tiptap/pm/state";
 import { useEffect, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
@@ -9,7 +10,7 @@ import {
   RectangleHorizontal, RectangleVertical, ChevronUp, ChevronDown, FileUp, FileText
 } from "lucide-react";
 import type { PageSettings } from "./types";
-import { fileToDataUrl } from "./imageUtil";
+import { storeImage } from "./imageAssets";
 import { returnFromMath } from "./MathNodes";
 import type { MathfieldElement } from "mathlive";
 
@@ -145,9 +146,17 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
 
   const pickImage = async (file?: File) => {
     if (!file) return;
+    const { doc, selection } = editor.state;
     try {
-      const src = await fileToDataUrl(file);
-      if (!editor.isDestroyed) chain().setImage({ src, alt: file.name }).run();
+      const src = await storeImage(file);
+      if (editor.isDestroyed) return;
+      if (editor.state.doc !== doc) {
+        onError("تغيّر المستند أثناء قراءة الصورة. أعد الإدراج في الموضع المطلوب.");
+        return;
+      }
+      const target = selection instanceof NodeSelection ? selection.to : { from: selection.from, to: selection.to };
+      if (!chain().insertContentAt(target, { type: "image", attrs: { src, alt: file.name } }).run())
+        onError("تعذر إدراج الصورة في الموضع المحدد.");
     } catch (e) {
       onError(e instanceof Error ? e.message : "تعذر إدراج الصورة");
     }
@@ -176,7 +185,13 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
     <div className="ribbon no-print">
       <input
         ref={fileRef} className="visually-hidden" type="file" accept="image/*"
-        onChange={e => { void pickImage(e.target.files?.[0]); e.target.value = ""; }}
+        onChange={event => {
+          const input = event.currentTarget;
+          const file = input.files?.[0];
+          void pickImage(file).finally(() => {
+            if (input.files?.[0] === file) input.value = "";
+          });
+        }}
       />
       <div className="rb-strip">
         <div className="rb-tabs" role="tablist" aria-label="الأقسام">

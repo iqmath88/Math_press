@@ -24,7 +24,7 @@ export type PageLayout = {
   showPageNumbers: boolean;
 };
 
-type PaginationState = { deco: DecorationSet; sig: string };
+type PaginationState = { revision: number; deco: DecorationSet; sig: string };
 type Meta =
   | { result: PaginationResult; positions: number[]; sig: string; footer: string; layout: PageLayout }
   | { refresh: true };
@@ -157,7 +157,7 @@ export const Pagination = Extension.create({
           return;
         }
         const height = isBreak ? 0 : dom.getBoundingClientRect().height / zoom;
-        const placement = dom.matches("[data-educational-style], [data-paragraph-format]") ? getComputedStyle(dom) : null;
+        const placement = dom.matches("[data-educational-style], [data-paragraph-format], [data-education-block]") ? getComputedStyle(dom) : null;
         const item = {
           height, breakAfter: isBreak,
           breakBefore: placement?.getPropertyValue("--break-before").trim() === "1",
@@ -187,12 +187,12 @@ export const Pagination = Extension.create({
       new Plugin<PaginationState>({
         key: paginationKey,
         state: {
-          init: () => ({ deco: DecorationSet.empty, sig: "" }),
+          init: () => ({ deco: DecorationSet.empty, sig: "", revision: 0 }),
           apply(tr, value) {
             const meta = tr.getMeta(paginationKey) as Meta | undefined;
-            if (meta && "result" in meta) return { deco: buildDecorations(tr.doc, meta), sig: meta.sig };
-            if (meta && "refresh" in meta) return { ...value, sig: "" };
-            if (tr.docChanged) return { deco: value.deco.map(tr.mapping, tr.doc), sig: "" };
+            if (meta && "result" in meta) return { ...value, deco: buildDecorations(tr.doc, meta), sig: meta.sig };
+            if (meta && "refresh" in meta) return { ...value, sig: "", revision: value.revision + 1 };
+            if (tr.docChanged) return { ...value, deco: value.deco.map(tr.mapping, tr.doc), sig: "" };
             return value;
           }
         },
@@ -209,6 +209,7 @@ export const Pagination = Extension.create({
             if (raf || destroyed) return;
             raf = requestAnimationFrame(() => {
               raf = 0;
+              observe();
               measure(editorView, measurements);
             });
           };
@@ -234,14 +235,13 @@ export const Pagination = Extension.create({
             observedBlocks = next;
           };
           if (typeof document !== "undefined" && document.fonts?.ready) void document.fonts.ready.then(refresh);
-          observe();
           schedule();
           return {
             update(view, previous) {
-              observe();
               const state = view.state;
-              if (state.doc === previous.doc && !paginationKey.getState(state)?.sig) refresh();
-              if (state.doc !== previous.doc) schedule();
+              const revision = paginationKey.getState(state)?.revision;
+              if (revision !== paginationKey.getState(previous)?.revision) refresh();
+              else if (state.doc !== previous.doc) schedule();
             },
             destroy() {
               destroyed = true;

@@ -32,6 +32,7 @@ const assert = require("node:assert/strict");
       position: { x: (await paragraph.boundingBox()).width - 10, y: 12 },
     });
     await page.getByRole("tab", { name: "أنماط" }).click();
+    await page.getByText("أنماط الفقرات البسيطة",{exact:true}).click();
     await page.getByLabel("تطبيق نمط تعليمي").selectOption("question");
     assert.equal(
       await body.locator('p[data-educational-style="question"]').count(),

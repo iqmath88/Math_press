@@ -100,7 +100,7 @@ const samples = [
     const currentTitle = await page.getByLabel("عنوان المستند").inputValue();
     await page.locator('input[accept^=".mathdoc"]').setInputFiles({
       name: "future.mathdoc", mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify({ ...exported, schemaVersion: 5, title: "عنوان مستقبلي" }))
+      buffer: Buffer.from(JSON.stringify({ ...exported, schemaVersion: 6, title: "عنوان مستقبلي" }))
     });
     await page.getByText(/يتطلب هذا المستند إصدارًا أحدث/).waitFor();
     assert.equal(await page.getByLabel("عنوان المستند").inputValue(), currentTitle);

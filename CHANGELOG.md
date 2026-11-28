@@ -1,5 +1,43 @@
 # سجل تغييرات MathPress
 
+## v0.7.0-rc.1 — Professional Publishing Studio
+
+- Reuse portable templates and identities across installations.
+- Preserve the selected image when inserting a geometric shape beside it.
+- Guard the MathLive-to-text focus handoff and expand the visual acceptance samples.
+
+- Store image bytes in IndexedDB while retaining access to older Blob records.
+- Use compact raster previews during editing where available and restore originals for print and MathDoc backups.
+- Add individual crop edges and persist reusable document palettes and fonts.
+- Add SVG measurement lines and editable names to selected basic shapes.
+
+## v0.7.0-preview.4 — Professional Publishing Studio
+
+- Add eight publication frames, per-section typography, editable example numbers and reorderable solved-example sections.
+- Add a derivatives chapter cover and worked solution. Add editable practice and focused review templates.
+- Preserve new publication attributes in MathDoc 5 and omit neutral attributes from exports of older boxes.
+- Exercise the visible file chooser on WebKit using a temporary on-disk image.
+
+## v0.7.0-preview.3 — Glass Creative Studio
+
+- Coalesce editor pagination observation on the next frame and preserve measurement caches through selection-only transactions.
+- Hold the file chooser selection until image storage completes.
+- Add a light and dark workspace palette and a persistent low-effects setting.
+- Insert an editable solved-example box with dedicated solution and result sections.
+
+## v0.7.0-preview.2 — Creative Studio
+
+- Keep inserted raster originals in IndexedDB and embed them in portable MathDoc backups.
+- Add editable SVG shapes and image controls for physical width, rotation, opacity, caption, and symmetric clipping.
+- Add A3 and A5 to the existing page and print settings.
+- Use MathDoc 5 for new media attributes, editable SVG shapes, and non-A4 paper. MathDoc 3 and 4 remain readable.
+
+## v0.7.0-preview.1 — Creative Studio
+
+- Add editable educational blocks, scoped formatting controls and document design presets.
+- Add five editable templates, reusable local templates and a five-page derivatives sample.
+- Protect Creative Studio properties in MathDoc 4 and keep the existing print engine.
+
 ## v0.6.1-rc.2
 
 - Edit existing equations visually in place with MathLive, with explicit acceptance and cancellation.

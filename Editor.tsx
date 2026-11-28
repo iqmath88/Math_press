@@ -1,9 +1,15 @@
+import DocumentIdentity from "./DocumentIdentity";
+import { Fragment } from "@tiptap/pm/model";
+import { Selection } from "@tiptap/pm/state";
+import BlockStyleLibrary from "./BlockStyleLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import type { MathfieldElement } from "mathlive";
-import type { MathPressDocument } from "./types";
+import { paperDimensions, type MathPressDocument } from "./types";
+import StudioMediaControls from "./StudioMediaControls";
+import { blockTypes, blockFonts, blockFrames, designVariables, designs, educationBlock, solvedExample, type PublishingIdentity } from "./creativeDesign";
 import { createEditorSnapshot } from "./editorSnapshot";
 import { SmartMathInput } from "./SmartMathInput";
 import { buildExtensions } from "./extensions";
@@ -25,6 +31,8 @@ import {
 type Props = {
   doc: MathPressDocument;
   onChange: (content: JSONContent) => void;
+  onDesign: (design?: string) => void;
+  onIdentity: (identity?: PublishingIdentity) => void;
   onStyles: (styles: EducationalStyle[]) => void;
   onNumberStart: (numberingStart: number) => void;
   onNotice: (message: string) => void;
@@ -33,9 +41,10 @@ type Props = {
 
 type ZoomMode = number | "width" | "page";
 
-export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart, onNotice, actions }: Props) {
+export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, onStyles, onNumberStart, onNotice, actions }: Props) {
   const m = doc.page.marginsMm;
   const landscape = doc.page.orientation === "landscape";
+  const [paperWidth,paperHeight] = paperDimensions(doc.page.size,landscape);
   const [smartMath, setSmartMath] = useState(() => {
     try { return localStorage.getItem("mathpress-smart-math") !== "off"; }
     catch { return true; }
@@ -77,12 +86,17 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   const previewRef = useRef<MathfieldElement | null>(null);
 
   const [pageLabels, setPageLabels] = useState<string[]>([]);
+  const [showCreative, setShowCreative] = useState(false);
+  const [showBoxGallery, setShowBoxGallery] = useState(false);
+  const [galleryDock, setGalleryDock] = useState<HTMLDivElement | null>(null);
+  const [, refreshCreativeSelection] = useState(0);
   const [properties, setProperties] = useState(false);
   const [showMargins, setShowMargins] = useState(false);
   const printOrigin = useRef<{ block: Element | null; offset: number; x: number; y: number; stageX: number; stageY: number } | null>(null);
 
   const editor = useEditor({
     extensions,
+    shouldRerenderOnTransaction: false,
     content: doc.content,
     editorProps: {
       handleKeyDown: (_view, event) => {
@@ -109,20 +123,27 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
     return () => { editor.storage.pagination.onPages = null; };
   }, [editor]);
 
+  useEffect(() => {
+    if (!editor) return;
+    const refresh = () => refreshCreativeSelection(value => value + 1);
+    editor.on("selectionUpdate", refresh);
+    return () => { editor.off("selectionUpdate", refresh); };
+  }, [editor]);
+
   // إعدادات الصفحة تصل إلى مقسّم الصفحات عبر تخزين الإضافة ثم يُعاد القياس.
   useEffect(() => {
     if (!editor) return;
     const st = editor.storage.pagination;
     st.footerText = doc.footerText;
     st.layout = {
-      pageHeightMm: landscape ? 210 : 297,
+      pageHeightMm: paperHeight,
       marginTopMm: m.top,
       marginBottomMm: m.bottom,
       headerText: doc.headerText,
       showPageNumbers: doc.showPageNumbers
     };
     editor.commands.repaginate();
-  }, [editor, landscape, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers]);
+  }, [editor, paperHeight, paperWidth, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers]);
 
   // اتجاه الصفحة عند الطباعة (@page لا يقبل متغيرات CSS فنكتبه ديناميكيًا).
   useEffect(() => {
@@ -132,8 +153,8 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       style.id = "mp-page-style";
       document.head.appendChild(style);
     }
-    style.textContent = `@page{size:A4 ${landscape ? "landscape" : "portrait"};margin:0}`;
-  }, [landscape]);
+    style.textContent = `@page{size:${doc.page.size} ${landscape ? "landscape" : "portrait"};margin:0}`;
+  }, [landscape, doc.page.size]);
 
   const openGraph = useCallback((pos?: number) => {
     if (!editor) return;
@@ -161,12 +182,15 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       setLatexOpen(true);
     };
     dom.addEventListener(EDIT_GRAPH_EVENT, handler);
+    const imageHandler = (event: Event) => onNotice((event as CustomEvent<string>).detail);
+    dom.addEventListener("studio-image-error",imageHandler);
     dom.addEventListener(EDIT_MATH_EVENT, mathHandler);
     return () => {
       dom.removeEventListener(EDIT_GRAPH_EVENT, handler);
       dom.removeEventListener(EDIT_MATH_EVENT, mathHandler);
+      dom.removeEventListener("studio-image-error",imageHandler);
     };
-  }, [editor, openGraph]);
+  }, [editor, openGraph, onNotice]);
 
   useEffect(() => {
     if (!latexOpen || !previewRef.current) return;
@@ -181,8 +205,8 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage || typeof zoomMode === "number" || printOptions) return;
-    const width = (landscape ? 297 : 210) * 96 / 25.4;
-    const height = (landscape ? 210 : 297) * 96 / 25.4;
+    const width = (paperWidth) * 96 / 25.4;
+    const height = (paperHeight) * 96 / 25.4;
     const fit = () => {
       const css = getComputedStyle(stage);
       const availableWidth = stage.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
@@ -200,7 +224,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       window.removeEventListener("resize", fit);
       window.visualViewport?.removeEventListener("resize", fit);
     };
-  }, [zoomMode, landscape, printOptions]);
+  }, [zoomMode, landscape, paperWidth, paperHeight, printOptions]);
 
   useEffect(() => {
     if (!editor) return;
@@ -307,7 +331,44 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
     setGraph(null);
   };
 
+  const findBlock = (outermost = false) => {
+    const head = editor.state.selection.$from;
+    for (let index = 1; index <= head.depth; index++) {
+      const depth = outermost ? index : head.depth - index + 1;
+      const node = head.node(depth);
+      if (node.type.name === "educationBlock") return {node, pos:head.before(depth)};
+    }
+    return null;
+  };
+  const selected = findBlock();
+  const mediaSelected = ["studioShape","image"].includes(editor.state.selection.$from.nodeAfter?.type.name ?? "") && editor.state.selection.to > editor.state.selection.from;
+  const editBlock = (attrs: Record<string, unknown>) => {
+    const block = findBlock();
+    if (block) editor.view.dispatch(editor.state.tr.setNodeMarkup(block.pos, undefined, {...block.node.attrs,...attrs}));
+  };
+  const exampleSection = (() => {
+    if (!selected) return null;
+    const at = editor.state.doc.resolve(selected.pos);
+    return at.parent.type.name === "educationBlock" && at.parent.attrs.kind === "example"
+      ? { parent:at.parent, pos:at.start(), index:at.index() } : null;
+  })();
+  const moveExampleSection = (direction: -1 | 1) => {
+    if (!exampleSection) return;
+    const { parent, pos, index } = exampleSection;
+    const destination = index + direction;
+    if (destination < 0 || destination >= parent.childCount) return;
+    const children = Array.from({length:parent.childCount},(_,i)=>parent.child(i));
+    const [section] = children.splice(index,1);
+    children.splice(destination,0,section);
+    const target = pos + children.slice(0,destination).reduce((offset,node)=>offset+node.nodeSize,0);
+    const tr = editor.state.tr.replaceWith(pos,pos+parent.content.size,Fragment.from(children));
+    editor.view.dispatch(tr.setSelection(Selection.near(tr.doc.resolve(target+1))));
+    editor.view.focus();
+  };
   const paperStyle = {
+    ...designVariables(doc.creativeDesign ?? (doc.publishingIdentity ? "academic" : undefined)),
+    ...(doc.publishingIdentity ? {"--creative-accent":doc.publishingIdentity.accent,
+      "--creative-tint":doc.publishingIdentity.tint,"--creative-font":doc.publishingIdentity.font} : {}),
     "--editor-zoom": zoom,
     "--numbering-start": (doc.numberingStart ?? 1) - 1,
     "--pt": `${m.top}mm`,
@@ -315,8 +376,8 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
     "--px": `${m.left}mm`,
     "--pl": `${m.left}mm`,
     "--pr": `${m.right}mm`,
-    "--pw": landscape ? "297mm" : "210mm",
-    "--ph": landscape ? "210mm" : "297mm"
+    "--pw": paperWidth+"mm",
+    "--ph": paperHeight+"mm"
   } as CSSProperties;
   if (doc.background && printOptions?.backgrounds && !printOptions.economical) {
     Object.assign(paperStyle, { "--print-background": `url("${doc.background}")` });
@@ -361,7 +422,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
     <>
       <style>{styleSheet}</style>
       {printOptions && <PrintPreview paper={paperRef} editor={editor} options={printOptions}
-        onChange={setPrintOptions} usableHeightMm={(landscape ? 210 : 297) - m.top - m.bottom}
+        onChange={setPrintOptions} paperSize={doc.page.size} usableHeightMm={(paperHeight) - m.top - m.bottom}
         selectedBlock={printOrigin.current?.block} selectedOffset={printOrigin.current?.offset}
         onClose={() => {
           const origin = printOrigin.current;
@@ -410,7 +471,13 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
         </section>}
         mathTools={<MathTools editor={editor} onSource={openNewLatex} />}
         educationalTools={<>
-          <section className="rb-group" aria-label="الأنماط التعليمية">
+          <button type="button" className="primary-action" onClick={()=>{
+            setShowCreative(true);
+            setShowBoxGallery(true);
+          }}>معرض الصناديق التعليمية</button>
+          <details className="rb-group">
+            <summary>أنماط الفقرات البسيطة</summary>
+            <section aria-label="الأنماط التعليمية">
             <div className="rb-line">
               <select aria-label="تطبيق نمط تعليمي" value="" onChange={e => applyEducationalStyle(editor, e.target.value || null)}>
                 <option value="" disabled>تطبيق نمط…</option>
@@ -419,7 +486,8 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
               <button type="button" onClick={() => applyEducationalStyle(editor, null)}>إزالة النمط</button>
               <button type="button" onClick={() => setShowStyles(true)}>إدارة الأنماط</button>
             </div>
-          </section>
+            </section>
+          </details>
           <EducationalInsert editor={editor} styles={styles} numberStart={doc.numberingStart ?? 1} onNumberStart={onNumberStart} />
         </>}
         onOpenLatex={() => openNewLatex()}
@@ -430,6 +498,93 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
       {showParagraphFormat && <ParagraphFormatDialog editor={editor} close={() => setShowParagraphFormat(false)} />}
       {showStyles && <StyleManager key={doc.id} overrides={doc.educationalStyles ?? []}
         onChange={onStyles} onApply={id => applyEducationalStyle(editor, id)} onClose={() => setShowStyles(false)} />}
+      {!focusMode && !printOptions && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
+        <button type="button" onClick={() => setShowCreative(value => !value)} aria-expanded={showCreative}>التصميم والصناديق</button>
+        {(showCreative || selected || showBoxGallery || mediaSelected) && <>
+          <StudioMediaControls editor={editor} onNotice={onNotice}/>
+          <label>هوية المستند <select value={doc.creativeDesign ?? ""} onChange={event =>
+            onDesign(event.target.value || undefined)}>
+            <option value="">الافتراضية</option>
+            {designs.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
+          </select></label>
+          <DocumentIdentity current={doc.publishingIdentity} apply={onIdentity} notice={onNotice} />
+          <BlockStyleLibrary dock={galleryDock} open={showBoxGallery} setOpen={setShowBoxGallery} selected={selected?.node.attrs}
+            apply={editBlock} notice={onNotice}
+            wrap={(kind,attrs) => {
+              if (editor.state.selection.empty) return onNotice("حدد فقرة أو أكثر أولًا.");
+              if (!editor.chain().focus().wrapIn("educationBlock",{kind,...attrs}).run())
+                onNotice("تعذر إحاطة هذا التحديد. اختر فقرات من المستوى نفسه.");
+            }}
+            insertSolvedExample={() => {
+              let number=0;
+              editor.state.doc.descendants(node=>{
+                if (node.type.name==="educationBlock" && node.attrs.kind==="example" && /^[0-9]+$/.test(node.attrs.exampleNumber ?? ""))
+                  number=Math.max(number,Number(node.attrs.exampleNumber));
+              });
+              const target=findBlock(true);
+              const edit=editor.chain().focus();
+              if(target) edit.insertContentAt(target.pos+target.node.nodeSize,solvedExample(number+1)).run();
+              else edit.insertContent(solvedExample(number+1)).run();
+            }}
+            insert={(kind, attrs) => {
+              const block = educationBlock(kind);
+              const next={...block,attrs:{...block.attrs,...attrs}};
+              const target=findBlock(true);
+              const edit=editor.chain().focus();
+              if(target) edit.insertContentAt(target.pos+target.node.nodeSize,next).run();
+              else edit.insertContent(next).run();
+            }} />
+          {selected && <fieldset className="selected-box-properties">
+            <legend>خصائص الصندوق</legend>
+            <label>النوع <select value={selected.node.attrs.kind} onChange={event=>editBlock({kind:event.target.value})}>
+              {blockTypes.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
+            </select></label>
+            <label>العنوان <input value={selected.node.attrs.title} onChange={event=>editBlock({title:event.target.value})}/></label>
+            <label>بنية الصندوق <select value={selected.node.attrs.frame ?? ""} onChange={event=>editBlock({frame:event.target.value || null})}>
+              <option value="">حسب النوع</option>
+              {blockFrames.map((frame,index)=><option key={frame} value={frame}>{["رأس ملوّن","شريط جانبي","عنوان عائم","إطار مزدوج","خطوات","مقارنة","نتيجة","تنبيه"][index]}</option>)}
+            </select></label>
+            <label>خط الصندوق <select value={selected.node.attrs.font ?? ""} onChange={event=>editBlock({font:event.target.value || null})}>
+              <option value="">خط المستند</option>
+              {blockFonts.map(font=><option key={font}>{font}</option>)}
+            </select></label>
+            <label>حجم خط الصندوق <input type="number" min={10} max={30} value={selected.node.attrs.size ?? ""}
+              onChange={event=>{const size=event.target.valueAsNumber;editBlock({size:Number.isInteger(size)?Math.max(10,Math.min(30,size)):null});}} /></label>
+            {selected.node.attrs.kind==="example" && <label>رقم المثال <input inputMode="numeric" maxLength={8}
+              value={selected.node.attrs.exampleNumber ?? ""} onChange={event=>editBlock({exampleNumber:event.target.value.replace(/[^0-9٠-٩]/g,"") || null})} /></label>}
+            <label>اللون <input type="color" value={selected.node.attrs.accent ?? "#193c6b"} onChange={event=>editBlock({accent:event.target.value})}/></label>
+            <label>الخلفية <input type="color" value={selected.node.attrs.background ?? "#eef4fa"} onChange={event=>editBlock({background:event.target.value})}/></label>
+            <label>الحشوة <input type="number" min={0} max={48} value={selected.node.attrs.padding ?? ""} onChange={event=> {
+              const value = event.target.valueAsNumber;
+              editBlock({padding:Number.isInteger(value) ? Math.max(0,Math.min(48,value)) : null});
+            }}/></label>
+            <label>استدارة الحواف <input type="number" min={0} max={30} value={selected.node.attrs.radius ?? ""} onChange={event=> {
+              const value = event.target.valueAsNumber;
+              editBlock({radius:Number.isInteger(value) ? Math.max(0,Math.min(30,value)) : null});
+            }}/></label>
+            <label><input type="checkbox" checked={selected.node.attrs.hideTitle} onChange={event=>editBlock({hideTitle:event.target.checked})}/> إخفاء العنوان</label>
+            {exampleSection && <>
+              <button type="button" disabled={exampleSection.index===0} onClick={()=>moveExampleSection(-1)}>تقديم القسم</button>
+              <button type="button" disabled={exampleSection.index===exampleSection.parent.childCount-1} onClick={()=>moveExampleSection(1)}>تأخير القسم</button>
+              <button type="button" onClick={()=>{
+                const note=educationBlock("note");
+                editor.chain().focus().insertContentAt(exampleSection.pos+exampleSection.parent.content.size,note).run();
+              }}>إضافة ملاحظة للمثال</button>
+            </>}
+            <button type="button" onClick={() => editBlock({title:"",accent:null,background:null,padding:null,radius:null,hideTitle:false,frame:null,font:null,size:null})}>استعادة التنسيق</button>
+            <button type="button" onClick={() => {
+              const block = findBlock();
+              if (block) editor.chain().focus().insertContentAt(block.pos + block.node.nodeSize,block.node.toJSON()).run();
+            }}>تكرار الصندوق</button>
+            <button type="button" onClick={() => {
+              const block = findBlock();
+              if (block) editor.chain().focus().deleteRange({from:block.pos,to:block.pos+block.node.nodeSize}).run();
+            }}>حذف الصندوق</button>
+          </fieldset>}
+        </>}
+      </section>}
+      <div className="publishing-workspace">
+      <div className="gallery-dock no-print" ref={setGalleryDock} />
       <div className={`page-stage${focusMode ? " document-focus" : ""}`} ref={stageRef}>
         {showPages && !focusMode && !printOptions && <nav className="page-navigation no-print" aria-label="التنقل بين الصفحات">
           {Array.from({ length: pageCount }, (_, index) => <button type="button" key={index}
@@ -445,13 +600,13 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
           <div className="panel-heading"><strong>خصائص المستند</strong><button type="button" onClick={() => setProperties(false)}>إغلاق</button></div>
           <label><input type="checkbox" checked={smartMath} onChange={e => toggleSmartMath(e.target.checked)} /> التحويل التلقائي للمعادلات</label>
           <p>اكتب <bdi>$…$</bdi> لمعادلة سطرية أو <bdi>$$…$$</bdi> لمعادلة مستقلة.</p>
-          <p>A4 · {landscape ? "أفقي" : "عمودي"}</p>
+          <p>{doc.page.size} · {landscape ? "أفقي" : "عمودي"}</p>
           <label><input type="checkbox" checked={showMargins} onChange={e => setShowMargins(e.target.checked)} /> حدود مساحة الكتابة</label>
           <button type="button" onClick={actions.onPageSettings}>إعدادات الهوامش والصفحة</button>
           <button type="button" onClick={() => setShowParagraphFormat(true)}>خصائص الفقرة</button>
         </aside>}
         <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}`}
-          id="print-document" style={paperStyle}>
+          id="print-document" data-creative-design={doc.publishingIdentity ? "custom" : doc.creativeDesign} style={paperStyle}>
           <div className={`editor-source${showMargins && !printOptions ? " studio-margins" : ""}`}>
             <div className="paper-header" aria-hidden="true"><span>{doc.headerText}</span></div>
             <EditorContent editor={editor} />
@@ -460,6 +615,7 @@ export default function DocumentEditor({ doc, onChange, onStyles, onNumberStart,
         </article>
       </div>
 
+      </div>
       {!focusMode && !printOptions && <div className="document-view-status no-print">
         <span title="الصفحات النهائية في معاينة الطباعة">صفحة {currentPage} من {pageCount} · تقديري</span><span>{wordCount} كلمة</span><span dir="ltr">{Math.round(zoom * 100)}%</span>
       </div>}

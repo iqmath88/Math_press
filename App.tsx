@@ -1,9 +1,11 @@
+import { localizeImages, portableImages } from "./imageAssets";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JSONContent } from "@tiptap/core";
-import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw, Moon, Sun } from "lucide-react";
+import { Sigma, Check, AlertTriangle, Trash2, FileText, RotateCcw, Moon, Sun, Layers } from "lucide-react";
 import type { EducationalStyle } from "./educationalStyles";
 import type { MathPressDocument } from "./types";
 import { createDocument, parseDocument, protectEducationalDocument } from "./document";
+import { creativeTemplates, makeTemplate, readDocumentIdentity, type SavedCreativeTemplate } from "./creativeDesign";
 import { deleteDocument, loadLibrary, saveDocument } from "./storage";
 import DocumentEditor from "./Editor";
 import PageSettingsDialog from "./PageSettingsDialog";
@@ -43,7 +45,57 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem("mathpress-studio-theme", dark ? "dark" : "light"); } catch { /* unavailable */ }
   }, [dark]);
+  const [lowEffects, setLowEffects] = useState(() => {
+    try { return localStorage.getItem("mathpress-studio-effects") === "low"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("mathpress-studio-effects", lowEffects ? "low" : "standard"); } catch { /* unavailable */ }
+  }, [lowEffects]);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [showTemplates,setShowTemplates] = useState(false);
+  const [templateQuery,setTemplateQuery] = useState("");
+  const [savedTemplates,setSavedTemplates] = useState<SavedCreativeTemplate[]>(() => {
+    try {
+      const values: unknown = JSON.parse(localStorage.getItem("mathpress-creative-templates") ?? "[]");
+      return Array.isArray(values) ? values.filter(item => typeof item?.name === "string" &&
+        !!validateImportedContent(item.content,true)) : [];
+    } catch { return []; }
+  });
+  const persistTemplates = (next: SavedCreativeTemplate[]) => {
+    try {
+      localStorage.setItem("mathpress-creative-templates",JSON.stringify(next));
+      setSavedTemplates(next);
+      return true;
+    } catch { setNotice("تعذّر حفظ القوالب في التخزين المحلي."); return false; }
+  };
+  const exportTemplate = async (item: SavedCreativeTemplate) => {
+    try {
+      const content = await portableImages(item.content);
+      const doc = protectEducationalDocument({...createDocument(item.name),content:item.content,
+        creativeDesign:item.design,publishingIdentity:item.identity});
+      const blob = new Blob([JSON.stringify({...doc,content})],{type:"application/json"});
+      if (blob.size > MAX_IMPORT_BYTES) throw new Error("القالب أكبر من حد الاستيراد.");
+      downloadBlob(blob,`${safeName(item.name)}.mathdoc`);
+    } catch (error) { setNotice(error instanceof Error ? error.message : "تعذّر تصدير القالب."); }
+  };
+  const importTemplate = async (file?: File) => {
+    if (!file) return;
+    try {
+      if (file.size>MAX_IMPORT_BYTES) throw new Error();
+      const raw = JSON.parse(await file.text());
+      const parsed = parseDocument(raw);
+      const content = parsed && validateImportedContent(parsed.content);
+      if (!parsed || !content || (parsed.schemaVersion>=4 && !preservesSuppliedContent(raw,{...parsed,content}))) throw new Error();
+      const name = parsed.title.trim();
+      if (!name || savedTemplates.some(item=>item.name===name)) {
+        setNotice("اختر اسمًا فريدًا للقالب قبل استيراده.");
+        return;
+      }
+      const local = parsed.schemaVersion===5 ? await localizeImages(content) : content;
+      if (persistTemplates([...savedTemplates,{name,content:local,design:parsed.creativeDesign,identity:parsed.publishingIdentity}]))
+        setNotice("تم استيراد القالب دون استبدال المستند المفتوح.");
+    } catch { setNotice("تعذّر استيراد القالب. احتُفظ بالمستند والمكتبة."); }
+  };
   const [showPageSettings, setShowPageSettings] = useState(false);
   const [importing, setImporting] = useState(false);
   const [report, setReport] = useState<{ title: string; result: ImportResult } | null>(null);
@@ -111,10 +163,14 @@ export default function App() {
   }, []);
   const onNumberStart = useCallback((numberingStart: number) => setDoc(old => ({ ...old, numberingStart })), []);
 
-  const exportMathDoc = () => {
-    const blob = new Blob([JSON.stringify({ ...protectEducationalDocument(doc), updatedAt: new Date().toISOString() }, null, 2)], { type: "application/json;charset=utf-8" });
-    downloadBlob(blob, `${safeName(doc.title)}.mathdoc`);
-    setNotice("تم تجهيز نسخة المستند القابلة للتحرير.");
+  const exportMathDoc = async () => {
+    try {
+      const content = await portableImages(doc.content);
+      const blob = new Blob([JSON.stringify({ ...protectEducationalDocument(doc), content, updatedAt: new Date().toISOString() }, null, 2)], {type:"application/json;charset=utf-8"});
+      if (blob.size > MAX_IMPORT_BYTES) throw new Error("النسخة الاحتياطية أكبر من حد الاستيراد (32 ميغابايت).");
+      downloadBlob(blob, `${safeName(doc.title)}.mathdoc`);
+      setNotice("تم تجهيز نسخة المستند القابلة للتحرير.");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "تعذر تصدير المستند."); }
   };
 
   const openMathDoc = async (file?: File) => {
@@ -122,17 +178,17 @@ export default function App() {
     try {
       if (file.size > MAX_IMPORT_BYTES) throw new Error("ملف المستند أكبر من 32 ميغابايت.");
       const raw = JSON.parse(await file.text());
-      if (raw?.format === "mathpress" && Number.isInteger(raw.schemaVersion) && raw.schemaVersion > 4)
+      if (raw?.format === "mathpress" && Number.isInteger(raw.schemaVersion) && raw.schemaVersion > 5)
         throw new Error("يتطلب هذا المستند إصدارًا أحدث من MathPress. لم يُستبدل المستند الحالي.");
       const parsed = parseDocument(raw);
-      const protectedFormat = parsed?.schemaVersion === 4;
+      const protectedFormat = parsed != null && parsed.schemaVersion >= 4;
       const content = parsed && validateImportedContent(parsed.content);
       if (protectedFormat && (!content || !preservesSuppliedContent(raw, { ...parsed, content }))) {
-        throw new Error("يتضمن ملف MathDoc 4 محتوى أو خصائص غير مدعومة. احتُفظ بالمستند المفتوح وبالملف الأصلي.");
+        throw new Error("يتضمن ملف MathDoc محتوى أو خصائص غير مدعومة. احتُفظ بالمستند المفتوح وبالملف الأصلي.");
       }
       if (!parsed || !content) throw new Error("صيغة المستند غير معروفة أو غير مكتملة.");
       // Opening a backup must not overwrite the current local editing copy.
-      replaceDocument({ ...parsed, id: crypto.randomUUID(), content });
+      replaceDocument({ ...parsed, id: crypto.randomUUID(), content: parsed.schemaVersion === 5 ? await localizeImages(content) : content });
       setNotice("تم فتح المستند بنجاح.");
       setShowLibrary(false);
     } catch (error) {
@@ -180,18 +236,62 @@ export default function App() {
   }[saveState]), [saveState]);
 
   return (
-    <div className="app-shell" data-theme={dark ? "dark" : "light"}>
+    <div className="app-shell" data-theme={dark ? "dark" : "light"} data-effects={lowEffects ? "low" : "standard"}>
       <header className="topbar no-print">
         <div className="brand">
           <div className="brand-mark"><Sigma size={24} /></div>
           <div><strong>MathPress Studio <small className="version" dir="ltr">v{VERSION}</small></strong></div>
         </div>
         <input className="document-title-input" value={doc.title} onChange={e => setDoc(old => ({ ...old, title: e.target.value }))} aria-label="عنوان المستند" placeholder="عنوان المستند" />
+        <div className="glass-view-controls">
         <button type="button" className="studio-theme" aria-label="الوضع الداكن" aria-pressed={dark}
           onClick={() => setDark(value => !value)}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
+          <button type="button" className="studio-theme" title="تأثيرات بصرية منخفضة" aria-label="تأثيرات بصرية منخفضة"
+            aria-pressed={lowEffects} onClick={() => setLowEffects(value => !value)}><Layers size={18} /></button>
+        </div>
+        <button type="button" aria-expanded={showTemplates} onClick={()=>setShowTemplates(value=>!value)}>القوالب</button>
         <div className={`save-status ${saveState}`} aria-live="polite">{status.icon}<span>{status.label}</span></div>
       </header>
 
+
+      {showTemplates && <section className="creative-gallery library-panel no-print" aria-label="مكتبة القوالب">
+        <div className="panel-heading"><strong>مكتبة القوالب</strong><button type="button" onClick={()=>setShowTemplates(false)}>إغلاق</button></div>
+        <label>البحث <input type="search" value={templateQuery} onChange={event=>setTemplateQuery(event.target.value)}/></label>
+        <div className="creative-gallery-grid">
+          {creativeTemplates.filter(item=>`${item.name} ${item.category}`.includes(templateQuery)).map(item=>
+            <button type="button" key={item.id} onClick={()=>{replaceDocument(makeTemplate(createDocument(),item.id));setShowTemplates(false);}}>
+              <small>{item.category}</small><strong>{item.name}</strong>
+              <span>{item.content.find(node=>node.type==="educationBlock")?.content?.[0]?.content?.[0]?.text}</span>
+            </button>)}
+          {savedTemplates.filter(item=>item.name.includes(templateQuery)).map(item=>
+            <div className="creative-template-entry" key={item.name}><button type="button" onClick={()=>{
+              replaceDocument(protectEducationalDocument({...createDocument(item.name),content:structuredClone(item.content),creativeDesign:item.design,publishingIdentity:readDocumentIdentity(item.identity)}));
+              setShowTemplates(false);
+            }}>{item.name}</button>
+              <button type="button" onClick={()=>void exportTemplate(item)}>تصدير القالب</button>
+              <button type="button" onClick={()=>{
+                const name = window.prompt("الاسم الجديد للقالب",item.name)?.trim();
+                if (!name || name===item.name || savedTemplates.some(other=>other.name===name)) return;
+                persistTemplates(savedTemplates.map(other=>other===item?{...item,name}:other));
+              }}>إعادة تسمية</button>
+              <button type="button" onClick={()=>{
+                if(window.confirm(`إزالة القالب «${item.name}» من المكتبة؟`))
+                  persistTemplates(savedTemplates.filter(other=>other!==item));
+              }}>إزالة القالب</button>
+            </div>)}
+        </div>
+        <label>استيراد قالب <input type="file" accept=".mathdoc,application/json" onChange={event=>{
+          const input=event.currentTarget;
+          const file=input.files?.[0];
+          void importTemplate(file).finally(()=>{if(input.files?.[0]===file) input.value="";});
+        }}/></label>
+        <button type="button" onClick={()=>{
+          const name = window.prompt("اسم القالب",doc.title)?.trim();
+          if (!name) return;
+          const next = [...savedTemplates.filter(item=>item.name!==name),{name,content:doc.content,design:doc.creativeDesign,identity:doc.publishingIdentity}];
+          if (persistTemplates(next)) setNotice("تم حفظ القالب على هذا الجهاز.");
+        }}>حفظ المستند قالبًا</button>
+      </section>}
 
       {showLibrary && <section className="library-panel no-print">
         <div className="panel-heading"><strong>المستندات المحفوظة على هذا الجهاز</strong><button className="icon-button" onClick={() => setShowLibrary(false)}>إغلاق</button></div>
@@ -213,7 +313,8 @@ export default function App() {
 
       <main className="editor-area">
         <DocumentEditor
-          key={editorRevision} doc={doc} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onNotice={setNotice}
+          key={editorRevision} doc={doc} onDesign={creativeDesign => setDoc(old=>({...old,creativeDesign,publishingIdentity:undefined}))}
+          onIdentity={publishingIdentity => setDoc(old=>({...old,publishingIdentity}))} onChange={onContent} onStyles={onStyles} onNumberStart={onNumberStart} onNotice={setNotice}
           actions={{
             onNew: () => { replaceDocument(createDocument()); setNotice("تم إنشاء مستند جديد."); },
             onNewBlank: () => {

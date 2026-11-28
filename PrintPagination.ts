@@ -1,3 +1,4 @@
+import { studioPrintSources } from "./StudioImage";
 import type { MathfieldElement } from "mathlive";
 
 type Boundary = { node: Node; offset: number };
@@ -69,6 +70,11 @@ function isolateGraphIds(clone: HTMLElement) {
 
 function printableClone(source: HTMLElement): HTMLElement {
   const clone = source.cloneNode(true) as HTMLElement;
+  const originalImages = source.querySelectorAll("img");
+  clone.querySelectorAll("img").forEach((image,index) => {
+    const original = studioPrintSources.get(originalImages[index]);
+    if (original) image.src = original;
+  });
   const originalFields = source.querySelectorAll<MathfieldElement>("math-field");
   clone.querySelectorAll("math-field").forEach((field, index) => {
     field.textContent = originalFields[index].closest<HTMLElement>(".math-node")?.dataset.latex ?? originalFields[index].value;
@@ -339,6 +345,38 @@ export function paginateForPrint(
     }
   };
 
+  const placeCreativeBlock = (block: HTMLElement) => {
+    const content = block.querySelector<HTMLElement>(":scope > .creative-block-content");
+    if (!content || content.children.length < 2) {
+      place(block);
+      return;
+    }
+    body.append(block);
+    if (fits(block)) return;
+    block.remove();
+    const parts = [...content.children];
+    const fresh = () => {
+      const frame = block.cloneNode(false) as HTMLElement;
+      const heading = block.querySelector(":scope > .creative-block-label");
+      if (heading) frame.append(heading.cloneNode(true));
+      const inner = content.cloneNode(false) as HTMLElement;
+      frame.append(inner);
+      return { frame, inner };
+    };
+    let fragment = fresh();
+    for (const part of parts) {
+      fragment.inner.append(part);
+      if (!fragment.frame.parentElement) place(fragment.frame);
+      else if (!fits(fragment.frame)) {
+        part.remove();
+        newSheet();
+        fragment = fresh();
+        fragment.inner.append(part);
+        place(fragment.frame);
+      }
+    }
+  };
+
   target.replaceChildren();
   newSheet();
   const blocks = [...source.children].filter((child): child is HTMLElement =>
@@ -350,7 +388,7 @@ export function paginateForPrint(
     }
     if (index > 0 && index === blocks.length - 1 && child.tagName === "P"
       && child.matches(":has(> .ProseMirror-trailingBreak:only-child)") && !child.textContent?.trim()) continue;
-    const placement = child.matches("[data-educational-style], [data-paragraph-format]") ? getComputedStyle(child) : null;
+    const placement = child.matches("[data-educational-style], [data-paragraph-format], [data-education-block]") ? getComputedStyle(child) : null;
     if (body!.childElementCount && (pendingBreak || placement?.getPropertyValue("--break-before").trim() === "1")) newSheet();
     pendingBreak = false;
     const block = printableClone(child);
@@ -374,7 +412,8 @@ export function paginateForPrint(
       const needed = child.getBoundingClientRect().height + next.getBoundingClientRect().height;
       if (needed <= body!.clientHeight * zoom && body!.lastElementChild!.getBoundingClientRect().bottom + needed > limit) newSheet();
     }
-    if (block.tagName === "P") placeParagraph(block);
+    if (block.matches(".creative-block")) placeCreativeBlock(block);
+    else if (block.tagName === "P") placeParagraph(block);
     else if (block instanceof HTMLTableElement) placeTable(block);
     else if (block instanceof HTMLOListElement || block instanceof HTMLUListElement) placeList(block);
     else place(block);
