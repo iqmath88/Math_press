@@ -29,6 +29,15 @@ async function run() {
       await page.getByRole("button", { name: "مكتبة أنماط الصناديق" }).waitFor();
       await design.tap();
       await page.locator(".creative-tools").waitFor({ state: "detached" });
+      await page.getByRole("button", { name: "خصائص المستند" }).tap();
+      const properties = page.getByRole("complementary", { name: "خصائص المستند" });
+      await properties.waitFor();
+      const stage = await page.locator(".page-stage").boundingBox();
+      const panel = await properties.boundingBox();
+      assert.ok(stage && panel && panel.x + panel.width <= stage.x + 1,
+        JSON.stringify({ stage, panel }));
+      await page.screenshot({ path: join(output, `${engine.name()}-docked-properties-${width}.png`) });
+      await properties.getByRole("button", { name: "إغلاق" }).tap();
       await page.getByRole("button", { name: "الوضع الداكن" }).tap();
       await page.screenshot({ path: join(output, `${engine.name()}-compact-dark-${width}.png`) });
       await page.getByRole("tab", { name: "عرض", exact: true }).tap();

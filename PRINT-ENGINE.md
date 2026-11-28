@@ -263,3 +263,16 @@ The six-page file in the overlap/dedup run was 4,137,372 bytes versus
 the elapsed times from those two runs are not a controlled comparison.
 The follow-up verifies the 600-DPI export can be cancelled and all six
 MathDoc sheets remain available.
+
+Matching 300-DPI Chromium/Linux workloads were rerun after the tiled changes.
+These are single runs with the existing whole-page A4 fast path, not P95.
+
+| Pages | Alpha.9 / alpha.10 elapsed | Alpha.9 / alpha.10 file bytes | Alpha.9 / alpha.10 sampled peak JavaScript heap |
+| ---: | ---: | ---: | ---: |
+| 50 | 18.58 / 19.16 s | 14,091,353 / 13,934,809 | 77.15 / 68.41 MB |
+| 100 | 43.14 / 42.73 s | 28,235,864 / 27,924,604 | 103.00 / 104.10 MB |
+| 200 | 145.68 / 142.61 s | 56,537,333 / 55,914,631 | 143.14 / 149.55 MB |
+
+The browser heap samples do not cover the canvas backing store, GPU, or
+total system peak. Improvements in PDF storage do not establish lower
+overall memory at 200 pages.

@@ -1185,8 +1185,6 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
   }
 }
 @media screen and (min-width: 1120px) {
-  .page-stage:has(.studio-properties) { padding-left: max(248px, 19%); }
-  .studio-properties { position: absolute; left: 12px; top: 12px; }
 }
 @media screen {
   .page-navigation button {
@@ -1542,6 +1540,25 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 @media screen {
   .publishing-workspace { display:flex; direction:ltr; flex:1; min-width:0; min-height:0; align-items:stretch; }
   .publishing-workspace > .page-stage { flex:1 1 0; min-width:0; }
+  .publishing-workspace > .studio-properties {
+    position: sticky;
+    inset: 8px auto auto;
+    flex: 0 0 clamp(188px, 22vw, 248px);
+    max-block-size: min(60dvh, 560px);
+    margin: 8px 0 8px 8px;
+    overscroll-behavior: contain;
+    backdrop-filter: none;
+  }
+  @media (max-width: 700px) {
+    .publishing-workspace > .studio-properties {
+      position: static;
+      flex: none;
+      width: auto;
+      align-self: stretch;
+      margin: 8px;
+      max-block-size: 38dvh;
+    }
+  }
   .gallery-dock { direction:rtl; flex:0 0 auto; min-width:0; }
   .gallery-dock:empty { display:none; }
   .app-shell .gallery-dock .block-style-library {

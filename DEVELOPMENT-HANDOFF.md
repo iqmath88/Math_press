@@ -177,3 +177,9 @@ isolated. Next validate native Files/share/print on the preview with the
 six-page sample, rerun the 50/100/200 timing and peak memory comparisons
 under controlled conditions, then finish the premium workspace and 23 boxes.
 The stable rollback reference remains main at 9f978463d9a4b7cf2d76f848bc7ee6ca4313c872.
+
+A workspace checkpoint docks document properties beside the paper and bounds
+the panel's independent scrolling. Chromium verifies panel and stage do not
+overlap in either tablet orientation, while landscape header + tabs remains
+101 CSS px. The full premium workspace and educational boxes remain open.
+The 50/100/200 desktop reruns and their limitations are in PRINT-ENGINE.md.

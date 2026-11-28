@@ -630,15 +630,6 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
       </section>}
       <div className="publishing-workspace">
       <div className="gallery-dock no-print" ref={setGalleryDock} />
-      <div className={`page-stage${focusMode ? " document-focus" : ""}`} ref={stageRef}>
-        {showPages && !focusMode && !printOptions && <nav className="page-navigation no-print" aria-label="التنقل بين الصفحات">
-          {Array.from({ length: pageCount }, (_, index) => <button type="button" key={index}
-            aria-label={`صفحة ${index + 1}`} aria-current={currentPage === index + 1 ? "page" : undefined}
-            onClick={() => goToPage(index + 1)}>
-            <span className="studio-page-number">{index + 1}</span>
-            <span className="studio-page-caption" aria-hidden="true">{pageLabels[index]}</span>
-          </button>)}
-        </nav>}
         {properties && !focusMode && !printOptions && <aside className="studio-properties no-print" aria-label="خصائص المستند" onKeyDown={event => {
           if (event.key === "Escape") { setProperties(false); editor.commands.focus(); }
         }}>
@@ -650,6 +641,15 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
           <button type="button" onClick={actions.onPageSettings}>إعدادات الهوامش والصفحة</button>
           <button type="button" onClick={() => setShowParagraphFormat(true)}>خصائص الفقرة</button>
         </aside>}
+      <div className={`page-stage${focusMode ? " document-focus" : ""}`} ref={stageRef}>
+        {showPages && !focusMode && !printOptions && <nav className="page-navigation no-print" aria-label="التنقل بين الصفحات">
+          {Array.from({ length: pageCount }, (_, index) => <button type="button" key={index}
+            aria-label={`صفحة ${index + 1}`} aria-current={currentPage === index + 1 ? "page" : undefined}
+            onClick={() => goToPage(index + 1)}>
+            <span className="studio-page-number">{index + 1}</span>
+            <span className="studio-page-caption" aria-hidden="true">{pageLabels[index]}</span>
+          </button>)}
+        </nav>}
         <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}${printOptions?.grayscale ? " grayscale-paper" : ""}`}
           id="print-document" data-creative-design={doc.publishingIdentity ? "custom" : doc.creativeDesign} style={paperStyle}>
           <div className={`editor-source${showMargins && !printOptions ? " studio-margins" : ""}`}>
