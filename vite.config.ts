@@ -34,8 +34,9 @@ export default defineConfig({
   define: {
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(JSON.parse(read("package.json").toString()).version),
     "import.meta.env.VITE_APP_BUILD": JSON.stringify(
-      (process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA)?.slice(0, 12) || "local"
+      process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "local"
     ),
+    "import.meta.env.VITE_APP_BUILD_DATE": JSON.stringify(new Date().toISOString()),
   },
   base: "./", publicDir:false, resolve:{extensions:[".mjs",".ts",".tsx",".js",".jsx",".json"]}, plugins:[react(),copyPwaFiles()],
   server:{host:"0.0.0.0"}, build:{target:"es2022",chunkSizeWarningLimit:1500},

@@ -30,6 +30,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export default function App() {
+  const buildInfo = useRef<HTMLDialogElement>(null);
   const [doc, setDoc] = useState<MathPressDocument>(() => createDocument());
   const [savedDocs, setSavedDocs] = useState<MathPressDocument[]>([]);
   const [migrationBackups, setMigrationBackups] = useState<Map<string, unknown>>(() => new Map());
@@ -240,7 +241,7 @@ export default function App() {
       <header className="topbar no-print">
         <div className="brand">
           <div className="brand-mark"><Sigma size={24} /></div>
-          <div><strong>MathPress Studio <small className="version" dir="ltr">v{VERSION}</small></strong></div>
+          <div><strong>MathPress Studio <button type="button" className="version" dir="ltr" aria-label="معلومات الإصدار" onClick={() => buildInfo.current?.showModal()}>v{VERSION}</button></strong></div>
         </div>
         <input className="document-title-input" value={doc.title} onChange={e => setDoc(old => ({ ...old, title: e.target.value }))} aria-label="عنوان المستند" placeholder="عنوان المستند" />
         <div className="glass-view-controls">
@@ -252,6 +253,16 @@ export default function App() {
         <button type="button" aria-expanded={showTemplates} onClick={()=>setShowTemplates(value=>!value)}>القوالب</button>
         <div className={`save-status ${saveState}`} aria-live="polite">{status.icon}<span>{status.label}</span></div>
       </header>
+      <dialog ref={buildInfo} className="build-information no-print" aria-labelledby="build-information-title">
+        <h2 id="build-information-title">معلومات الإصدار</h2>
+        <dl>
+          <dt>إصدار MathPress</dt><dd><bdi>v{VERSION}</bdi></dd>
+          <dt>معرّف الالتزام</dt><dd><bdi>{import.meta.env.VITE_APP_BUILD}</bdi></dd>
+          <dt>تاريخ البناء</dt><dd><bdi>{import.meta.env.VITE_APP_BUILD_DATE}</bdi></dd>
+          <dt>محرك PDF</dt><dd>طباعة المتصفح</dd>
+        </dl>
+        <form method="dialog"><button type="submit">إغلاق</button></form>
+      </dialog>
 
 
       {showTemplates && <section className="creative-gallery library-panel no-print" aria-label="مكتبة القوالب">

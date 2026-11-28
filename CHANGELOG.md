@@ -124,3 +124,9 @@
 
 - Added contextual image and shape controls with an on-page width handle. Drag
   release creates one reversible edit without changing the original media.
+
+## 0.8.0-alpha.6 — PDF feasibility checkpoint
+
+- Added build identification to the application version dialog.
+- Added an isolated PDF feasibility harness and CI samples. Arabic text
+  extraction is still an open acceptance gate for independent export.

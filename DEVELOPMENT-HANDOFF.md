@@ -100,3 +100,13 @@ safariRecovery.e2e.cjs generates the reference MathDoc and Chromium PDFs for
 1, 4, 10, 50 and 100 pages and checks print-media geometry with WebKit in CI.
 Keep the independent desktop PDF probe isolated and verify native print on an
 Apple device with a recorded build ID before closing the issue.
+
+### Alpha.6 P0 checkpoint
+
+The independent PDF spike generated four-page fixture files with PDFKit,
+pdf-lib and pdfmake and an offline one-page browser PDF Blob. None met the
+logical Arabic extraction gate. The probe and CI samples are isolated from
+the app. Read PRINT-ENGINE.md for versions and reproduction, then continue
+with shaping clusters and explicit BiDi run layout. The version button opens
+build diagnostics for the real-iPad check. The independent publisher,
+workspace redesign, glass boxes and full performance gates remain open.

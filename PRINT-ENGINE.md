@@ -70,3 +70,47 @@ not a browser-integrated PDF writer or a cold offline Safari export. Native
 Safari on iPad must still be tested using the exported reference MathDoc and
 the app's build diagnostics. Safari's own printable metadata remains subject to
 the native dialog.
+
+## Alpha.6 independent renderer feasibility
+
+The isolated `experiments/pdfFeasibility.cjs` writes PDF bytes directly without
+a browser print call. Its four-page A4 fixture uses Arabic with diacritics,
+mixed Latin and Arabic digits, simple equation text, table cells, vector conic
+paths, and page footers. It evaluates extracted logical order separately from
+page count and glyph embedding. A second probe invokes pdf-lib in a disconnected
+Chromium context with local UMD assets and creates a real PDF Blob.
+
+| Mode | Pages | Bytes (DejaVu Sans) | Arabic and mixed logical extraction |
+| --- | ---: | ---: | --- |
+| PDFKit 0.21.0 | 4 | 13,961 | Failed |
+| pdf-lib 1.17.1 + fontkit 1.1.1 | 4 | 421,860 | Failed |
+| pdfmake 0.3.15 | 4 | 14,982 | Failed |
+| PDFKit with ActualText | 4 | 14,604 | Failed |
+| pdf-lib offline browser Blob | 1 | 419,693 | Failed |
+
+PDFKit and pdfmake emitted embedded subset fonts with a Unicode mapping, but
+the plain sentence and the mixed sentence both differed from the input in
+Poppler extraction. DejaVu Sans covered the Latin equation glyphs that were
+missing with the tested Noto Naskh file. Font coverage alone did not fix Arabic
+ordering. The ActualText experiment also failed the same extraction check.
+bidi-js 1.1.0 reports display order for comparison; the probe does not pass its
+visually reordered string into a shaper. Reversing code points would split
+combining sequences and is not an acceptable render path.
+
+No candidate is approved. The fixture is a synthetic feasibility input, not a
+serialized MathDoc or a proof of coverage for MathLive, JSXGraph, and complex
+tables. Keep the probe outside the app bundle. Next validate a pipeline with
+Unicode BiDi resolved runs, HarfBuzz or equivalent OpenType shaping without
+losing cluster mappings, positioned glyph output and a logical Unicode mapping.
+Check rendering and extraction in more than one reader before wiring export
+controls or testing 200-page performance. Native Safari device validation of
+browser printing remains open. The new version dialog reports the running
+build, UTC build time, and the active browser print path.
+
+Reproduce the probe with Poppler, a local TrueType font, and the exact package
+versions above plus `svg-to-pdfkit@0.1.8`, installed in an isolated directory.
+Set `NODE_PATH` to that directory's node_modules, then run
+`node experiments/pdfFeasibility.cjs OUTPUT_DIR /path/to/font.ttf`.
+Optionally set `PDF_PROBE_CHROMIUM` to a local Chromium executable to exercise
+the disconnected browser Blob path. CI publishes the PDFs and JSON report
+under the independent-pdf-feasibility artifact.

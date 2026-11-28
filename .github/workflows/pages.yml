@@ -30,6 +30,18 @@ jobs:
         run: |
           npx playwright-core install --with-deps chromium webkit
           sudo apt-get install -y poppler-utils
+      - name: Capture independent PDF feasibility samples
+        if: (github.head_ref || github.ref_name) == 'feature/v0.8.0-advanced-glass-document-studio'
+        run: |
+          probe="$RUNNER_TEMP/mathpress-pdf-probe"
+          npm install --prefix "$probe" --no-audit --no-fund pdfkit@0.21.0 pdf-lib@1.17.1 @pdf-lib/fontkit@1.1.1 pdfmake@0.3.15 bidi-js@1.1.0 svg-to-pdfkit@0.1.8
+          NODE_PATH="$probe/node_modules" PDF_PROBE_CHROMIUM="$(node -p 'require("playwright-core").chromium.executablePath()')" \
+            node experiments/pdfFeasibility.cjs "$RUNNER_TEMP/independent-pdf-samples" /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+      - uses: actions/upload-artifact@v4
+        if: (github.head_ref || github.ref_name) == 'feature/v0.8.0-advanced-glass-document-studio'
+        with:
+          name: independent-pdf-feasibility
+          path: ${{ runner.temp }}/independent-pdf-samples/
       - name: Test editing and PDF publishing
         env:
           MATHPRESS_BRANCH: ${{ github.head_ref || github.ref_name }}

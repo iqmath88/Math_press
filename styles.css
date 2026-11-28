@@ -1680,3 +1680,14 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
   border-radius: 3px;
   background: var(--accent);
 }
+
+.build-information {
+  max-inline-size: min(32rem, 90vw);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--studio-glass, #fff);
+  color: var(--studio-text, #243044);
+}
+.build-information::backdrop { background: #0e223855; }
+.build-information dd { margin: 0 0 .6rem; overflow-wrap: anywhere; }
+.topbar .version { background: transparent; }

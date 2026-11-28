@@ -16,6 +16,12 @@ async function run() {
   try {
     const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, isMobile: true, hasTouch: true });
     await page.goto(url);
+    await page.getByRole("button", { name: "معلومات الإصدار" }).click();
+    const build = page.getByRole("dialog", { name: "معلومات الإصدار" });
+    await build.getByText(`v${require("./package.json").version}`, { exact: true }).waitFor();
+    await build.getByText(/^(local|[a-f0-9]{40})$/).waitFor();
+    await build.getByText(/^\d{4}-\d{2}-\d{2}T/).waitFor();
+    await build.getByRole("button", { name: "إغلاق" }).click();
     await page.getByRole("button", { name: "القوالب", exact: true }).click();
     await page.getByRole("button", { name: /القطوع المخروطية/ }).click();
     await page.locator(".editor-source .graph-box svg").nth(3).waitFor();
