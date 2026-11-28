@@ -6,7 +6,7 @@ import type { JSONContent } from "@tiptap/core";
 import type { MathfieldElement } from "mathlive";
 import { paperDimensions, type MathPressDocument } from "./types";
 import StudioMediaControls from "./StudioMediaControls";
-import { blockTypes, designVariables, designs, educationBlock } from "./creativeDesign";
+import { blockTypes, designVariables, designs, educationBlock, solvedExample } from "./creativeDesign";
 import { createEditorSnapshot } from "./editorSnapshot";
 import { SmartMathInput } from "./SmartMathInput";
 import { buildExtensions } from "./extensions";
@@ -463,6 +463,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
             {designs.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
           </select></label>
           <BlockStyleLibrary selected={selected?.node.attrs} apply={editBlock} notice={onNotice}
+            insertSolvedExample={() => editor.chain().focus().insertContent(solvedExample()).run()}
             insert={(kind, attrs) => {
               const block = educationBlock(kind);
               editor.chain().focus().insertContent({ ...block, attrs: { ...block.attrs, ...attrs } }).run();

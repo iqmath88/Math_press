@@ -1343,3 +1343,8 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 @media screen and (prefers-reduced-motion: reduce) {
   .app-shell .no-print, .app-shell .no-print * { animation:none; transition:none; scroll-behavior:auto; }
 }
+.creative-block[data-education-block="theorem"] { border-inline-start:4px double var(--block-ink); }
+.creative-block[data-education-block="concept"] > .creative-block-label { border-block-end:1px solid var(--block-ink); padding-block-end:3px; }
+.creative-block[data-education-block="ministerial-idea"] > .creative-block-label { text-decoration:underline double; text-underline-offset:3px; }
+.creative-block[data-education-block="homework"] { border-block-start:1px dashed var(--block-ink); }
+.creative-block[data-education-block="summary"] > .creative-block-label { letter-spacing:normal; border-block-end:1px solid var(--block-ink); }

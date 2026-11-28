@@ -180,6 +180,15 @@ async function verifyStyleLibrary(page) {
     name:"styles.json", mimeType:"application/json", buffer:exported
   });
   await library.getByText("تعريف المبرهنة",{exact:true}).waitFor();
+  await library.getByRole("button",{name:"إدراج مثال محلول"}).click();
+  const example = page.locator('.editor-source [data-education-block="example"]').last();
+  const solution = example.locator('[data-education-block="solution"] p');
+  assert.equal(await solution.textContent(),"اكتب خطوات الحل هنا.");
+  await solution.click();
+  await page.keyboard.press("End");
+  await page.keyboard.insertText(" تعديل");
+  assert.match(await solution.textContent(),/تعديل/);
+  await example.getByText("النتيجة النهائية",{exact:true}).waitFor();
 }
 async function verifyLongBox(page) {
   await page.goto(home);

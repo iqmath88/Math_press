@@ -23,9 +23,10 @@ function readStyles(): Style[] {
   } catch { return []; }
 }
 
-export default function BlockStyleLibrary({ selected, insert, apply, notice }: {
+export default function BlockStyleLibrary({ selected, insert, insertSolvedExample, apply, notice }: {
   selected?: Record<string, unknown>;
   insert: (kind: string, attrs?: Record<string, unknown>) => void;
+  insertSolvedExample: () => void;
   apply: (attrs: Record<string, unknown>) => void;
   notice: (message: string) => void;
 }) {
@@ -72,6 +73,7 @@ export default function BlockStyleLibrary({ selected, insert, apply, notice }: {
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>مكتبة أنماط الصناديق</button>
     {open && <section className="block-style-library" aria-label="مكتبة أنماط الصناديق">
       <div className="block-style-actions">
+        <button type="button" onClick={insertSolvedExample}>إدراج مثال محلول</button>
         <button type="button" disabled={!styles.length} onClick={exportStyles}>تصدير أنماط الصناديق</button>
         <label>استيراد أنماط الصناديق <input type="file" accept=".json,application/json" onChange={event => {
           void importStyles(event.target.files?.[0]);

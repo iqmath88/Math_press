@@ -35,6 +35,14 @@ const equation = (latex: string): JSONContent => ({type:"mathBlock",attrs:{latex
 export const educationBlock = (kind: string, content = [paragraph("")]): JSONContent =>
   ({type:"educationBlock",attrs:{kind},content});
 
+export function solvedExample(): JSONContent {
+  return educationBlock("example", [
+    paragraph("اكتب منطوق المثال هنا."),
+    { ...educationBlock("solution", [paragraph("اكتب خطوات الحل هنا.")]), attrs: { kind: "solution", title: "الحل" } },
+    { ...educationBlock("summary", [paragraph("اكتب النتيجة هنا.")]), attrs: { kind: "summary", title: "النتيجة النهائية" } }
+  ]);
+}
+
 const conicGraph = (caption: string, branches: string[], from = "", to = ""): JSONContent => ({
   type:"graph",attrs:{spec:{xmin:-5,xmax:5,ymin:-5,ymax:5,axes:true,grid:true,equal:true,widthPct:65,caption,
     items:branches.map((expr,index)=>({id:`conic-${index}`,type:"function",expr,color:"#193c6b",dashed:false,from,to}))}}
