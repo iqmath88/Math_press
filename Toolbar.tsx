@@ -1,3 +1,4 @@
+import type {Transaction} from "@tiptap/pm/state";
 import { NodeSelection } from "@tiptap/pm/state";
 import { useEffect, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -49,6 +50,7 @@ type Props = {
   educationalTools?: ReactNode;
   onProperties?: () => void;
   propertiesOpen?: boolean;
+  designToggle?: ReactNode;
   viewTools?: ReactNode;
   paragraphTools?: ReactNode;
   mathTools?: ReactNode;
@@ -105,7 +107,7 @@ function Group(props: { title: string; children: ReactNode; rows?: boolean }) {
 
 const Row = ({ children }: { children: ReactNode }) => <div className="rb-line">{children}</div>;
 
-export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, educationalTools, viewTools, paragraphTools, mathTools, onGraph, onError, onProperties, propertiesOpen }: Props) {
+export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, educationalTools, viewTools, paragraphTools, mathTools, onGraph, onError, onProperties, propertiesOpen, designToggle }: Props) {
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [tab, setTab] = useState<TabId>("home");
   const [collapsed, setCollapsed] = useState(false);
@@ -116,8 +118,11 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
 
   // الشريط يحدّث نفسه عند كل تغيير في المحرر، فلا يحتاج المحرر إلى إعادة رسم كاملة مع كل ضغطة مفتاح.
   useEffect(() => {
-    editor.on("transaction", rerender);
-    return () => { editor.off("transaction", rerender); };
+    const refresh = ({transaction}:{transaction:Transaction}) => {
+      if (transaction.docChanged || transaction.selectionSet || transaction.storedMarksSet) rerender();
+    };
+    editor.on("transaction", refresh);
+    return () => { editor.off("transaction", refresh); };
   }, [editor]);
 
   const chain = () => editor.chain().focus();
@@ -205,6 +210,7 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
           ))}
         </div>
         <div className="rb-quick">
+          {designToggle}
           {actions.onNewBlank && <Btn label="مستند فارغ" onClick={actions.onNewBlank}><FilePlus2 size={18} /></Btn>}
           {mathTools && <>
             <Btn label="معادلة سطرية" onClick={() => {
@@ -377,8 +383,16 @@ export default function Toolbar({ editor, page, actions, onOpenLatex, onSearch, 
               <Btn wide label="إضافة عمود بعد" onClick={() => chain().addColumnAfter().run()}>+ عمود بعد</Btn>
               <Btn wide label="حذف الصف" onClick={() => chain().deleteRow().run()}>حذف صف</Btn>
               <Btn wide label="حذف العمود" onClick={() => chain().deleteColumn().run()}>حذف عمود</Btn>
-              <Btn wide label="دمج أو فصل الخلايا" onClick={() => chain().mergeOrSplit().run()}>دمج/فصل</Btn>
               <Btn wide label="صف العناوين" onClick={() => chain().toggleHeaderRow().run()}>صف العناوين</Btn>
+              <Btn wide label="دمج الخلايا المحددة" disabled={!editor.can().mergeCells()} onClick={() => chain().mergeCells().run()}>دمج</Btn>
+              <Btn wide label="تقسيم الخلية" disabled={!editor.can().splitCell()} onClick={() => chain().splitCell().run()}>تقسيم</Btn>
+              <label>خلفية الخلايا <input type="color" aria-label="خلفية الخلايا" defaultValue="#ffffff"
+                onChange={event=>chain().setCellAttribute("fill",event.target.value).run()} /></label>
+              <label>حدود الخلايا <input type="color" aria-label="حدود الخلايا" defaultValue="#94a3b8"
+                onChange={event=>chain().setCellAttribute("borderInk",event.target.value).run()} /></label>
+              <select aria-label="محاذاة الخلايا" value="" onChange={event=>chain().setCellAttribute("cellAlign",event.target.value || null).run()}>
+                <option value="">محاذاة الخلايا</option><option value="start">البداية</option><option value="center">الوسط</option><option value="end">النهاية</option>
+              </select>
               <Btn wide label="حذف الجدول" onClick={() => chain().deleteTable().run()}>حذف الجدول</Btn>
             </Group>
           )}

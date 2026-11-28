@@ -4,7 +4,7 @@ import { parseDocument, protectEducationalDocument } from "./document";
 const DB_NAME = "mathpress-local";
 const STORE = "documents";
 const checkedForMigration = new Set<string>();
-const protectedIds = new Map<string, 4 | 5>();
+const protectedIds = new Map<string, 4 | 5 | 6>();
 const BACKUP_FORMAT = "mathpress-migration-backup";
 const backupKey = (id: string) => `\u0000mathpress-backup:${id}`;
 
@@ -60,7 +60,7 @@ export async function saveDocument(doc: MathPressDocument): Promise<void> {
       }
       tx.oncomplete = () => {
         checkedForMigration.add(doc.id);
-        if (protectedDoc.schemaVersion === 4 || protectedDoc.schemaVersion === 5) protectedIds.set(doc.id, protectedDoc.schemaVersion);
+        if (protectedDoc.schemaVersion === 4 || protectedDoc.schemaVersion === 5 || protectedDoc.schemaVersion === 6) protectedIds.set(doc.id, protectedDoc.schemaVersion);
         resolve();
       };
       tx.onerror = () => reject(tx.error ?? new Error("تعذر حفظ المستند"));

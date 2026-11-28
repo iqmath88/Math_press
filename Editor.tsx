@@ -1,6 +1,8 @@
+import { Palette } from "lucide-react";
+import {createWatermarkLayer,watermarkOnPage} from "./watermark";
 import DocumentIdentity from "./DocumentIdentity";
 import { Fragment } from "@tiptap/pm/model";
-import { Selection } from "@tiptap/pm/state";
+import { NodeSelection, Selection } from "@tiptap/pm/state";
 import BlockStyleLibrary from "./BlockStyleLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -41,6 +43,20 @@ type Props = {
 
 type ZoomMode = number | "width" | "page";
 
+function educationalBlock(selection: Selection, outermost = false) {
+  const head = selection.$from;
+  for (let index = 1; index <= head.depth; index++) {
+    const depth = outermost ? index : head.depth - index + 1;
+    const node = head.node(depth);
+    if (node.type.name === "educationBlock") return { node, pos: head.before(depth) };
+  }
+  return null;
+}
+
+function isMediaSelection(selection: Selection) {
+  return selection instanceof NodeSelection && ["image", "studioShape"].includes(selection.node.type.name);
+}
+
 export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, onStyles, onNumberStart, onNotice, actions }: Props) {
   const m = doc.page.marginsMm;
   const landscape = doc.page.orientation === "landscape";
@@ -67,8 +83,22 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
   const [wordCount, setWordCount] = useState(0);
   const snapshotOf = useMemo(createEditorSnapshot, []);
   const stageRef = useRef<HTMLDivElement>(null);
+  const watermarkRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLElement>(null);
   const zoom = printOptions ? 1 : typeof zoomMode === "number" ? zoomMode : fitZoom;
+  useEffect(() => {
+    const host=watermarkRef.current;
+    if (!host || !doc.watermark || printOptions) return;
+    const watermark=doc.watermark;
+    host.replaceChildren(...Array.from({length:pageCount},(_,index)=>{
+      const page=document.createElement("div");
+      page.className="watermark-editor-sheet";
+      page.style.insetBlockStart=`calc(${index} * (var(--ph) + var(--gap)))`;
+      if(watermarkOnPage(watermark,index+1)) page.append(createWatermarkLayer(watermark));
+      return page;
+    }));
+    return ()=>host.replaceChildren();
+  },[doc.watermark,pageCount,printOptions]);
   const [showSearch, setShowSearch] = useState(false);
   const [showParagraphFormat, setShowParagraphFormat] = useState(false);
   const [copiedParagraph, setCopiedParagraph] = useState<ReturnType<typeof selectedParagraphFormat> | undefined>(undefined);
@@ -125,7 +155,19 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
 
   useEffect(() => {
     if (!editor) return;
-    const refresh = () => refreshCreativeSelection(value => value + 1);
+    const contextPosition = () => {
+      const { selection } = editor.state;
+      if (isMediaSelection(selection)) return `media:${selection.from}`;
+      const block = educationalBlock(selection);
+      return block ? `block:${block.pos}` : null;
+    };
+    let previous = contextPosition();
+    const refresh = () => {
+      const current = contextPosition();
+      if (previous === current) return;
+      previous = current;
+      refreshCreativeSelection(value => value + 1);
+    };
     editor.on("selectionUpdate", refresh);
     return () => { editor.off("selectionUpdate", refresh); };
   }, [editor]);
@@ -140,10 +182,11 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
       marginTopMm: m.top,
       marginBottomMm: m.bottom,
       headerText: doc.headerText,
-      showPageNumbers: doc.showPageNumbers
+      showPageNumbers: doc.showPageNumbers,
+      furniture:doc.pageFurniture
     };
     editor.commands.repaginate();
-  }, [editor, paperHeight, paperWidth, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers]);
+  }, [editor, paperHeight, paperWidth, m.top, m.bottom, m.left, m.right, doc.headerText, doc.footerText, doc.showPageNumbers, doc.pageFurniture]);
 
   // اتجاه الصفحة عند الطباعة (@page لا يقبل متغيرات CSS فنكتبه ديناميكيًا).
   useEffect(() => {
@@ -153,8 +196,8 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
       style.id = "mp-page-style";
       document.head.appendChild(style);
     }
-    style.textContent = `@page{size:${doc.page.size} ${landscape ? "landscape" : "portrait"};margin:0}`;
-  }, [landscape, doc.page.size]);
+    style.textContent = `@page{size:${paperWidth}mm ${paperHeight}mm;margin:0}`;
+  }, [paperWidth, paperHeight]);
 
   const openGraph = useCallback((pos?: number) => {
     if (!editor) return;
@@ -331,17 +374,9 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
     setGraph(null);
   };
 
-  const findBlock = (outermost = false) => {
-    const head = editor.state.selection.$from;
-    for (let index = 1; index <= head.depth; index++) {
-      const depth = outermost ? index : head.depth - index + 1;
-      const node = head.node(depth);
-      if (node.type.name === "educationBlock") return {node, pos:head.before(depth)};
-    }
-    return null;
-  };
+  const findBlock = (outermost = false) => educationalBlock(editor.state.selection, outermost);
   const selected = findBlock();
-  const mediaSelected = ["studioShape","image"].includes(editor.state.selection.$from.nodeAfter?.type.name ?? "") && editor.state.selection.to > editor.state.selection.from;
+  const mediaSelected = isMediaSelection(editor.state.selection);
   const editBlock = (attrs: Record<string, unknown>) => {
     const block = findBlock();
     if (block) editor.view.dispatch(editor.state.tr.setNodeMarkup(block.pos, undefined, {...block.node.attrs,...attrs}));
@@ -422,7 +457,8 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
     <>
       <style>{styleSheet}</style>
       {printOptions && <PrintPreview paper={paperRef} editor={editor} options={printOptions}
-        onChange={setPrintOptions} paperSize={doc.page.size} usableHeightMm={(paperHeight) - m.top - m.bottom}
+        onChange={setPrintOptions} documentName={doc.title} paperSize={doc.page.size} paperGeometry={{ width: paperWidth, height: paperHeight, ...m }}
+        watermark={doc.watermark}
         selectedBlock={printOrigin.current?.block} selectedOffset={printOrigin.current?.offset}
         onClose={() => {
           const origin = printOrigin.current;
@@ -443,6 +479,10 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
         editor={editor}
         onProperties={() => setProperties(value => !value)}
         propertiesOpen={properties}
+        designToggle={<button type="button" className="tb-btn compact-design-toggle" aria-label="التصميم والصناديق"
+          aria-expanded={showCreative} title="التصميم والصناديق" onClick={() => setShowCreative(value => !value)}>
+          <Palette size={18} aria-hidden="true" />
+        </button>}
         page={doc.page}
         actions={{ ...actions, onPrint: openPrint }}
         onSearch={() => setShowSearch(v => !v)}
@@ -498,10 +538,10 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
       {showParagraphFormat && <ParagraphFormatDialog editor={editor} close={() => setShowParagraphFormat(false)} />}
       {showStyles && <StyleManager key={doc.id} overrides={doc.educationalStyles ?? []}
         onChange={onStyles} onApply={id => applyEducationalStyle(editor, id)} onClose={() => setShowStyles(false)} />}
-      {!focusMode && !printOptions && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
-        <button type="button" onClick={() => setShowCreative(value => !value)} aria-expanded={showCreative}>التصميم والصناديق</button>
-        {(showCreative || selected || showBoxGallery || mediaSelected) && <>
-          <StudioMediaControls editor={editor} onNotice={onNotice}/>
+      {!focusMode && !printOptions && (showCreative || selected || mediaSelected || showBoxGallery) && <section className="creative-tools no-print" aria-label="أدوات Creative Studio">
+        {(mediaSelected || selected || showCreative) && <StudioMediaControls editor={editor} onNotice={onNotice}
+          showShapePicker={showCreative || !!selected} />}
+        {(showCreative || selected || showBoxGallery) && <>
           <label>هوية المستند <select value={doc.creativeDesign ?? ""} onChange={event =>
             onDesign(event.target.value || undefined)}>
             <option value="">الافتراضية</option>
@@ -558,6 +598,11 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
               const value = event.target.valueAsNumber;
               editBlock({padding:Number.isInteger(value) ? Math.max(0,Math.min(48,value)) : null});
             }}/></label>
+            <label>كثافة الخلفية <input type="number" min={20} max={100} value={selected.node.attrs.surface ?? ""}
+              onChange={event=>{const n=event.target.valueAsNumber;editBlock({surface:Number.isInteger(n)?Math.max(20,Math.min(100,n)):null});}} /></label>
+            <label>ظل الصندوق <select value={selected.node.attrs.shadow ?? ""} onChange={event=>editBlock({shadow:event.target.value || null})}>
+              <option value="">الافتراضي</option><option value="none">بلا ظل</option><option value="soft">ظل خفيف</option>
+            </select></label>
             <label>استدارة الحواف <input type="number" min={0} max={30} value={selected.node.attrs.radius ?? ""} onChange={event=> {
               const value = event.target.valueAsNumber;
               editBlock({radius:Number.isInteger(value) ? Math.max(0,Math.min(30,value)) : null});
@@ -571,7 +616,7 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
                 editor.chain().focus().insertContentAt(exampleSection.pos+exampleSection.parent.content.size,note).run();
               }}>إضافة ملاحظة للمثال</button>
             </>}
-            <button type="button" onClick={() => editBlock({title:"",accent:null,background:null,padding:null,radius:null,hideTitle:false,frame:null,font:null,size:null})}>استعادة التنسيق</button>
+            <button type="button" onClick={() => editBlock({title:"",accent:null,background:null,padding:null,radius:null,hideTitle:false,frame:null,font:null,size:null,surface:null,shadow:null})}>استعادة التنسيق</button>
             <button type="button" onClick={() => {
               const block = findBlock();
               if (block) editor.chain().focus().insertContentAt(block.pos + block.node.nodeSize,block.node.toJSON()).run();
@@ -585,15 +630,6 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
       </section>}
       <div className="publishing-workspace">
       <div className="gallery-dock no-print" ref={setGalleryDock} />
-      <div className={`page-stage${focusMode ? " document-focus" : ""}`} ref={stageRef}>
-        {showPages && !focusMode && !printOptions && <nav className="page-navigation no-print" aria-label="التنقل بين الصفحات">
-          {Array.from({ length: pageCount }, (_, index) => <button type="button" key={index}
-            aria-label={`صفحة ${index + 1}`} aria-current={currentPage === index + 1 ? "page" : undefined}
-            onClick={() => goToPage(index + 1)}>
-            <span className="studio-page-number">{index + 1}</span>
-            <span className="studio-page-caption" aria-hidden="true">{pageLabels[index]}</span>
-          </button>)}
-        </nav>}
         {properties && !focusMode && !printOptions && <aside className="studio-properties no-print" aria-label="خصائص المستند" onKeyDown={event => {
           if (event.key === "Escape") { setProperties(false); editor.commands.focus(); }
         }}>
@@ -605,12 +641,24 @@ export default function DocumentEditor({ doc, onChange, onDesign, onIdentity, on
           <button type="button" onClick={actions.onPageSettings}>إعدادات الهوامش والصفحة</button>
           <button type="button" onClick={() => setShowParagraphFormat(true)}>خصائص الفقرة</button>
         </aside>}
-        <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}`}
+      <div className={`page-stage${focusMode ? " document-focus" : ""}`} ref={stageRef}>
+        {showPages && !focusMode && !printOptions && <nav className="page-navigation no-print" aria-label="التنقل بين الصفحات">
+          {Array.from({ length: pageCount }, (_, index) => <button type="button" key={index}
+            aria-label={`صفحة ${index + 1}`} aria-current={currentPage === index + 1 ? "page" : undefined}
+            onClick={() => goToPage(index + 1)}>
+            <span className="studio-page-number">{index + 1}</span>
+            <span className="studio-page-caption" aria-hidden="true">{pageLabels[index]}</span>
+          </button>)}
+        </nav>}
+        <article ref={paperRef} className={`paper${printOptions ? " preview-paper" : ""}${printOptions?.economical ? " economical-paper" : ""}${printOptions?.grayscale ? " grayscale-paper" : ""}`}
           id="print-document" data-creative-design={doc.publishingIdentity ? "custom" : doc.creativeDesign} style={paperStyle}>
           <div className={`editor-source${showMargins && !printOptions ? " studio-margins" : ""}`}>
-            <div className="paper-header" aria-hidden="true"><span>{doc.headerText}</span></div>
+            <div className="paper-header" aria-hidden="true" data-furniture-rule={doc.pageFurniture?.rule || undefined} data-furniture-preset={doc.pageFurniture?.preset}>
+              <span>{doc.headerText}</span>{doc.pageFurniture?.headerCenter && <span className="furniture-center">{doc.pageFurniture.headerCenter}</span>}{doc.pageFurniture?.headerEnd && <span>{doc.pageFurniture.headerEnd}</span>}
+            </div>
             <EditorContent editor={editor} />
           </div>
+          {!printOptions && doc.watermark && <div className="watermark-editor" aria-hidden="true" ref={watermarkRef}/>}
           {printOptions && <div className="mp-editor print-pages" />}
         </article>
       </div>

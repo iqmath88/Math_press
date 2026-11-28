@@ -30,6 +30,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export default function App() {
+  const buildInfo = useRef<HTMLDialogElement>(null);
   const [doc, setDoc] = useState<MathPressDocument>(() => createDocument());
   const [savedDocs, setSavedDocs] = useState<MathPressDocument[]>([]);
   const [migrationBackups, setMigrationBackups] = useState<Map<string, unknown>>(() => new Map());
@@ -91,7 +92,7 @@ export default function App() {
         setNotice("اختر اسمًا فريدًا للقالب قبل استيراده.");
         return;
       }
-      const local = parsed.schemaVersion===5 ? await localizeImages(content) : content;
+      const local = parsed.schemaVersion>=5 ? await localizeImages(content) : content;
       if (persistTemplates([...savedTemplates,{name,content:local,design:parsed.creativeDesign,identity:parsed.publishingIdentity}]))
         setNotice("تم استيراد القالب دون استبدال المستند المفتوح.");
     } catch { setNotice("تعذّر استيراد القالب. احتُفظ بالمستند والمكتبة."); }
@@ -178,7 +179,7 @@ export default function App() {
     try {
       if (file.size > MAX_IMPORT_BYTES) throw new Error("ملف المستند أكبر من 32 ميغابايت.");
       const raw = JSON.parse(await file.text());
-      if (raw?.format === "mathpress" && Number.isInteger(raw.schemaVersion) && raw.schemaVersion > 5)
+      if (raw?.format === "mathpress" && Number.isInteger(raw.schemaVersion) && raw.schemaVersion > 6)
         throw new Error("يتطلب هذا المستند إصدارًا أحدث من MathPress. لم يُستبدل المستند الحالي.");
       const parsed = parseDocument(raw);
       const protectedFormat = parsed != null && parsed.schemaVersion >= 4;
@@ -188,7 +189,7 @@ export default function App() {
       }
       if (!parsed || !content) throw new Error("صيغة المستند غير معروفة أو غير مكتملة.");
       // Opening a backup must not overwrite the current local editing copy.
-      replaceDocument({ ...parsed, id: crypto.randomUUID(), content: parsed.schemaVersion === 5 ? await localizeImages(content) : content });
+      replaceDocument({ ...parsed, id: crypto.randomUUID(), content: parsed.schemaVersion >= 5 ? await localizeImages(content) : content });
       setNotice("تم فتح المستند بنجاح.");
       setShowLibrary(false);
     } catch (error) {
@@ -240,7 +241,7 @@ export default function App() {
       <header className="topbar no-print">
         <div className="brand">
           <div className="brand-mark"><Sigma size={24} /></div>
-          <div><strong>MathPress Studio <small className="version" dir="ltr">v{VERSION}</small></strong></div>
+          <div><strong>MathPress Studio <button type="button" className="version" dir="ltr" aria-label="معلومات الإصدار" onClick={() => buildInfo.current?.showModal()}>v{VERSION}</button></strong></div>
         </div>
         <input className="document-title-input" value={doc.title} onChange={e => setDoc(old => ({ ...old, title: e.target.value }))} aria-label="عنوان المستند" placeholder="عنوان المستند" />
         <div className="glass-view-controls">
@@ -252,6 +253,16 @@ export default function App() {
         <button type="button" aria-expanded={showTemplates} onClick={()=>setShowTemplates(value=>!value)}>القوالب</button>
         <div className={`save-status ${saveState}`} aria-live="polite">{status.icon}<span>{status.label}</span></div>
       </header>
+      <dialog ref={buildInfo} className="build-information no-print" aria-labelledby="build-information-title">
+        <h2 id="build-information-title">معلومات الإصدار</h2>
+        <dl>
+          <dt>إصدار MathPress</dt><dd><bdi>v{VERSION}</bdi></dd>
+          <dt>معرّف الالتزام</dt><dd><bdi>{import.meta.env.VITE_APP_BUILD}</bdi></dd>
+          <dt>تاريخ البناء</dt><dd><bdi>{import.meta.env.VITE_APP_BUILD_DATE}</bdi></dd>
+          <dt>محرك PDF</dt><dd>Print Edition · تصدير نقطي مستقل</dd>
+        </dl>
+        <form method="dialog"><button type="submit">إغلاق</button></form>
+      </dialog>
 
 
       {showTemplates && <section className="creative-gallery library-panel no-print" aria-label="مكتبة القوالب">

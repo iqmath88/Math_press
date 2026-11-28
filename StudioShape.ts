@@ -1,3 +1,4 @@
+import { mediaResizeHandle } from "./mediaResize";
 import { Node } from "@tiptap/core";
 
 const shapes: Record<string,[string,string]> = {
@@ -70,7 +71,8 @@ export function drawShape(attrs:Record<string,unknown>) {
     geometry.points.forEach(([x,y],index)=>{
       if(!names[index]) return;
       const text=document.createElementNS(svgNS,"text");
-      text.setAttribute("x",String(x));text.setAttribute("y",String(y));
+      text.setAttribute("x",String(x + (x < 100 ? -6 : x > 100 ? 6 : 0)));
+      text.setAttribute("y",String(y + (y < 65 ? -7 : 10)));
       text.setAttribute("text-anchor","middle");text.setAttribute("font-size","10");text.setAttribute("fill",ink);
       text.textContent=names[index];group.append(text);
     });
@@ -99,16 +101,18 @@ export const StudioShape = Node.create({
   parseHTML:()=>[{tag:"figure[data-studio-shape]"}],
   renderHTML:({node})=>["figure",{"data-studio-shape":JSON.stringify(node.attrs)},"شكل هندسي"],
   addNodeView() {
-    return ({node})=>{
+    return (props)=>{
+      const {node}=props;
       const dom=document.createElement("figure");
       dom.className="studio-shape";
+      const { handle, stopEvent } = mediaResizeHandle(props, dom, () => dom.querySelector("svg"));
       const draw=(attrs:Record<string,unknown>)=>{
         dom.dataset.studioShape=JSON.stringify(attrs);
         dom.style.width=bounded(attrs.widthMm,15,250,55)+"mm";
-        dom.replaceChildren(drawShape(attrs));
+        dom.replaceChildren(drawShape(attrs), handle);
       };
       draw(node.attrs);
-      return {dom,update:updated=>{if(updated.type!==node.type)return false;draw(updated.attrs);return true;}};
+      return {dom,stopEvent,update:updated=>{if(updated.type!==node.type)return false;draw(updated.attrs);return true;}};
     };
   }
 });

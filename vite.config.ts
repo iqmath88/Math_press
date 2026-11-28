@@ -31,8 +31,14 @@ const copyPwaFiles = (): Plugin => ({
   }
 });
 export default defineConfig({
-  define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify(JSON.parse(read("package.json").toString()).version) },
+  define: {
+    "import.meta.env.VITE_APP_VERSION": JSON.stringify(JSON.parse(read("package.json").toString()).version),
+    "import.meta.env.VITE_APP_BUILD": JSON.stringify(
+      process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "local"
+    ),
+    "import.meta.env.VITE_APP_BUILD_DATE": JSON.stringify(new Date().toISOString()),
+  },
   base: "./", publicDir:false, resolve:{extensions:[".mjs",".ts",".tsx",".js",".jsx",".json"]}, plugins:[react(),copyPwaFiles()],
   server:{host:"0.0.0.0"}, build:{target:"es2022",chunkSizeWarningLimit:1500},
-  test:{include:["*.test.{ts,tsx,js}"], maxWorkers: 2, testTimeout: 15_000, hookTimeout: 25_000}
+  test:{include:["*.test.{ts,tsx,js}","experiments/*.test.ts"], maxWorkers: 2, testTimeout: 15_000, hookTimeout: 25_000}
 });

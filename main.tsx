@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { MathfieldElement } from "mathlive";
 import "mathlive/fonts.css";
+import "mathlive/static.css";
 import "@fontsource/amiri/arabic-400.css";
 import "@fontsource/amiri/arabic-700.css";
 import "@fontsource/amiri/latin-400.css";

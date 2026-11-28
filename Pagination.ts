@@ -1,3 +1,4 @@
+import {applyFurniture,pageNumber,type PageFurniture} from "./pageFurniture";
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -22,6 +23,7 @@ export type PageLayout = {
   marginBottomMm: number;
   headerText: string;
   showPageNumbers: boolean;
+  furniture?: PageFurniture;
 };
 
 type PaginationState = { revision: number; deco: DecorationSet; sig: string };
@@ -51,26 +53,23 @@ function buildBreak(
   root.appendChild(f);
 
   const foot = el("div", "pg-footer", mb);
-  const left = el("span", "pg-footer-text");
-  left.textContent = footer;
+  applyFurniture(foot,footer,layout.furniture?.footerEnd,layout.furniture?.rule,layout.furniture?.footerCenter,layout.furniture?.preset);
   const right = el("span", "pg-footer-num");
-  right.textContent = layout.showPageNumbers ? `صفحة ${page} من ${total}` : "";
-  foot.append(left, right);
+  right.textContent = layout.showPageNumbers ? pageNumber(page,total,layout.furniture) : "";
+  foot.append(right);
   root.appendChild(foot);
 
   if (!last) {
     root.appendChild(el("div", "pg-gap"));
     const head = el("div", "pg-header", mt);
-    const text = el("span", "pg-header-text");
-    text.textContent = layout.headerText;
-    head.appendChild(text);
+    applyFurniture(head,layout.headerText,layout.furniture?.headerEnd,layout.furniture?.rule,layout.furniture?.headerCenter,layout.furniture?.preset);
     root.appendChild(head);
   }
   return root;
 }
 
 function layoutKey(l: PageLayout) {
-  return `${l.pageHeightMm}:${l.marginTopMm}:${l.marginBottomMm}:${l.headerText}:${l.showPageNumbers ? 1 : 0}`;
+  return `${l.pageHeightMm}:${l.marginTopMm}:${l.marginBottomMm}:${l.headerText}:${l.showPageNumbers ? 1 : 0}:${l.furniture ? JSON.stringify(l.furniture) : ""}`;
 }
 
 function buildDecorations(doc: PMNode, meta: Extract<Meta, { result: PaginationResult }>) {
@@ -135,7 +134,8 @@ export const Pagination = Extension.create({
   addProseMirrorPlugins() {
     const ext = this;
 
-    const measure = (view: EditorView, measurements: WeakMap<HTMLElement, { node: PMNode; item: PageItem }>) => {
+    const measure = (view: EditorView, measurements: WeakMap<HTMLElement, { node: PMNode; item: PageItem }>,
+      visit?: (element: HTMLElement) => void) => {
       if (!view.dom.isConnected) return;
       const layout: PageLayout = { ...ext.storage.layout };
       const usable = (layout.pageHeightMm - layout.marginTopMm - layout.marginBottomMm) * PX_PER_MM;
@@ -151,6 +151,7 @@ export const Pagination = Extension.create({
           items.push({ height: 0, breakAfter: isBreak });
           return;
         }
+        visit?.(dom);
         const previous = measurements.get(dom);
         if (previous?.node === node) {
           items.push(previous.item);
@@ -169,7 +170,7 @@ export const Pagination = Extension.create({
       const result = computeBreaks(items, usable);
       const footer = String(ext.storage.footerText ?? "");
       const sig = JSON.stringify([
-        result.breaks.map(b => [positions[b.index], Math.round(b.filler)]),
+        result.breaks.map(b => [b.index, Math.round(b.filler)]),
         result.pages,
         Math.round(result.lastFiller),
         footer,
@@ -178,7 +179,12 @@ export const Pagination = Extension.create({
       const current = paginationKey.getState(view.state);
       ext.storage.pages = result.pages;
       ext.storage.pageStarts = result.breaks.map(b => positions[b.index]);
-      if (current && current.sig === sig) return;
+      if (current?.sig === sig) {
+        const mapped = current.deco.find();
+        if (mapped.length === result.breaks.length + 1 &&
+            mapped.every((widget,index)=>widget.from ===
+              (index < result.breaks.length ? positions[result.breaks[index].index] : doc.content.size))) return;
+      }
       view.dispatch(view.state.tr.setMeta(paginationKey, { result, positions, sig, footer, layout }).setMeta("addToHistory", false));
       ext.storage.onPages?.(result.pages);
     };
@@ -192,7 +198,7 @@ export const Pagination = Extension.create({
             const meta = tr.getMeta(paginationKey) as Meta | undefined;
             if (meta && "result" in meta) return { ...value, deco: buildDecorations(tr.doc, meta), sig: meta.sig };
             if (meta && "refresh" in meta) return { ...value, sig: "", revision: value.revision + 1 };
-            if (tr.docChanged) return { ...value, deco: value.deco.map(tr.mapping, tr.doc), sig: "" };
+            if (tr.docChanged) return { ...value, deco: value.deco.map(tr.mapping, tr.doc) };
             return value;
           }
         },
@@ -209,8 +215,21 @@ export const Pagination = Extension.create({
             if (raf || destroyed) return;
             raf = requestAnimationFrame(() => {
               raf = 0;
-              observe();
-              measure(editorView, measurements);
+              const doc = editorView.state.doc;
+              if (!ro || observedDoc === doc) {
+                measure(editorView, measurements);
+                return;
+              }
+              const next = new Set<HTMLElement>();
+              // Register observers during the same DOM lookup used for measurement.
+              measure(editorView, measurements, dom => {
+                next.add(dom);
+                if (!observedBlocks.has(dom)) ro.observe(dom);
+              });
+              if (destroyed) return;
+              for (const dom of observedBlocks) if (!next.has(dom)) ro.unobserve(dom);
+              observedBlocks = next;
+              observedDoc = doc;
             });
           };
           const refresh = () => {
@@ -221,19 +240,6 @@ export const Pagination = Extension.create({
             for (const entry of entries) measurements.delete(entry.target as HTMLElement);
             schedule();
           }) : null;
-          const observe = () => {
-            if (!ro || observedDoc === editorView.state.doc) return;
-            observedDoc = editorView.state.doc;
-            const next = new Set<HTMLElement>();
-            observedDoc.forEach((_node, offset) => {
-              const dom = editorView.nodeDOM(offset);
-              if (!(dom instanceof HTMLElement)) return;
-              next.add(dom);
-              if (!observedBlocks.has(dom)) ro.observe(dom);
-            });
-            for (const dom of observedBlocks) if (!next.has(dom)) ro.unobserve(dom);
-            observedBlocks = next;
-          };
           if (typeof document !== "undefined" && document.fonts?.ready) void document.fonts.ready.then(refresh);
           schedule();
           return {

@@ -113,3 +113,56 @@
 - تعرض شاشة التحرير فواصل تقديرية على مستوى الكتل. يُحسب التقسيم التفصيلي للفقرات والجداول في معاينة الطباعة.
 - تعرض المعاينة تحذيرًا للكتل التي تتجاوز ارتفاع صفحة A4 ويتعذّر تقسيمها، مثل مجموعة صفوف مدمجة كبيرة. راجع ملف PDF الناتج عند ظهور التحذير.
 - تعتمد خيارات حفظ PDF ونطاق الصفحات والخلفية على نافذة الطباعة في نظام التشغيل. تغطي الاختبارات الآلية محاكاة iPad، وأُقرّ اختبار Safari اليدوي على الجهاز قبل الدمج.
+
+## 0.8.0-alpha.5 — preview checkpoint
+
+- Added print diagnostics and kept in-bounds sheet footers inside fixed print
+  page boxes. The print action waits for the images in the preview itself.
+- Clarified unset media properties and enabled resolution checks for auto-sized images.
+- Added a short A4 regression with Arabic text, MathLive equations and an uploaded
+  bitmap. Native Apple print reproduction and the full performance gate remain open.
+
+- Added contextual image and shape controls with an on-page width handle. Drag
+  release creates one reversible edit without changing the original media.
+
+## 0.8.0-alpha.6 — PDF feasibility checkpoint
+
+- Added build identification to the application version dialog.
+- Added an isolated PDF feasibility harness and CI samples. Arabic text
+  extraction is still an open acceptance gate for independent export.
+
+## 0.8.0-alpha.7 — Print Edition proof and compact toolbar
+
+- Added an isolated vector PDF probe with HarfBuzz shaping and Unicode BiDi.
+- Moved the design tools entry into the quick ribbon and compacted the
+  tablet landscape header.
+- Added lighter editor-only styling for educational boxes.
+
+## 0.8.0-alpha.8 — experimental PDF download
+
+- Added an on-demand raster export dialog in print preview. It creates a PDF
+  Blob from paginated MathDoc, with range, resolution, download and sharing.
+- Loaded static MathLive styles with the app for offline preview rendering.
+
+## 0.8.0-alpha.9 — print resolution checkpoint
+
+- Defaulted independent PDF to 300 DPI and exposed five physical resolutions.
+- Added cropped and rotated image rendering and explicit memory safeguards.
+- Brought range, ink mode, page furniture and watermark settings into export.
+
+## 0.8.0-alpha.10 — معاينة التصدير المجزأ
+
+- أضيف رسم مجزأ للدقات العالية مع تداخل عند الحواف وقص داخل PDF.
+- يعاد استخدام Canvas صغير مع تقدم وإلغاء على مستوى الأجزاء.
+
+## 0.8.0-alpha.11 — كتالوج الصناديق الأكاديمية
+
+- أضيفت علامات مميزة للأنواع التعليمية الـ23 وثلاث عينات PDF من مسار التصدير المستقل.
+- ثُبّت اتجاه الأعداد في الرسم وأُزيحت أسماء رؤوس الأشكال عن النقاط.
+- قُلّل عمل تجهيز المعادلات والأنماط المكرر أثناء التصدير وأُضيف قياس مراحله.
+
+## 0.8.0-alpha.12 — قياس استقرار المحرر
+
+- دمج زيارات DOM الخاصة بقياس الصفحات ومراقبة أحجامها.
+- أضيف فحص لهوية MathLive والتراجع في مستند من 100 صفحة.
+- قُسّمت قراءة بكسلات التدرج الرمادي إلى شرائح لتقليل الذاكرة المؤقتة.

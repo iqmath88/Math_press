@@ -137,10 +137,50 @@ async function checkPrint(page) {
   }
 }
 
+async function checkLongEquation(page) {
+  const blocks = Array.from({ length: 100 }, (_, i) => [
+    ...(i ? [{ type: "pageBreak" }] : []),
+    paragraph(i ? [text(`مسألة ${i + 1}`)] : [text("قبل "), math("x^2"), text(" بعد")]),
+  ]).flat();
+  await importDoc(page, blocks);
+  const root = page.locator(".editor-source .tiptap");
+  const field = root.locator("math-field");
+  await field.waitFor();
+  await field.evaluate(node => { window.originalLongMathfield = node; });
+  await field.click();
+  await field.focus();
+  await page.getByRole("button", { name: "خصائص المستند" }).click();
+  const inspector = page.getByRole("complementary", { name: "خصائص المستند" });
+  await inspector.waitFor();
+  assert.ok(await field.evaluate(node => window.originalLongMathfield === node));
+  await inspector.getByRole("button", { name: "إغلاق" }).click();
+  await field.click();
+  await field.focus();
+  await page.keyboard.press("End");
+  await page.keyboard.type("+1");
+  await page.waitForFunction(() => window.originalLongMathfield?.value === "x^2+1");
+  await field.locator("..").getByRole("button", { name: "اعتماد والعودة إلى النص", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector(".editor-source .tiptap") === document.activeElement);
+  assert.equal(await field.evaluate(node => node.value), "x^2+1");
+  const mod = await page.evaluate(() => /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? "Meta" : "Control");
+  await page.keyboard.press(mod + "+z");
+  await page.waitForFunction(() => window.originalLongMathfield?.value === "x^2");
+  await page.keyboard.press(mod + "+Shift+z");
+  await page.waitForFunction(() => window.originalLongMathfield?.value === "x^2+1");
+  assert.ok(await field.evaluate(node => window.originalLongMathfield === node));
+}
+
 (async () => {
   const browser = await engine.launch(engine === chromium && process.env.MATHPRESS_CHROMIUM
     ? {executablePath:process.env.MATHPRESS_CHROMIUM} : {});
   try {
+    if (mode === "long-equation") {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      await page.goto(url);
+      await checkLongEquation(page);
+      console.log(engine.name(), "100-page inspector, MathLive identity, edit and undo/redo passed");
+      return;
+    }
     if (mode !== "math" && mode !== "history") {
       const page = await browser.newPage({viewport:{width:1440,height:1000}});
       await page.goto(url);

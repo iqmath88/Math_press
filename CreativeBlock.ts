@@ -1,5 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
-import { blockLabel, blockFonts, blockFrames } from "./creativeDesign";
+import { blockMark, blockLabel, blockFonts, blockFrames } from "./creativeDesign";
 
 export const CreativeBlock = Node.create({
   name: "educationBlock",
@@ -31,6 +31,11 @@ export const CreativeBlock = Node.create({
       exampleNumber: {default:null,parseHTML:el=>el.dataset.exampleNumber ?? null,renderHTML:attrs=>
         typeof attrs.exampleNumber==="string" && /^[0-9٠-٩]{1,8}$/.test(attrs.exampleNumber)
           ? {"data-example-number":attrs.exampleNumber} : {}},
+      surface: {default:null,parseHTML:el=>el.dataset.blockSurface ? Number(el.dataset.blockSurface) : null,renderHTML:attrs=>
+        Number.isInteger(attrs.surface) && attrs.surface>=20 && attrs.surface<=100
+          ? {"data-block-surface":attrs.surface,style:`--block-surface:${attrs.surface}%`} : {}},
+      shadow: {default:null,parseHTML:el=>el.dataset.blockShadow ?? null,renderHTML:attrs=>
+        attrs.shadow==="none" || attrs.shadow==="soft" ? {"data-block-shadow":attrs.shadow} : {}},
       accent: {default:null,parseHTML:el=>el.dataset.blockAccent ?? null,renderHTML:attrs=>
         typeof attrs.accent==="string" && /^#[\da-f]{6}$/i.test(attrs.accent)
           ? {"data-block-accent":attrs.accent,style:`--block-accent:${attrs.accent}`} : {}}
@@ -41,7 +46,9 @@ export const CreativeBlock = Node.create({
     const number=HTMLAttributes["data-example-number"];
     const title=node.attrs.title || blockLabel(node.attrs.kind);
     return ["section",mergeAttributes(HTMLAttributes,{class:"creative-block"}),[
-      "div",{class:"creative-block-label",contenteditable:"false"}, number ? `${title} ${number}` : title
+      "div",{class:"creative-block-label",contenteditable:"false"},
+      ["span", {class:"academic-block-mark", "aria-hidden":"true"}, blockMark(node.attrs.kind)],
+      ["span", {}, number ? `${title} ${number}` : title]
     ],["div",{class:"creative-block-content"},0]];
   }
 });

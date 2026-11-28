@@ -14,7 +14,7 @@ async function choose(page, title) {
 async function lesson(page, capture) {
   page.setDefaultTimeout(10000);
   await page.goto(home);
-  await choose(page,/تطبيقات التفاضل/);
+  await choose(page,/^ملزمة تطبيقات التفاضل(?: |$)/);
   const editor = page.locator(".editor-source .tiptap");
   const def = editor.locator('[data-education-block="definition"]').first();
   await def.locator("p").click();
@@ -207,6 +207,7 @@ async function verifyStyleLibrary(page, capture) {
   await page.getByRole("button",{name:"تطبيق الهوية على الملزمة",exact:true}).click();
   assert.equal(await page.locator(".paper").getAttribute("data-creative-design"),"custom");
   await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).click();
+  await page.getByRole("button",{name:"تثبيت",exact:true}).click();
   const library = page.getByRole("region",{name:"مكتبة أنماط الصناديق"});
   assert.equal(await library.locator(".block-style-card").count(),23);
   await library.getByRole("button",{name:"المفضلة: تعريف",exact:true}).click();
@@ -230,6 +231,7 @@ async function verifyStyleLibrary(page, capture) {
     await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
   await showStudio.click();
   await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).click();
+  await page.getByRole("button",{name:"تثبيت",exact:true}).click();
   await library.getByText("تعريف المبرهنة",{exact:true}).waitFor();
   await library.getByRole("button",{name:"إدراج",exact:true}).click();
   const inserted = block.last();
@@ -286,6 +288,7 @@ async function captureEducationalDesign(browser) {
     await page.getByRole("button",{name:"مستند فارغ",exact:true}).click();
     await page.getByRole("tab",{name:"أنماط",exact:true}).click();
     await page.getByRole("button",{name:"معرض الصناديق التعليمية"}).click();
+    await page.getByRole("button",{name:"تثبيت",exact:true}).click();
     const library=page.getByRole("region",{name:"مكتبة أنماط الصناديق"});
     const root=page.locator(".editor-source .tiptap");
     const heading=page.locator(".document-title-input");
@@ -350,11 +353,31 @@ async function captureMediaDesign(browser) {
     await page.getByRole("button",{name:"إدراج صورة",exact:true}).click();
     await (await chooser).setFiles(join(__dirname,"icon-512.png"));
     await root.locator(".studio-image img[src]").waitFor();
-    await page.getByRole("button",{name:"التصميم والصناديق",exact:true}).click();
     const image=root.locator(".studio-image img");
     await image.click();
     const imageProperties=page.getByRole("group",{name:"خصائص الصورة"});
-    await imageProperties.getByLabel("العرض (مم)").fill("44");
+    await imageProperties.getByLabel("العرض (مم)").waitFor();
+    assert.equal(await page.getByLabel("الأشكال الهندسية").count(), 0);
+    assert.equal(await page.getByRole("button",{name:"مكتبة أنماط الصناديق"}).count(), 0);
+    const width = imageProperties.getByLabel("العرض (مم)");
+    await width.fill("44");
+    const handle = root.locator(".studio-image .studio-resize-handle");
+    await handle.scrollIntoViewIfNeeded();
+    const bounds = await handle.boundingBox();
+    assert.ok(bounds);
+    const x = bounds.x + bounds.width / 2;
+    const y = bounds.y + bounds.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x - 30, y);
+    await page.mouse.up();
+    assert.ok(Number(await width.inputValue()) > 44);
+    assert.equal(await root.locator(".studio-image").count(), 1);
+    assert.equal(await root.evaluate(el => el.editor.commands.undo()), true);
+    assert.equal(await root.evaluate(el => el.editor.state.selection.node?.attrs.widthMm), 44);
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll(".studio-media-properties input[type=number]")][0]?.value === "44");
+    await page.getByRole("button",{name:"التصميم والصناديق",exact:true}).click();
     await imageProperties.getByLabel("التسمية",{exact:true}).fill("عينة صورة نقطية");
     await page.getByLabel("الأشكال الهندسية").selectOption("triangle");
     const shape=root.locator(".studio-shape");
@@ -381,7 +404,8 @@ async function captureMediaDesign(browser) {
 async function captureTemplates(browser) {
   for (const [title, fileName] of [
     [/القطوع المخروطية/,"conics"], [/امتحان رياضيات/,"exam"],
-    [/غلاف الفصل الدراسي/,"cover"], [/ورقة قوانين التفاضل/,"formula-sheet"], [/تمارين على القيم القصوى/,"practice"], [/مراجعة مركزة/,"review"]
+    [/غلاف الفصل الدراسي/,"cover"], [/ورقة قوانين التفاضل/,"formula-sheet"], [/تمارين على القيم القصوى/,"practice"], [/مراجعة مركزة/,"review"],
+    [/غلاف فصل — التفاضل/,"chapter-calculus"], [/نموذج إجابة — تطبيقات التفاضل/,"answer-model"]
   ]) {
     const page = await browser.newPage({viewport:{width:1440,height:1000}});
     try {

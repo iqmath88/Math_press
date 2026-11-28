@@ -10,7 +10,7 @@ const download = (blob: Blob, name: string) => {
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
 
-export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onNotice:(message:string)=>void}) {
+export default function StudioMediaControls({editor,onNotice,showShapePicker}:{editor:Editor;onNotice:(message:string)=>void;showShapePicker:boolean}) {
   const selection=editor.state.selection;
   const selected=selection instanceof NodeSelection ? selection.node : null;
   const attrs=selected?.attrs ?? {};
@@ -25,7 +25,7 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
   };
   const move = (direction: -1 | 1) => {
     const current = editor.state.selection;
-    if (!(current instanceof NodeSelection) || current.node.type.name !== "studioShape") return;
+    if (!(current instanceof NodeSelection) || !["studioShape","image"].includes(current.node.type.name)) return;
     const sibling = direction < 0 ? current.$from.nodeBefore : current.$to.nodeAfter;
     if (!sibling) return onNotice("لا يوجد موضع مجاور في هذا الاتجاه.");
     const target = direction < 0 ? current.from - sibling.nodeSize : current.to + sibling.nodeSize;
@@ -37,11 +37,11 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
   };
   const removeShape = () => {
     const current = editor.state.selection;
-    if (!(current instanceof NodeSelection) || current.node.type.name !== "studioShape") return;
+    if (!(current instanceof NodeSelection) || !["studioShape","image"].includes(current.node.type.name)) return;
     editor.view.dispatch(editor.state.tr.delete(current.from,current.to).scrollIntoView());
     editor.view.focus();
   };
-  const number=(label:string,key:string,min:number,max:number,step=1)=><label>{label} <input type="number" min={min} max={max} step={step}
+  const number=(label:string,key:string,min:number,max:number,step=1,placeholder?:string)=><label>{label} <input type="number" min={min} max={max} step={step} placeholder={placeholder}
     value={attrs[key] ?? ""} onChange={event=>{
       const value=event.target.valueAsNumber;
       edit({[key]:Number.isFinite(value) ? Math.min(max,Math.max(min,value)) : null});
@@ -72,45 +72,48 @@ export default function StudioMediaControls({editor,onNotice}:{editor:Editor;onN
     finally {URL.revokeObjectURL(url);}
   }
   const dpi=() => {
-    if(!image || !attrs.widthMm) return;
+    if(!image) return;
     const dom=editor.view.nodeDOM(selection.from);
     const element=dom instanceof Element ? dom.querySelector("img") : null;
     if(!element?.naturalWidth) return onNotice("لم تكتمل قراءة أبعاد الصورة.");
-    const width=element.getBoundingClientRect().width;
+    const width=element.offsetWidth;
+    if(!width) return onNotice("تعذر قياس عرض الصورة داخل الورقة.");
     const pixels=Number(element.dataset.originalWidth) || element.naturalWidth;
-    const value=Math.round(pixels * 96 / (element.offsetWidth || width));
+    const value=Math.round(pixels * 96 / width);
     onNotice(`الدقة الأفقية عند العرض المحدد: ${value} DPI${value<300 ? " · أقل من 300 DPI" : ""}`);
   };
   return <>
-    <label>الأشكال الهندسية <select value="" onChange={event=>{
+    {(showShapePicker || shape) && <label>الأشكال الهندسية <select value="" onChange={event=>{
       if (!event.target.value) return;
       const shape = {type:"studioShape",attrs:{kind:event.target.value}};
       const chain = editor.chain().focus();
       if (selection instanceof NodeSelection) chain.insertContentAt(selection.to,shape).run();
       else chain.insertContent(shape).run();
-    }}><option value="">اختر شكلًا</option>{shapeOptions.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-    {(image || shape) && <fieldset>
+    }}><option value="">اختر شكلًا</option>{shapeOptions.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}
+    {(image || shape) && <fieldset className="studio-media-properties">
       <legend>{image ? "خصائص الصورة" : "خصائص الشكل"}</legend>
-      {number("العرض (مم)","widthMm",15,250)}
-      {number("الدوران","rotation",-360,360)}
-      {number("الشفافية","opacity",0,1,.1)}
+      {number("العرض (مم)","widthMm",15,250,1,"تلقائي")}
+      {number("الدوران","rotation",-360,360,1,"0")}
+      {number("الشفافية","opacity",0,1,.1,"1")}
       <label>التسمية <input value={attrs[image?"caption":"label"] ?? ""} onChange={event=>edit({[image?"caption":"label"]:event.target.value})}/></label>
       {image ? <>
-        {number("القص من كل حافة (%)","crop",0,45)}
+        {number("القص من كل حافة (%)","crop",0,45,1,"0")}
         <details><summary>قص كل حافة على حدة</summary>
           {number("القص من الأعلى (%)","cropTop",0,45)}
           {number("القص من اليمين (%)","cropRight",0,45)}
           {number("القص من الأسفل (%)","cropBottom",0,45)}
           {number("القص من اليسار (%)","cropLeft",0,45)}
         </details>
-        {number("سماكة الإطار","border",0,12)}
+        {number("سماكة الإطار","border",0,12,1,"0")}
         <label>محاذاة الصورة <select value={attrs.align ?? "start"} onChange={event=>edit({align:event.target.value})}>
           <option value="start">البداية</option><option value="center">وسط</option><option value="end">النهاية</option>
         </select></label>
         <label>استبدال الصورة <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={event=>{
           void replace(event.target.files?.[0]);event.target.value="";
         }}/></label>
-        <button type="button" disabled={!attrs.widthMm} onClick={dpi}>فحص الدقة النقطية</button>
+        <button type="button" onClick={dpi}>فحص الدقة النقطية</button>
+        <button type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>move(-1)}>نقل الصورة لأعلى</button>
+        <button type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>move(1)}>نقل الصورة لأسفل</button>
       </> : <>
         {number("سماكة خط الشكل","weight",1,10)}
         {["triangle","rectangle","square","circle"].includes(attrs.kind) && <>

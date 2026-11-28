@@ -9,6 +9,15 @@ export const blockTypes = [
   ["exercise","تمرين"], ["check","اختبر فهمك"], ["summary","خلاصة"], ["homework","واجب"],
   ["illustration","وسيلة إيضاح"], ["custom","صندوق مخصص"]
 ] as const;
+const blockMarks: Record<(typeof blockTypes)[number][0], string> = {
+  chapter: "◆", lesson: "▣", subtitle: "▸", definition: "≔", concept: "◈",
+  law: "ƒ", theorem: "⊢", proof: "∎", property: "∝", rule: "⇒",
+  example: "◇", solution: "✓", note: "•", warning: "!", idea: "✦",
+  "ministerial-idea": "✧", "ministerial-question": "؟", exercise: "✎",
+  check: "☑", summary: "≡", homework: "▤", illustration: "△", custom: "□",
+};
+export const blockMark = (kind: unknown) => blockMarks[blockTypes.find(([id]) => id === kind)?.[0] ?? "custom"];
+
 export const blockLabel = (kind: unknown) => blockTypes.find(([id]) => id === kind)?.[1] ?? "صندوق مخصص";
 
 export const designs = [
@@ -136,6 +145,24 @@ export const creativeTemplates: { id: string; name: string; category: string; de
   {id:"cover",name:"غلاف الفصل الدراسي",category:"غلاف",design:"ivory",content:[
     educationBlock("chapter",[heading("ملزمة الرياضيات"),paragraph("الفصل الدراسي: ______")]),
     educationBlock("subtitle",[paragraph("الصف: ______     إعداد: ______     العام الدراسي: ______")])
+  ]},
+  {id:"chapter-calculus",name:"غلاف فصل — التفاضل",category:"غلاف",design:"academic",content:[
+    educationBlock("chapter",[heading("الفصل الثالث · تطبيقات التفاضل"),paragraph("ملزمة الرياضيات · السادس العلمي")]),
+    educationBlock("subtitle",[paragraph("إعداد: ______   المدرسة: ______   العام الدراسي: ______")]),
+    equation("f'(x)=0"),
+    educationBlock("summary",[paragraph("في هذا الفصل: التزايد والتناقص، القيم القصوى، والمعدلات المرتبطة بالزمن.")]),
+    {type:"pageBreak"},
+    educationBlock("lesson",[heading("القيم القصوى المحلية")]),
+    educationBlock("definition",[paragraph("تكون قيمة الدالة عظمى محلية إذا كانت أكبر من أو تساوي قيمها في جوار النقطة.")]),
+    educationBlock("check",[paragraph("هل كل نقطة تحقق f'(x)=0 نقطة قيمة قصوى؟ علّل إجابتك.")]),
+  ]},
+  {id:"answer-model",name:"نموذج إجابة — تطبيقات التفاضل",category:"نموذج إجابة",design:"economy",content:[
+    heading("نموذج إجابة · تطبيقات التفاضل"),
+    paragraph("الصف: ______   الامتحان: ______   الدرجة الكلية: ١٠"),
+    educationBlock("exercise",[paragraph("أوجد القيم القصوى للدالة الآتية على الفترة [٠، ٤]."),equation("f(x)=x^2-4x+3")]),
+    educationBlock("solution",[paragraph("نشتق الدالة ثم نحدّد النقطة الحرجة داخل الفترة (٣ درجات)."),equation("f'(x)=2x-4=0\\Rightarrow x=2"),
+      paragraph("نقارن قيم الدالة عند النقطة الحرجة وطرفي الفترة (٤ درجات)."),equation("f(0)=3,\\quad f(2)=-1,\\quad f(4)=3")]),
+    educationBlock("summary",[paragraph("الصغرى −١ عند س = ٢، والعظمى ٣ عند س = ٠ أو س = ٤ (٣ درجات).")]),
   ]},
   {id:"practice",name:"تمارين على القيم القصوى",category:"تمارين",design:"minimal",content:[
     heading("ورقة تمارين: القيم القصوى"),paragraph("الاسم: ______  الصف: ______"),
