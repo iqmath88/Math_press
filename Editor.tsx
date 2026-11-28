@@ -1,3 +1,5 @@
+import { Fragment } from "@tiptap/pm/model";
+import { Selection } from "@tiptap/pm/state";
 import BlockStyleLibrary from "./BlockStyleLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -329,6 +331,25 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
     const block = findBlock();
     if (block) editor.view.dispatch(editor.state.tr.setNodeMarkup(block.pos, undefined, {...block.node.attrs,...attrs}));
   };
+  const exampleSection = (() => {
+    if (!selected) return null;
+    const at = editor.state.doc.resolve(selected.pos);
+    return at.parent.type.name === "educationBlock" && at.parent.attrs.kind === "example"
+      ? { parent:at.parent, pos:at.start(), index:at.index() } : null;
+  })();
+  const moveExampleSection = (direction: -1 | 1) => {
+    if (!exampleSection) return;
+    const { parent, pos, index } = exampleSection;
+    const destination = index + direction;
+    if (destination < 0 || destination >= parent.childCount) return;
+    const children = Array.from({length:parent.childCount},(_,i)=>parent.child(i));
+    const [section] = children.splice(index,1);
+    children.splice(destination,0,section);
+    const target = pos + children.slice(0,destination).reduce((offset,node)=>offset+node.nodeSize,0);
+    const tr = editor.state.tr.replaceWith(pos,pos+parent.content.size,Fragment.from(children));
+    editor.view.dispatch(tr.setSelection(Selection.near(tr.doc.resolve(target+1))));
+    editor.view.focus();
+  };
   const paperStyle = {
     ...designVariables(doc.creativeDesign),
     "--editor-zoom": zoom,
@@ -504,6 +525,14 @@ export default function DocumentEditor({ doc, onChange, onDesign, onStyles, onNu
               editBlock({radius:Number.isInteger(value) ? Math.max(0,Math.min(30,value)) : null});
             }}/></label>
             <label><input type="checkbox" checked={selected.node.attrs.hideTitle} onChange={event=>editBlock({hideTitle:event.target.checked})}/> إخفاء العنوان</label>
+            {exampleSection && <>
+              <button type="button" disabled={exampleSection.index===0} onClick={()=>moveExampleSection(-1)}>تقديم القسم</button>
+              <button type="button" disabled={exampleSection.index===exampleSection.parent.childCount-1} onClick={()=>moveExampleSection(1)}>تأخير القسم</button>
+              <button type="button" onClick={()=>{
+                const note=educationBlock("note");
+                editor.chain().focus().insertContentAt(exampleSection.pos+exampleSection.parent.content.size,note).run();
+              }}>إضافة ملاحظة للمثال</button>
+            </>}
             <button type="button" onClick={() => editBlock({title:"",accent:null,background:null,padding:null,radius:null,hideTitle:false,frame:null,font:null,size:null})}>استعادة التنسيق</button>
             <button type="button" onClick={() => {
               const block = findBlock();

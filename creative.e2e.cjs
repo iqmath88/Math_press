@@ -219,6 +219,10 @@ async function verifyStyleLibrary(page, capture) {
   await page.getByRole("group",{name:"خصائص الصندوق"}).getByLabel("حجم خط الصندوق").fill("18");
   assert.equal(await solution.locator("xpath=../..").getAttribute("data-block-size"),"18");
   await example.getByText("النتيجة النهائية",{exact:true}).waitFor();
+  await page.getByRole("button",{name:"تقديم القسم",exact:true}).click();
+  assert.equal(await example.locator(":scope > .creative-block-content > section").first().getAttribute("data-education-block"),"solution");
+  await page.getByRole("button",{name:"إضافة ملاحظة للمثال",exact:true}).click();
+  await example.locator('[data-education-block="note"]').waitFor();
 }
 async function verifyLongBox(page) {
   await page.goto(home);
