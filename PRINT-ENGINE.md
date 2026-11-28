@@ -38,3 +38,35 @@ Visual review of the Chromium PDF also exposed the editor's selection outline
 around the selected image. The print clone now drops editor node and cell
 selection classes before pagination. The regression requires the image to be
 selected in the editor and the printed copy to have no selection decorations.
+
+## P0 Safari recovery — four conic sections
+
+The second supplied Apple PDF is A4 (595.276 × 841.89 pt), with eight physical
+pages. Its metadata identifies Safari on iOS 27.2.1 (24B156) and Quartz, without
+an application version, build hash, or cache identifier. Odd pages contain the
+four conic sections. Even pages contain the app footer for the preceding
+section. Poppler reports a rightmost body word boundary of 602.54 pt on each
+odd page, about 7.27 pt past the physical page edge. Browser URL, date, and
+native pagination appear on the PDF. The preview alias alone cannot identify
+the build, nor establish that its service worker returned fresh assets.
+
+A code-level defect was reproducible separately: the watermark stacking rule
+had the same specificity as the absolute footer rule and appeared later. It
+placed the footer back in normal flow even on a fixed-size sheet. It now
+applies only to the header and body. The print wrappers also use a left-to-right
+physical coordinate origin, with the paper retaining right-to-left content.
+Each sheet explicitly uses the paper width variable and border-box sizing;
+the dynamic @page rule and paper variables both come from paperDimensions.
+No clipping or scale correction is used. Whether the attached Apple PDF used
+the watermark rule or the same source build remains unknown.
+
+The isolated desktop export probe uses the rendering pipeline without invoking
+Safari's print dialog. Playwright renders the prepared pages and calls Chromium's
+PDF API locally with the browser network disabled and browser header/footer
+annotations disabled. The four-page fixture tests selectable, embedded Arabic
+text, MathLive content, four source SVG plots, watermark, footer, and physical
+PDF word bounds. This is a feasibility probe with a prepared local document,
+not a browser-integrated PDF writer or a cold offline Safari export. Native
+Safari on iPad must still be tested using the exported reference MathDoc and
+the app's build diagnostics. Safari's own printable metadata remains subject to
+the native dialog.

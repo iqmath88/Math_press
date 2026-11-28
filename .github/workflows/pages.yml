@@ -58,6 +58,10 @@ jobs:
           npm run test:e2e
           node printCompatibility.e2e.cjs chromium
           node printCompatibility.e2e.cjs webkit
+          if [[ "$MATHPRESS_BRANCH" == feature/v0.8.0-advanced-glass-document-studio ]]; then
+            node safariRecovery.e2e.cjs chromium
+            node safariRecovery.e2e.cjs webkit
+          fi
           node stability.e2e.cjs chromium
           node stability.e2e.cjs webkit
           node authoring.e2e.cjs chromium

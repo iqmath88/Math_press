@@ -587,6 +587,7 @@ button.primary,
   #root,
   .app-shell,
   .editor-area,
+  .publishing-workspace,
   .page-stage {
     display: block !important;
     margin: 0 !important;
@@ -996,7 +997,14 @@ button.primary:hover:not(:disabled),
 }
 @media print {
   .preview-paper .editor-source { display: none; }
-  .paper.preview-paper { min-height:0 !important; }
+  /* Keep the physical origin independent of the viewport and shell RTL. */
+  .publishing-workspace, .page-stage { direction: ltr !important; }
+  .paper.preview-paper {
+    width: var(--pw);
+    min-height: 0 !important;
+    max-width: none;
+  }
+  .print-sheet { box-sizing: border-box; inline-size: var(--pw); }
   .print-sheet:not(.print-sheet-overflow) { break-inside:avoid; page-break-inside:avoid; }
   .print-sheet + .print-sheet { margin-block-start:0; }
   .print-sheet .pg-footer { break-before:avoid; }
@@ -1577,7 +1585,7 @@ ol[data-educational-list] > li.educational-continuation { list-style: none; }
 .page-watermark > :is(img,span) { max-inline-size:100%; max-block-size:100%; object-fit:contain; }
 .page-watermark > span { font-weight:700; text-align:center; overflow-wrap:anywhere; }
 .paper:has(> .watermark-editor) > .editor-source,
-.print-sheet:has(> .page-watermark) > :not(.page-watermark) { position:relative; }
+.print-sheet:has(> .page-watermark) > :is(.paper-header, .print-sheet-content) { position:relative; }
 
 .creative-block:not([data-block-radius]):not([data-block-frame]):not([data-education-block="chapter"],[data-education-block="lesson"],[data-education-block="subtitle"]) {
   border-radius:7px;

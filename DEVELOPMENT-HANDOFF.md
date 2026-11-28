@@ -88,3 +88,15 @@ shapes. The document width is committed once on pointer release as an isolated
 Undo step. Existing width controls remain the keyboard-accessible path.
 Physical iPad touch and rotation-handle work are still pending. The focused
 performance rerun continues to fail the threshold at 10 and 50 pages.
+
+### Safari conics recovery
+
+The second Apple PDF was confirmed to have the 4-to-8 split, with right-edge
+overflow and no usable build identifier. The watermark CSS override was
+reproduced separately by the new print regression. The physical print wrappers
+now start at the left edge independently of editor direction; the document keeps
+RTL styling. See PRINT-ENGINE.md for scope and measurements. The new
+safariRecovery.e2e.cjs generates the reference MathDoc and Chromium PDFs for
+1, 4, 10, 50 and 100 pages and checks print-media geometry with WebKit in CI.
+Keep the independent desktop PDF probe isolated and verify native print on an
+Apple device with a recorded build ID before closing the issue.
